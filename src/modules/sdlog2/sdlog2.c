@@ -1189,7 +1189,7 @@ int sdlog2_thread_main(int argc, char *argv[])
 		struct telemetry_status_s telemetry;
 		struct distance_sensor_s distance_sensor;
 		struct estimator_status_s estimator_status;
-		struct tecs_status_s tecs_status;
+        struct tecs_status_s tecs_status;
 		struct system_power_s system_power;
 		struct servorail_status_s servorail_status;
 		struct satellite_info_s sat_info;
@@ -2111,7 +2111,8 @@ int sdlog2_thread_main(int argc, char *argv[])
 			}
 
 			/* --- DISTANCE SENSOR --- */
-			if (copy_if_updated(ORB_ID(distance_sensor), &subs.distance_sensor_sub, &buf.distance_sensor)) {
+            for (int i = 0; i < 2; ++i) {
+            if (copy_if_updated_multi(ORB_ID(distance_sensor), i, &subs.distance_sensor_sub, &buf.distance_sensor)) {
 				log_msg.msg_type = LOG_DIST_MSG;
 				log_msg.body.log_DIST.id = buf.distance_sensor.id;
 				log_msg.body.log_DIST.type = buf.distance_sensor.type;
@@ -2119,7 +2120,8 @@ int sdlog2_thread_main(int argc, char *argv[])
 				log_msg.body.log_DIST.current_distance = buf.distance_sensor.current_distance;
 				log_msg.body.log_DIST.covariance = buf.distance_sensor.covariance;
 				LOGBUFFER_WRITE_AND_COUNT(DIST);
-			}
+            }
+            }
 
 			/* --- ESTIMATOR STATUS --- */
 			if (copy_if_updated(ORB_ID(estimator_status), &subs.estimator_status_sub, &buf.estimator_status)) {

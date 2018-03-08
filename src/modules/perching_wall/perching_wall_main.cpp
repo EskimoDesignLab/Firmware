@@ -152,6 +152,7 @@ private:
     float _speed_integrate;
     float _speed_integrate_old;
     float accelZ;
+    float _dist_comm;
 
     struct {
         std::vector<float> Kp;
@@ -479,6 +480,7 @@ PerchingWall::PerchingWall() :
     _speed_integrate_old(0.0f),
     // _angle_correction(1.0f),
     accelZ(0.0f),
+    _dist_comm(0.0f),
 
 	/* subscriptions */
 	_att_sp_sub(-1),
@@ -986,10 +988,11 @@ PerchingWall::hover_control(const math::Quaternion &q)
 
 		//_hover_speed_comm = 0.0f;
 
-        // outputs[3] = ((_gain.Kp[3] * _speed_error) + (_speed_derivate * _gain.Kd[3]) + _speed_integrate * _gain.Ki[3]) + 0.6f;
+        outputs[3] = ((_gain.Kp[3] * _speed_error) + (_speed_derivate * _gain.Kd[3]) + _speed_integrate * _gain.Ki[3]) + 0.65f; // 0.85f avec camera --> 2017/11/28
+        //outputs[3] = 0.8f;
 
         // ****************** //
-        outputs[3] = 0.65; // *****  Thrust constant (~ mg) pour tester LSM Thrust *****
+        //outputs[3] = 0.75f; // *****  Thrust constant (~ mg) pour tester LSM Thrust *****
         // ****************** //
 
         if (outputs[3] < 0.35f){
@@ -1017,11 +1020,11 @@ PerchingWall::hover_control(const math::Quaternion &q)
 
 		// Thrust feedback through integration of IMU measurements for vertical velocity
 	} else if (_take_off) {
-		if (_time < 1.0f) {
+        if (_time < 1.5f) {
 			//outputs[3] = 0.68f;
-            _hover_speed_comm = 1.0f;
+            _hover_speed_comm = 2.0f;
 			//outputs[3] = 0.60f;
-			outputs[3] = ((_gain.Kp[3] * _speed_error) + (_speed_derivate * _gain.Kd[3]) + _speed_integrate * _gain.Ki[3]) + 0.7f;
+            outputs[3] = ((_gain.Kp[3] * _speed_error) + (_speed_derivate * _gain.Kd[3]) + _speed_integrate * _gain.Ki[3]) + 0.7f; // 1.0 avec camera
 			if (outputs[3] > 1.0f)
 				outputs[3] = 1.0f;
 				//outputs[3] = 0.0f;
@@ -1030,8 +1033,8 @@ PerchingWall::hover_control(const math::Quaternion &q)
 			//outputs[3] = 0.0f;
 		} else {
 			//outputs[3] = 0.60f;
-            _hover_speed_comm = 0.1f;
-			outputs[3] = ((_gain.Kp[3] * _speed_error) + (_speed_derivate * _gain.Kd[3]) + _speed_integrate * _gain.Ki[3]) + 0.7f;
+            _hover_speed_comm = 0.5f;
+            outputs[3] = ((_gain.Kp[3] * _speed_error) + (_speed_derivate * _gain.Kd[3]) + _speed_integrate * _gain.Ki[3]) + 0.7f; // 1.0 avec camera
 			if (outputs[3] > 1.0f)
 				outputs[3] = 1.0f;
 				//outputs[3] = 0.0f;
@@ -1040,32 +1043,63 @@ PerchingWall::hover_control(const math::Quaternion &q)
 			//outputs[3] = 0.0f;
 		}
 
-	}
-	/* } else if (_climb) {
-         if (_climb_take_off) {
+    //}
+     } else if (_climb) {
 
-              _hover_speed_comm = 0.5f;
+        //*** Saturation on ailerons (2018-03-07)
+        if (outputs[0] >= 0.15f){
+            outputs[0] = 0.15f;
 
-              outputs[3] = ((_gain.Kp[3] * _speed_error) + (_speed_derivate * _gain.Kd[3]) + _speed_integrate * _gain.Ki[3]) + 0.7f;
+        }else if (outputs[0] <= -0.15f){
+            outputs[0] = -0.15f;
+        }
 
-             if (outputs[3] > 1.0f)
+        //*** Constant command for ailerons in climb mode (2018-03-08)
+        outputs[0] = 0.3f;
+
+
+        //*** Saturation on rudder (2018-03-07)
+        if (outputs[2] >= 0.15f){
+            outputs[2] = 0.15f;
+
+        }else if (outputs[2] <= -0.15f){
+            outputs[2] = -0.15f;
+        }
+
+        //outputs[2] = 0.0f;
+
+        if (_climb_take_off) {
+
+              _hover_speed_comm = 0.8f;
+
+              outputs[3] = ((_gain.Kp[3] * _speed_error) + (_speed_derivate * _gain.Kd[3]) + _speed_integrate * _gain.Ki[3]) + 0.6f;
+
+             if (outputs[3] > 1.0f){
                  outputs[3] = 1.0f;
+             }else if (outputs[3] < 0.6f){
+                 outputs[3] = 0.6f;
+             }
 
-             else if (outputs[3] < 0.5f)
-                 outputs[3] = 0.5f;
+             //*** Test to see if climbing is better with full throttle all along (2018-03-06)
+             //outputs[3] = 0.0f;
+
          } else {
 
               _hover_speed_comm = 0.0f;
 
-             outputs[3] = ((_gain.Kp[3] * _speed_error) + (_speed_derivate * _gain.Kd[3]) + _speed_integrate * _gain.Ki[3]) + 0.7f;
+            outputs[3] = ((_gain.Kp[3] * _speed_error) + (_speed_derivate * _gain.Kd[3]) + _speed_integrate * _gain.Ki[3]) + 0.6f;
 
-             if (outputs[3] > 1.0f)
+             if (outputs[3] > 1.0f){
                  outputs[3] = 1.0f;
-             else if (outputs[3] < 0.5f)
-                 outputs[3] = 0.5f;
-         }
- }*/
+             }else if (outputs[3] < 0.6f){
+                 outputs[3] = 0.6f;
+             }
 
+             //*** Test to see if climbing is better with full throttle all along (2018-03-06)
+             //outputs[3] = 0.0f;
+         }
+
+}
 
 	_actuators.control[actuator_controls_s::INDEX_ROLL] = outputs[0];
 	_actuators.control[actuator_controls_s::INDEX_PITCH] = outputs[1];
@@ -1246,17 +1280,29 @@ PerchingWall::task_main()
 			if (_landed && (_accel.x*_accel.x + _accel.z*_accel.z) > 500.0f)
                 _accel_stop = true;
 #endif
-			if (_take_off || _mb_landed || _recovery) {
+
+            float _climb_time = 1.5f;
+
+            if (_take_off || _mb_landed || _recovery || _climb) {
 
 				_time += _dt; // deltaT
+
+                // Switch between climb and fly towards the wall
+                if (_climb) {
+                   if (_time < _climb_time) {
+                       _climb_take_off = true;
+                   } else {
+                       _climb_take_off = false;
+                   }
+                }
 			}
 
-            if ((_ctrl_state.x_acc > 2.00f * _g) || (_time_level > 0)) {
+          /*  if ((_ctrl_state.x_acc > 2.00f * _g) || (_time_level > 0)) {
 
 				_time_level += _dt; // deltaT
-			}
+            }
 
-            /*
+
             // yaw_sp and Vz fixed for feedback at wall detection
             if (_wall_landing) { // ((_ctrl_state.x_acc > (2.05f * _g)) && !_wall_landing && !_landed && !_climb && !_take_off)
 				if (!_flag_qd_calculated) {
@@ -1287,28 +1333,6 @@ PerchingWall::task_main()
             }
 
 
-/*
-            if (_climb) {
-               _time_climb += _dt; // deltaT
-
-               if (_time_climb < 0.0f) {
-                   _climb_take_off = true;
-               } else {
-                   _climb_take_off = false;
-               }
-
-            }
-*/
-
-
-            // LOG VERTICAL VELOCITY
-            //_actuators.control[actuator_controls_s::INDEX_FLAPS] = _speed_z_axis;
-
-
-
-
-
-
             //*******************************************//
             // accX and accZ out of control loop calculation
             float angle2 = q_att.to_euler()(1);
@@ -1316,7 +1340,7 @@ PerchingWall::task_main()
 
             float s2 = (float)sin(angle2);
             float c2 = (float)cos(angle2);
-            float s3 = (float)sin(angle3);
+           /* float s3 = (float)sin(angle3);
             float c3 = (float)cos(angle3);
 
             float ax = _ctrl_state.x_acc;
@@ -1325,19 +1349,24 @@ PerchingWall::task_main()
 
             float gi = 9.8f;
 
-            float accX = ax*c2 + az*s2;
-            float accZ = -(-ax*s2 + ay*s3*c2 + az*c2*c3 + gi);
+           // float accX = ax*c2 + az*s2;
+            float accZ = -(-ax*s2 + ay*s3*c2 + az*c2*c3 + gi); */
 
 
             // Calcul de Xc --> Pour determiner si contact entre griffes et mur
-            float Xb = 0.0f; // Distance (mm) entre le CM et le point de fixation du Belly Sensor
-            float XpBcm = 0.0f; // Distance (mm) entre le CM et le point de fixation des pattes
-            float Xp = 0.0f; // Longueur des pattes (mm)
-            float qSF = 30.0f*pi/180; // Angle entre patte et fuselage de l'avion
+            float Xbs = 45.0f; // Distance (mm) entre le CM et le point de fixation du Belly Sensor
+            float XpBcm = 20.0f; // Distance (mm) entre le CM et le point de fixation des pattes
+            float Xp = 325.0f; // Longueur des pattes (mm)
+            float qSF = 33.0f*3.1416f/180.0f; // Angle entre patte et fuselage de l'avion
+
+            // *** Detect if pitch above 90 deg, with roll data --> Re-define angle as being larger than 90 deg
+            if ((float (fabs(angle3))) >= 2.0f){ // Might have to change this condition for something else...
+                angle2 = (180-angle2)*3.1416f/180.0f;
+            }
 
             float anglePatte = angle2 - qSF; // Angle entre horizontale et patte
             float c2Patte = (float)cos(anglePatte); // Cosinus de l'angle entre horizontale et patte
-            float Xc = (Xb - XpBcm)*c2 + Xp*c2Patte; // Distance horizontale reelle (mm) entre Belly Sensor et Griffes
+            float Xc = Xp*c2Patte - (Xbs + XpBcm)*c2; // Distance horizontale reelle (mm) entre Belly Sensor et Griffes
             float Xc_m = _distance_vl53l0x.current_distance * s2; // Distance horizontale mesuree (mm) entre Belly Sensor et Griffes
 
             //*******************************************//
@@ -1352,8 +1381,17 @@ PerchingWall::task_main()
 
           //  if ((q_att.to_euler()(1) > 1.396f && (_distance_vl53l0x.current_distance <= 30.0f/((float)cos(q_att.to_euler()(1)))) && _time_level > 1.3f && (_manual.return_switch != manual_control_setpoint_s::SWITCH_POS_ON)) || _mb_landed || (_recovery && (_time >= 20.0f)) ) { // || (_climb && (_time_climb >= 3.0f))) {
 
-                if ((_wall_landing && Xc_m <= Xc) || _mb_landed || (_recovery && (_time >= 20.0f)) ) { // || (_climb && (_time_climb >= 3.0f))) {
-                // && _time_level > 1.3f --> Ajouter pour eviter early contact detection
+            //if ((_wall_landing && q_att.to_euler()(1) > 1.05f && Xc_m <= Xc && accX < -2.0f) || _mb_landed || (_recovery && (_time >= 20.0f)) ) { // || (_climb && (_time_climb >= 3.0f))) {
+
+            // ***Conditions to land***
+            bool _wall_landing_land_cond = _wall_landing && q_att.to_euler()(1) > 1.05f && Xc_m <= (Xc - 5.0f); // pitch > 1.396f if accelerometer for detection
+            bool _recovery_land_cond = _recovery && (_time >= 20.0f);
+            bool _climb_land_cond = (_climb && Xc_m <= (Xc - 10.0f) && _time > 2.5f) || (_climb && _time >= 4.0f);
+
+            // **** 1.05f in the future for pitch angle threshold *****
+                if (_wall_landing_land_cond || _recovery_land_cond || _climb_land_cond || _mb_landed) { // || (_climb && (_time_climb >= 3.0f))) {
+
+                // ((_wall_landing && q_att.to_euler()(1) > 1.396f && Xc_m <= Xc && (_ctrl_state.x_acc*_ctrl_state.x_acc + _ctrl_state.z_acc*_ctrl_state.z_acc) > 200.0f) || _mb_landed || (_recovery && (_time >= 20.0f)) ) { --> 30-01-2018
 
                 //  OLD - HOR ACCEL    if ((q_att.to_euler()(1) > 1.396f && (_wall_landing && accX < -9.0f) && _time_level > 1.3f && (_manual.return_switch != manual_control_setpoint_s::SWITCH_POS_ON)) || _mb_landed || (_recovery && (_time >= 20.0f)) ) { // || (_climb && (_time_climb >= 3.0f))) {
                 //  if ((q_att.to_euler()(1) > 1.34f && ((_wall_landing && (_ctrl_state.x_acc*_ctrl_state.x_acc + _ctrl_state.z_acc*_ctrl_state.z_acc) > 200.0f) || (_take_off && (_ctrl_state.x_acc*_ctrl_state.x_acc + _ctrl_state.z_acc*_ctrl_state.z_acc) > 200.0f)))|| _landed || (_climb && !_climb_take_off && (_ctrl_state.x_acc*_ctrl_state.x_acc + _ctrl_state.z_acc*_ctrl_state.z_acc) > 100000.0f) || (_climb && _time_climb > 100.0f) || (_wall_landing && _manual.acro_switch == manual_control_setpoint_s::SWITCH_POS_ON) ) {
@@ -1381,10 +1419,10 @@ PerchingWall::task_main()
                 //}
 
 
-				// PERCHING
-            } else if (_wall_landing || (_distance_trone.current_distance <= 5.2f/((float)cos(q_att.to_euler()(1))) && (_distance_trone.current_distance > 0.0f) && _flag_qd_calculated && !_take_off && !_recovery && !_mb_landed && !_landed && !_climb)) { //(_threshold_accel && (_distance.current_distance < 5.2f || _wall_landing))
+                // PERCHING ****distance_trone <= 5.2f sans camera --> 2017/11/28
+            } else if (_wall_landing || (_distance_trone.current_distance <= 5.0f/((float)cos(q_att.to_euler()(1))) && (_distance_trone.current_distance > 0.0f) && _flag_qd_calculated && !_take_off && !_recovery && !_mb_landed && !_landed && !_climb)) { //(_threshold_accel && (_distance.current_distance < 5.2f || _wall_landing))
 
-                   // && (_distance.current_distance > 0.0f) ---> condition necessaire pcq dehors le capteur switch de la mesure reelle au minimum (0.2 m), si trop de lumiere du soleil
+                   // ***** && (_distance.current_distance > 0.0f) ---> condition necessaire pcq dehors le capteur switch de la mesure reelle au minimum (0.2 m), si trop de lumiere du soleil
 
                     //_launch = false;
 				_level = false;
@@ -1421,7 +1459,7 @@ PerchingWall::task_main()
 				// LAUNCH
                 _actuators.control[actuator_controls_s::INDEX_ROLL] = 0.0f ; // + _parameters.trim_roll;
                 _actuators.control[actuator_controls_s::INDEX_PITCH] = 0.35f ; // + _parameters.trim_pitch;
-                _actuators.control[actuator_controls_s::INDEX_YAW] = -0.05f ; // + _parameters.trim_yaw;
+                _actuators.control[actuator_controls_s::INDEX_YAW] = 0.00f ; // + _parameters.trim_yaw;
                 _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.25f;
 
 
@@ -1440,7 +1478,9 @@ PerchingWall::task_main()
 
 			// RECOVERY
 			//if((_mb_landed && (_time >= 0.2f) && (float (fabs(_ctrl_state.x_acc)) > 0.0f)) || _recovery || (_landed && (float (fabs(_ctrl_state.x_acc)) > 2.0f))) {
-            if((_mb_landed && (_time >= 0.20f) && (accZ <= -300.0f)) || _recovery) { // || (_landed && (accelZ < -3.0f))) {
+            if(_recovery) { // || (_landed && (accelZ < -3.0f))) {
+
+                // _mb_landed && (_time >= 0.20f) && (accZ <= -300.0f) --> 30-01-2018
 
                 // ****Use these conditions for _time variable initialization?...****
                 _mb_landed = false;
@@ -1494,7 +1534,7 @@ PerchingWall::task_main()
 
 
 			// TAKE OFF
-            if (_take_off){ // || (_manual.return_switch == manual_control_setpoint_s::SWITCH_POS_ON)) {
+        /*    if (_take_off || (_manual.return_switch == manual_control_setpoint_s::SWITCH_POS_ON)) {
 				_landed = false;
 				_take_off = true;
 
@@ -1503,32 +1543,52 @@ PerchingWall::task_main()
 				hover_control(q_att);
 			}
 
+        */
 
 
+            //*******************************************//
+            // CLIMB MODE
 
-/*
-            if (_climb || (_landed && _manual.acro_switch == manual_control_setpoint_s::SWITCH_POS_ON )) {
+            // Proportional gain for wall distance feedback loop during climbing
+            float Kp_climb = 0.05f; // input: millimeters, output: degrees (ex.: 2 deg command change for 1 cm error)
+
+            if (_climb || (_landed && _manual.return_switch == manual_control_setpoint_s::SWITCH_POS_ON )) {
                 _mb_landed = false;
                 _landed = false;
                 _climb = true;
-                //_flag_qd_calculated = false;
+
 
                 if (_climb_take_off) {
-                   // if (!_flag_qd_calculated) {
-                     //   _flag_qd_calculated = true;
-                        _qd.from_euler(0.0f, 1.75f, _yaw_sp);
-                   // }
-
+                    _dist_comm = Xc + 150.0f; // fb loop command: horizontal distance between belly sensor and wall --> climb with 5 cm distance between foot tip and wall
                 } else {
-                   // if (!_flag_qd_calculated) {
-                      //  _flag_qd_calculated = true;
-                        _qd.from_euler(0.0f, 1.4486f, _yaw_sp);
-                   // }
-
+                    _dist_comm = Xc - 2500.0f; // fb loop command: horizontal distance between belly sensor and wall --> climb with 5 cm distance between foot tip and wall
                 }
 
+                //Calculate the pitch_err
+                float _dist_err = _dist_comm - Xc_m; // error calculation for fb loop
+                float _pitch_err = Kp_climb * _dist_err; // proportional gain multiplication
+                float _pitch_sp = 90.0f + _pitch_err;
+
+                // _pitch_sp saturation
+                if (_pitch_sp < 80.0f){
+                    _pitch_sp = 80.0f;
+                }else if (_pitch_sp > 100.0f){
+                    _pitch_sp = 100.0f;
+                }
+
+                // Degrees to radians
+                _pitch_sp = _pitch_sp/180.0f*3.1416f;
+
+                // Commands for attitude control loop
+                _qd.from_euler(0.0f, _pitch_sp, _yaw_sp);
+
+                // ***Run attitude controller***
                 hover_control(q_att);
-            }*/
+            }
+            //*******************************************//
+
+
+
 			/* Vérifie que l'autopilot est armee avant d'envoyer la commande au thrust */
 			if (_vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_ARMED) {
 				_actuators.control[actuator_controls_s::INDEX_THROTTLE] = _actuators.control[actuator_controls_s::INDEX_THROTTLE];
