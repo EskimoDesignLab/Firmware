@@ -1302,7 +1302,7 @@ int sdlog2_thread_main(int argc, char *argv[])
 		int esc_sub;
 		int battery_sub;
 		int telemetry_subs[ORB_MULTI_MAX_INSTANCES];
-		int distance_sensor_sub;
+		int distance_sensor_subs[ORB_MULTI_MAX_INSTANCES];
 		int estimator_status_sub;
 		int tecs_status_sub;
 		int system_power_sub;
@@ -1346,7 +1346,6 @@ int sdlog2_thread_main(int argc, char *argv[])
 	subs.airspeed_sub = -1;
 	subs.esc_sub = -1;
 	subs.battery_sub = -1;
-	subs.distance_sensor_sub = -1;
 	subs.estimator_status_sub = -1;
 	subs.tecs_status_sub = -1;
 	subs.system_power_sub = -1;
@@ -1369,6 +1368,7 @@ int sdlog2_thread_main(int argc, char *argv[])
 
 	for (unsigned i = 0; i < ORB_MULTI_MAX_INSTANCES; i++) {
 		subs.telemetry_subs[i] = -1;
+        subs.distance_sensor_subs[i] = -1;
 	}
 
 	subs.sat_info_sub = -1;
@@ -2111,17 +2111,18 @@ int sdlog2_thread_main(int argc, char *argv[])
 			}
 
 			/* --- DISTANCE SENSOR --- */
-            for (int i = 0; i < 2; ++i) {
-            if (copy_if_updated_multi(ORB_ID(distance_sensor), i, &subs.distance_sensor_sub, &buf.distance_sensor)) {
-				log_msg.msg_type = LOG_DIST_MSG;
-				log_msg.body.log_DIST.id = buf.distance_sensor.id;
-				log_msg.body.log_DIST.type = buf.distance_sensor.type;
-				log_msg.body.log_DIST.orientation = buf.distance_sensor.orientation;
-				log_msg.body.log_DIST.current_distance = buf.distance_sensor.current_distance;
-				log_msg.body.log_DIST.covariance = buf.distance_sensor.covariance;
-				LOGBUFFER_WRITE_AND_COUNT(DIST);
+            for (int i = 0; i < ORB_MULTI_MAX_INSTANCES; i++) {
+                if (copy_if_updated_multi(ORB_ID(distance_sensor), i, &subs.distance_sensor_subs[i], &buf.distance_sensor)) {
+                    log_msg.msg_type = LOG_DIST_MSG;
+                    log_msg.body.log_DIST.id = buf.distance_sensor.id;
+                    log_msg.body.log_DIST.type = buf.distance_sensor.type;
+                    log_msg.body.log_DIST.orientation = buf.distance_sensor.orientation;
+                    log_msg.body.log_DIST.current_distance = buf.distance_sensor.current_distance;
+                    log_msg.body.log_DIST.covariance = buf.distance_sensor.covariance;
+                    LOGBUFFER_WRITE_AND_COUNT(DIST);
+                }
             }
-            }
+
 
 			/* --- ESTIMATOR STATUS --- */
 			if (copy_if_updated(ORB_ID(estimator_status), &subs.estimator_status_sub, &buf.estimator_status)) {
