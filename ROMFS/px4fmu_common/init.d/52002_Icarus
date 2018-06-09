@@ -1,16 +1,16 @@
 #!nsh
 #
-# @name Standard drone aquatique
+# @name Standard Icarus
 #
 # @type custom
 # Standard drone
 #
-# @output MAIN1 left aileron
-# @output MAIN2 right aileron
-# @output MAIN4 throttle
-# @output MAIN6 servo de pivot
-# @output MAIN7 muscle wire verouillage UP
-# @output MAIN8 muscle wire verouillage DOWN
+# @output MAIN1 throttle
+# @output MAIN2 left aileron
+# @output MAIN3 right aileron
+# @output MAIN4 servo de pivot
+# @output MAIN5 muscle wire verouillage UP
+# @output MAIN6 muscle wire verouillage DOWN
 #
 # @output AUX1 feed-through of RC AUX1 channel
 # @output AUX2 feed-through of RC AUX2 channel
@@ -46,7 +46,7 @@ fi
 # Configure this as plane
 set MAV_TYPE 1
 # Set mixer
-set MIXER drone_aqua
+set MIXER icarus
 # Provide ESC a constant 1000 us pulse
 set PWM_OUT 4
 set PWM_DISARMED 1000

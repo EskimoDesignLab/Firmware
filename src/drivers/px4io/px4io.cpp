@@ -2528,8 +2528,8 @@ PX4IO::print_status(bool extended_status)
 	for (unsigned i = 0; i < _max_actuators; i++) {
 		printf(" %u", io_reg_get(PX4IO_PAGE_DISARMED_PWM, i));
 	}
-
-	/* IMU heater (Pixhawk 2.1) */
+	/*
+	// IMU heater (Pixhawk 2.1)
 	uint16_t heater_level = io_reg_get(PX4IO_PAGE_SETUP, PX4IO_P_SETUP_THERMAL);
 
 	if (heater_level != UINT16_MAX) {
@@ -2540,7 +2540,7 @@ PX4IO::print_status(bool extended_status)
 			printf("\nIMU heater level %d", heater_level);
 		}
 	}
-
+	*/
 	printf("\n");
 }
 

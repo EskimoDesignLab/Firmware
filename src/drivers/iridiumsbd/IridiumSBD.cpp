@@ -733,6 +733,7 @@ satcom_uart_status IridiumSBD::open_uart(char *uart_name)
 	// set the UART speed to 19200
 	struct termios uart_config;
 	tcgetattr(uart_fd, &uart_config);
+    uart_config.c_cflag &= ~(CSTOPB | PARENB | CCTS_OFLOW | CRTS_IFLOW);
 	cfsetspeed(&uart_config, 19200);
 	tcsetattr(uart_fd, TCSANOW, &uart_config);
 

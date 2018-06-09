@@ -72,7 +72,7 @@
 __EXPORT void stm32_spiinitialize(void)
 {
 #ifdef CONFIG_STM32_SPI1
-	stm32_configgpio(GPIO_SPI_CS_GYRO);
+	//stm32_configgpio(GPIO_SPI_CS_GYRO);
 	stm32_configgpio(GPIO_SPI_CS_ACCEL_MAG);
 	stm32_configgpio(GPIO_SPI_CS_BARO);
 	stm32_configgpio(GPIO_SPI_CS_HMC);
@@ -82,7 +82,7 @@ __EXPORT void stm32_spiinitialize(void)
 	 * required for some peripheral
 	 * state machines
 	 */
-	stm32_gpiowrite(GPIO_SPI_CS_GYRO, 1);
+	//stm32_gpiowrite(GPIO_SPI_CS_GYRO, 1);
 	stm32_gpiowrite(GPIO_SPI_CS_ACCEL_MAG, 1);
 	stm32_gpiowrite(GPIO_SPI_CS_BARO, 1);
 	stm32_gpiowrite(GPIO_SPI_CS_HMC, 1);
@@ -103,11 +103,11 @@ __EXPORT void stm32_spiinitialize(void)
 	stm32_configgpio(GPIO_SPI_CS_EXT0);
 	stm32_configgpio(GPIO_SPI_CS_EXT1);
 	stm32_configgpio(GPIO_SPI_CS_EXT2);
-	stm32_configgpio(GPIO_SPI_CS_EXT3);
+	//stm32_configgpio(GPIO_SPI_CS_EXT3);
 	stm32_gpiowrite(GPIO_SPI_CS_EXT0, 1);
 	stm32_gpiowrite(GPIO_SPI_CS_EXT1, 1);
 	stm32_gpiowrite(GPIO_SPI_CS_EXT2, 1);
-	stm32_gpiowrite(GPIO_SPI_CS_EXT3, 1);
+	//stm32_gpiowrite(GPIO_SPI_CS_EXT3, 1);
 #endif
 }
 
@@ -118,7 +118,7 @@ __EXPORT void stm32_spi1select(FAR struct spi_dev_s *dev, enum spi_dev_e devid, 
 	switch (devid) {
 	case PX4_SPIDEV_GYRO:
 		/* Making sure the other peripherals are not selected */
-		stm32_gpiowrite(GPIO_SPI_CS_GYRO, !selected);
+		//stm32_gpiowrite(GPIO_SPI_CS_GYRO, !selected);
 		stm32_gpiowrite(GPIO_SPI_CS_ACCEL_MAG, 1);
 		stm32_gpiowrite(GPIO_SPI_CS_BARO, 1);
 		stm32_gpiowrite(GPIO_SPI_CS_HMC, 1);
@@ -127,7 +127,7 @@ __EXPORT void stm32_spi1select(FAR struct spi_dev_s *dev, enum spi_dev_e devid, 
 
 	case PX4_SPIDEV_ACCEL_MAG:
 		/* Making sure the other peripherals are not selected */
-		stm32_gpiowrite(GPIO_SPI_CS_GYRO, 1);
+		//stm32_gpiowrite(GPIO_SPI_CS_GYRO, 1);
 		stm32_gpiowrite(GPIO_SPI_CS_ACCEL_MAG, !selected);
 		stm32_gpiowrite(GPIO_SPI_CS_BARO, 1);
 		stm32_gpiowrite(GPIO_SPI_CS_HMC, 1);
@@ -136,7 +136,7 @@ __EXPORT void stm32_spi1select(FAR struct spi_dev_s *dev, enum spi_dev_e devid, 
 
 	case PX4_SPIDEV_BARO:
 		/* Making sure the other peripherals are not selected */
-		stm32_gpiowrite(GPIO_SPI_CS_GYRO, 1);
+		//stm32_gpiowrite(GPIO_SPI_CS_GYRO, 1);
 		stm32_gpiowrite(GPIO_SPI_CS_ACCEL_MAG, 1);
 		stm32_gpiowrite(GPIO_SPI_CS_BARO, !selected);
 		stm32_gpiowrite(GPIO_SPI_CS_HMC, 1);
@@ -145,7 +145,7 @@ __EXPORT void stm32_spi1select(FAR struct spi_dev_s *dev, enum spi_dev_e devid, 
 
 	case PX4_SPIDEV_HMC:
 		/* Making sure the other peripherals are not selected */
-		stm32_gpiowrite(GPIO_SPI_CS_GYRO, 1);
+		//stm32_gpiowrite(GPIO_SPI_CS_GYRO, 1);
 		stm32_gpiowrite(GPIO_SPI_CS_ACCEL_MAG, 1);
 		stm32_gpiowrite(GPIO_SPI_CS_BARO, 1);
 		stm32_gpiowrite(GPIO_SPI_CS_HMC, !selected);
@@ -154,7 +154,7 @@ __EXPORT void stm32_spi1select(FAR struct spi_dev_s *dev, enum spi_dev_e devid, 
 
 	case PX4_SPIDEV_LIS:
 		/* Making sure the other peripherals are not selected */
-		stm32_gpiowrite(GPIO_SPI_CS_GYRO, 1);
+		//stm32_gpiowrite(GPIO_SPI_CS_GYRO, 1);
 		stm32_gpiowrite(GPIO_SPI_CS_ACCEL_MAG, 1);
 		stm32_gpiowrite(GPIO_SPI_CS_BARO, 1);
 		stm32_gpiowrite(GPIO_SPI_CS_LIS, !selected);
@@ -163,7 +163,7 @@ __EXPORT void stm32_spi1select(FAR struct spi_dev_s *dev, enum spi_dev_e devid, 
 
 	case PX4_SPIDEV_MPU:
 		/* Making sure the other peripherals are not selected */
-		stm32_gpiowrite(GPIO_SPI_CS_GYRO, 1);
+		//stm32_gpiowrite(GPIO_SPI_CS_GYRO, 1);
 		stm32_gpiowrite(GPIO_SPI_CS_ACCEL_MAG, 1);
 		stm32_gpiowrite(GPIO_SPI_CS_BARO, 1);
 		stm32_gpiowrite(GPIO_SPI_CS_HMC, 1);
@@ -205,7 +205,7 @@ __EXPORT void stm32_spi4select(FAR struct spi_dev_s *dev, enum spi_dev_e devid, 
 		stm32_gpiowrite(GPIO_SPI_CS_EXT0, !selected);
 		stm32_gpiowrite(GPIO_SPI_CS_EXT1, 1);
 		stm32_gpiowrite(GPIO_SPI_CS_EXT2, 1);
-		stm32_gpiowrite(GPIO_SPI_CS_EXT3, 1);
+		//stm32_gpiowrite(GPIO_SPI_CS_EXT3, 1);
 		break;
 
 	case PX4_SPIDEV_EXT1:
@@ -213,7 +213,7 @@ __EXPORT void stm32_spi4select(FAR struct spi_dev_s *dev, enum spi_dev_e devid, 
 		stm32_gpiowrite(GPIO_SPI_CS_EXT0, 1);
 		stm32_gpiowrite(GPIO_SPI_CS_EXT1, !selected);
 		stm32_gpiowrite(GPIO_SPI_CS_EXT2, 1);
-		stm32_gpiowrite(GPIO_SPI_CS_EXT3, 1);
+		//stm32_gpiowrite(GPIO_SPI_CS_EXT3, 1);
 		break;
 
 	case PX4_SPIDEV_EXT2:
@@ -221,7 +221,7 @@ __EXPORT void stm32_spi4select(FAR struct spi_dev_s *dev, enum spi_dev_e devid, 
 		stm32_gpiowrite(GPIO_SPI_CS_EXT0, 1);
 		stm32_gpiowrite(GPIO_SPI_CS_EXT1, 1);
 		stm32_gpiowrite(GPIO_SPI_CS_EXT2, !selected);
-		stm32_gpiowrite(GPIO_SPI_CS_EXT3, 1);
+		//stm32_gpiowrite(GPIO_SPI_CS_EXT3, 1);
 		break;
 
 	case PX4_SPIDEV_EXT3:
@@ -229,7 +229,7 @@ __EXPORT void stm32_spi4select(FAR struct spi_dev_s *dev, enum spi_dev_e devid, 
 		stm32_gpiowrite(GPIO_SPI_CS_EXT0, 1);
 		stm32_gpiowrite(GPIO_SPI_CS_EXT1, 1);
 		stm32_gpiowrite(GPIO_SPI_CS_EXT2, 1);
-		stm32_gpiowrite(GPIO_SPI_CS_EXT3, !selected);
+		//stm32_gpiowrite(GPIO_SPI_CS_EXT3, !selected);
 		break;
 
 	default:
@@ -246,12 +246,12 @@ __EXPORT uint8_t stm32_spi4status(FAR struct spi_dev_s *dev, enum spi_dev_e devi
 __EXPORT void board_spi_reset(int ms)
 {
 	/* disable SPI bus */
-	stm32_configgpio(GPIO_SPI_CS_GYRO_OFF);
+	//stm32_configgpio(GPIO_SPI_CS_GYRO_OFF);
 	stm32_configgpio(GPIO_SPI_CS_ACCEL_MAG_OFF);
 	stm32_configgpio(GPIO_SPI_CS_BARO_OFF);
 	stm32_configgpio(GPIO_SPI_CS_MPU_OFF);
 
-	stm32_gpiowrite(GPIO_SPI_CS_GYRO_OFF, 0);
+	//stm32_gpiowrite(GPIO_SPI_CS_GYRO_OFF, 0);
 	stm32_gpiowrite(GPIO_SPI_CS_ACCEL_MAG_OFF, 0);
 	stm32_gpiowrite(GPIO_SPI_CS_BARO_OFF, 0);
 	stm32_gpiowrite(GPIO_SPI_CS_MPU_OFF, 0);
@@ -275,8 +275,8 @@ __EXPORT void board_spi_reset(int ms)
 	stm32_gpiowrite(GPIO_EXTI_MPU_DRDY_OFF, 0);
 
 	/* set the sensor rail off */
-	stm32_configgpio(GPIO_VDD_3V3_SENSORS_EN);
-	stm32_gpiowrite(GPIO_VDD_3V3_SENSORS_EN, 0);
+	//stm32_configgpio(GPIO_VDD_3V3_SENSORS_EN);
+	//stm32_gpiowrite(GPIO_VDD_3V3_SENSORS_EN, 0);
 
 	/* wait for the sensor rail to reach GND */
 	usleep(ms * 1000);
@@ -285,14 +285,14 @@ __EXPORT void board_spi_reset(int ms)
 	/* re-enable power */
 
 	/* switch the sensor rail back on */
-	stm32_gpiowrite(GPIO_VDD_3V3_SENSORS_EN, 1);
+	//stm32_gpiowrite(GPIO_VDD_3V3_SENSORS_EN, 1);
 
 	/* wait a bit before starting SPI, different times didn't influence results */
 	usleep(100);
 
 	/* reconfigure the SPI pins */
 #ifdef CONFIG_STM32_SPI1
-	stm32_configgpio(GPIO_SPI_CS_GYRO);
+	//stm32_configgpio(GPIO_SPI_CS_GYRO);
 	stm32_configgpio(GPIO_SPI_CS_ACCEL_MAG);
 	stm32_configgpio(GPIO_SPI_CS_BARO);
 	stm32_configgpio(GPIO_SPI_CS_MPU);
@@ -301,7 +301,7 @@ __EXPORT void board_spi_reset(int ms)
 	 * required for some peripheral
 	 * state machines
 	 */
-	stm32_gpiowrite(GPIO_SPI_CS_GYRO, 1);
+	//stm32_gpiowrite(GPIO_SPI_CS_GYRO, 1);
 	stm32_gpiowrite(GPIO_SPI_CS_ACCEL_MAG, 1);
 	stm32_gpiowrite(GPIO_SPI_CS_BARO, 1);
 	stm32_gpiowrite(GPIO_SPI_CS_MPU, 1);

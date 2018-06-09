@@ -1330,19 +1330,19 @@ MPU9250::measure()
 	/*
 	 * Swap axes and negate y
 	 */
-	int16_t accel_xt = report.accel_y;
-	int16_t accel_yt = ((report.accel_x == -32768) ? 32767 : -report.accel_x);
-
-	int16_t gyro_xt = report.gyro_y;
-	int16_t gyro_yt = ((report.gyro_x == -32768) ? 32767 : -report.gyro_x);
-
-	/*
-	 * Apply the swap
-	 */
-	report.accel_x = accel_xt;
-	report.accel_y = accel_yt;
-	report.gyro_x = gyro_xt;
-	report.gyro_y = gyro_yt;
+//	int16_t accel_xt = report.accel_y;
+//	int16_t accel_yt = ((report.accel_x == -32768) ? 32767 : -report.accel_x);
+//
+//	int16_t gyro_xt = report.gyro_y;
+//	int16_t gyro_yt = ((report.gyro_x == -32768) ? 32767 : -report.gyro_x);
+//
+//	/*
+//	 * Apply the swap
+//	 */
+//	report.accel_x = accel_xt;
+//	report.accel_y = accel_yt;
+//	report.gyro_x = gyro_xt;
+//	report.gyro_y = gyro_yt;
 
 	/*
 	 * Report buffers.

@@ -131,8 +131,8 @@ __END_DECLS
 __EXPORT void board_peripheral_reset(int ms)
 {
 	/* set the peripheral rails off */
-	stm32_configgpio(GPIO_VDD_5V_PERIPH_EN);
-	stm32_gpiowrite(GPIO_VDD_5V_PERIPH_EN, 1);
+	//stm32_configgpio(GPIO_VDD_5V_PERIPH_EN);
+	//stm32_gpiowrite(GPIO_VDD_5V_PERIPH_EN, 1);
 
 	/* wait for the peripheral rail to reach GND */
 	usleep(ms * 1000);
@@ -141,7 +141,7 @@ __EXPORT void board_peripheral_reset(int ms)
 	/* re-enable power */
 
 	/* switch the peripheral rail back on */
-	stm32_gpiowrite(GPIO_VDD_5V_PERIPH_EN, 0);
+	//stm32_gpiowrite(GPIO_VDD_5V_PERIPH_EN, 0);
 }
 
 /************************************************************************************
@@ -159,20 +159,20 @@ stm32_boardinitialize(void)
 {
 	/* configure ADC pins */
 
-	stm32_configgpio(GPIO_ADC1_IN2);	/* BATT_VOLTAGE_SENS */
-	stm32_configgpio(GPIO_ADC1_IN3);	/* BATT_CURRENT_SENS */
-	stm32_configgpio(GPIO_ADC1_IN4);	/* VDD_5V_SENS */
-	stm32_configgpio(GPIO_ADC1_IN13);	/* FMU_AUX_ADC_1 */
-	stm32_configgpio(GPIO_ADC1_IN14);	/* FMU_AUX_ADC_2 */
-	stm32_configgpio(GPIO_ADC1_IN15);	/* PRESSURE_SENS */
+	//stm32_configgpio(GPIO_ADC1_IN2);	/* BATT_VOLTAGE_SENS */
+	//(GPIO_ADC1_IN3);	/* BATT_CURRENT_SENS */
+	//stm32_configgpio(GPIO_ADC1_IN4);	/* VDD_5V_SENS */
+	//stm32_configgpio(GPIO_ADC1_IN13);	/* FMU_AUX_ADC_1 */
+	//stm32_configgpio(GPIO_ADC1_IN14);	/* FMU_AUX_ADC_2 */
+	//stm32_configgpio(GPIO_ADC1_IN15);	/* PRESSURE_SENS */
 
 	/* configure power supply control/sense pins */
-	stm32_configgpio(GPIO_VDD_5V_PERIPH_EN);
-	stm32_configgpio(GPIO_VDD_3V3_SENSORS_EN);
-	stm32_configgpio(GPIO_VDD_BRICK_VALID);
-	stm32_configgpio(GPIO_VDD_SERVO_VALID);
-	stm32_configgpio(GPIO_VDD_5V_HIPOWER_OC);
-	stm32_configgpio(GPIO_VDD_5V_PERIPH_OC);
+	//stm32_configgpio(GPIO_VDD_5V_PERIPH_EN);
+	//stm32_configgpio(GPIO_VDD_3V3_SENSORS_EN);
+	//stm32_configgpio(GPIO_VDD_BRICK_VALID);
+	//stm32_configgpio(GPIO_VDD_SERVO_VALID);
+	//stm32_configgpio(GPIO_VDD_5V_HIPOWER_OC);
+	//stm32_configgpio(GPIO_VDD_5V_PERIPH_OC);
 
 	/* configure the GPIO pins to outputs and keep them low */
 	stm32_configgpio(GPIO_GPIO0_OUTPUT);

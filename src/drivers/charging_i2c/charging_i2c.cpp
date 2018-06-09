@@ -81,7 +81,7 @@
 /* Configuration Constants */
 
 // JASSUME QUE CEST LI2C SUR LE CONECTEUR EXTERNE: À VALIDER !!!
-#define SRF02_I2C_BUS 		PX4_I2C_BUS_EXPANSION 
+#define SRF02_I2C_BUS 		PX4_I2C_BUS_ONBOARD
 
 // LADRESSE -> VALIDER CE QUE LON VEUT
 #define SRF02_I2C_BASEADDR 	0x36 /* vaut 0x6C selon la convention du chip de balancing. ladresse est tassé vers la droite et le dernier bit est sous-entendu */
@@ -730,16 +730,16 @@ CHARGING_I2C::collect()
 		perf_begin(_sample_perf);
 		
 		// lectures des registres
-		ret = transfer(&cmd[0], 1, val1, 2); // envoie la commande au slave pour faire un read
-		ret = transfer(&cmd[1], 1, val2, 2); // envoie la commande au slave pour faire un read
-		ret = transfer(&cmd[2], 1, val3, 2); // envoie la commande au slave pour faire un read
-		ret = transfer(&cmd[3], 1, val4, 2); // envoie la commande au slave pour faire un read
-		ret = transfer(&cmd[4], 1, val5, 2); // envoie la commande au slave pour faire un read
-		ret = transfer(&cmd[5], 1, val6, 2); // envoie la commande au slave pour faire un read
-		ret = transfer(&cmd[6], 1, val7, 2); // envoie la commande au slave pour faire un read
-		ret = transfer(&cmd[7], 1, val8, 2); // envoie la commande au slave pour faire un read
-		ret = transfer(&cmd[8], 1, val9, 2); // envoie la commande au slave pour faire un read
-		ret = transfer(&cmd[9], 1, val10, 2); // envoie la commande au slave pour faire un read	
+		ret = transfer(&cmd[0], 1, val1, 2); // envoie la commande au slave pour faire un read AvgVCell
+		ret = transfer(&cmd[1], 1, val2, 2); // envoie la commande au slave pour faire un read AvgCell3
+		ret = transfer(&cmd[2], 1, val3, 2); // envoie la commande au slave pour faire un read AvgCell2
+		ret = transfer(&cmd[3], 1, val4, 2); // envoie la commande au slave pour faire un read AvgCell1
+		ret = transfer(&cmd[4], 1, val5, 2); // envoie la commande au slave pour faire un read RepCap
+		ret = transfer(&cmd[5], 1, val6, 2); // envoie la commande au slave pour faire un read Current
+		ret = transfer(&cmd[6], 1, val7, 2); // envoie la commande au slave pour faire un read AvgCurrent
+		ret = transfer(&cmd[7], 1, val8, 2); // envoie la commande au slave pour faire un read TTE (Time To Empty)
+		ret = transfer(&cmd[8], 1, val9, 2); // envoie la commande au slave pour faire un read TTF (Time To Full)
+		ret = transfer(&cmd[9], 1, val10, 2); // envoie la commande au slave pour faire un read	RepSOC
 
 		//ret = OK;
 		
@@ -777,10 +777,10 @@ CHARGING_I2C::collect()
 
 		// on calcul les LSB et MSB a programmer selon la capacité désirée
 	        BAT_CAP_REG_LSB = (uint8_t)((uint16_t)(BAT_CAP_REG) & 0x00FF);
-	        BAT_CAP_REG_MSB = (uint8_t)(((uint16_t)(BAT_CAP_REG) & 0xFF00)/256.0f); 
+	        BAT_CAP_REG_MSB = (uint8_t)(((uint16_t)(BAT_CAP_REG) & 0xFF00)/256.0f);
 
 	        BAT_FULL_CAP_REG_LSB = (uint8_t)((uint16_t)(BAT_CAP_REG+0.16f*BAT_CAP_REG) & 0x00FF);
-	        BAT_FULL_CAP_REG_MSB = (uint8_t)(((uint16_t)(BAT_CAP_REG+0.16f*BAT_CAP_REG) & 0xFF00)/256.0f); 
+	        BAT_FULL_CAP_REG_MSB = (uint8_t)(((uint16_t)(BAT_CAP_REG+0.16f*BAT_CAP_REG) & 0xFF00)/256.0f);
 
 	        // on calcul les LSB et MSB a programmer selon la résistance pour mesurer le courant que lon choisie
 	        RSENSE_REG_LSB = (uint8_t)((uint16_t)(_parameters.rsense*100.0f) & 0x00FF);
@@ -798,7 +798,7 @@ CHARGING_I2C::collect()
 		// adresses de registre et valeurs correspondantes pour configurer le MAX17205 (3S 1000 mAh LiPo)
 		uint8_t charging_reg[15] = {0xA0,0xA1,0xA2,0xA3,0xA5,0xA8,0xA9,0xB3,0xB5,0xB7,0xB8,0xB9,0xCF,0xB8,0XC8};
 		// config par défault a mettre dans les registre (8 bits LSB then 8 bits MSB)
-		uint8_t charging_config[26] = {0x3C,0x00,0x1B,0x80,0x0B,0x04,0x08,0x85,0x02,0x44,0xFE,0x0C,0x01,0xF4,0x01,0xF4,0x0E,0xA3,0x22,0x41,0x01,0x00,0x00,0x06,0x00,0xFA};	
+		uint8_t charging_config[26] = {0x3C,0x00,0x1B,0x80,0x0B,0x04,0x08,0x85,0x02,0x44,0xFE,0x0C,0x01,0xF4,0x01,0xF4,0x0E,0xA3,0x22,0x41,0x01,0x00,0x00,0x06,0x00,0xC8};
 
 		perf_begin(_sample_perf);
 
@@ -860,7 +860,7 @@ CHARGING_I2C::collect()
 				Current_PackCfg = Current_PackCfg | 0b0000000010000000; // default blancing threshold to 20 mV if user value is not valid
 
 	        	NEW_PackCfg_LSB = (uint8_t)((uint16_t)(Current_PackCfg) & 0x00FF);
-	        	NEW_PackCfg_MSB = (uint8_t)(((uint16_t)(Current_PackCfg) & 0xFF00)/256.0f); 
+	        	NEW_PackCfg_MSB = (uint8_t)(((uint16_t)(Current_PackCfg) & 0xFF00)/256.0f);
 
 			//////////////////////////////////////////////////////////////
 
@@ -880,6 +880,7 @@ CHARGING_I2C::collect()
 			//uint8_t test114[3] = {charging_reg[13],NEW_nNVCfG0_LSB,NEW_nNVCfG0_MSB};
 			//uint8_t test115[3] = {charging_reg[14],0x00,0x20};
 			uint8_t test116[3] = {charging_reg[8],NEW_PackCfg_LSB,NEW_PackCfg_MSB};
+
 
 			// configure registre pour la capacité de la battery
 			ret = transfer(test11, 3, nullptr, 0); // envoie l'adresse du registre à configurer
@@ -907,6 +908,10 @@ CHARGING_I2C::collect()
 
 			uint8_t test33[3] = {reset_addr2,reset_reg2[0],reset_reg2[1]};
 
+            if(test33[2]==0)
+            {
+                test33[2]=test33[2];
+            }
 			// fuel gauge model reset
 			ret = transfer(test33, 3, nullptr, 0); // envoie l'adresse du registre à configurer
 		}
@@ -914,6 +919,8 @@ CHARGING_I2C::collect()
 		if(compt++ > 4)
 		{
 			compt = 0;
+            //float value = 0.0;
+            //param_set(_parameters.is_new_bat,(void*)&value);
 		}
 
 		if (ret < 0) {
@@ -1103,6 +1110,72 @@ CHARGING_I2C::print_info()
 	perf_print_counter(_comms_errors);
 	printf("poll interval:  %u ticks\n", _measure_ticks);
 	_reports->print_info("report queue");
+
+    //uint8_t charging_reg[15] = {0xA0,0xA1,0xA2,0xA3,0xA5,0xA8,0xA9,0xB3,0xB5,0xB7,0xB8,0xB9,0xCF,0xB8,0XC8};
+    int ret;
+    set_address(0x0B); // slave adress -> 0x16
+    uint8_t nQRTable00 = 0xA0;
+    uint8_t nQRTable10 = 0xA1;
+    uint8_t nQRTable20 = 0xA2;
+    uint8_t nQRTable30 = 0xA3;
+    uint8_t nFullCapNom = 0xA5;
+    uint8_t nlAvgEmpty = 0xA8;
+    uint8_t nFullCapRep = 0xA9;
+    uint8_t nDesignCap = 0xB3;
+    uint8_t nPackCfg = 0xB5;
+    uint8_t nConvgCfg = 0xB7;
+    uint8_t nNVCfg0 = 0xB8;
+    uint8_t AgeForecast = 0xB9;
+    uint8_t nRSense = 0xCF;
+
+    uint8_t val_nQRTable00[2] = {0,0};
+    uint8_t val_nQRTable10[2] = {0,0};
+    uint8_t val_nQRTable20[2] = {0,0};
+    uint8_t val_nQRTable30[2] = {0,0};
+    uint8_t val_nFullCapNom[2] = {0,0};
+    uint8_t val_nlAvgEmpty[2] = {0,0};
+    uint8_t val_nFullCapRep[2] = {0,0};
+    uint8_t val_nDesignCap[2] = {0,0};
+    uint8_t val_nPackCfg[2] = {0,0};
+    uint8_t val_nConvgCfg[2] = {0,0};
+    uint8_t val_nNVCfg0[2] = {0,0};
+    uint8_t val_AgeForecast[2] ={0,0};
+    uint8_t val_nRSense[2] = {0,0};
+
+    ret = transfer(&nPackCfg, 1, val_nPackCfg, 2);
+    ret = transfer(&nQRTable00, 1, val_nQRTable00, 2);
+    ret = transfer(&nQRTable10, 1, val_nQRTable10, 2);
+    ret = transfer(&nQRTable20, 1, val_nQRTable20, 2);
+    ret = transfer(&nQRTable30, 1, val_nQRTable30, 2);
+    ret = transfer(&nFullCapNom, 1, val_nFullCapNom, 2);
+    ret = transfer(&nlAvgEmpty, 1, val_nlAvgEmpty, 2);
+    ret = transfer(&nFullCapRep, 1, val_nFullCapRep, 2);
+    ret = transfer(&nDesignCap, 1, val_nDesignCap, 2);
+    ret = transfer(&nPackCfg, 1, val_nPackCfg, 2);
+    ret = transfer(&nConvgCfg, 1, val_nConvgCfg, 2);
+    ret = transfer(&nNVCfg0, 1, val_nNVCfg0, 2);
+    ret = transfer(&AgeForecast, 1, val_AgeForecast, 2);
+    ret = transfer(&nRSense, 1, val_nRSense, 2);
+    if (ret < 0) {
+        errx(1, "timed out waiting for sensor data");
+    }
+
+    printf("nPackCfg value: %x %x \n", val_nPackCfg[1], val_nPackCfg[0]);
+    printf("nQRTable00 value: %x %x \n", val_nQRTable00[1], val_nQRTable00[0]);
+    printf("val_nQRTable10 value: %x %x \n", val_nQRTable10[1], val_nQRTable10[0]);
+    printf("val_nQRTable20 value: %x %x \n", val_nQRTable20[1], val_nQRTable20[0]);
+    printf("val_nQRTable30 value: %x %x \n", val_nQRTable30[1], val_nQRTable30[0]);
+    printf("val_nFullCapNom value: %x %x \n", val_nFullCapNom[1], val_nFullCapNom[0]);
+    printf("val_nlAvgEmpty value: %x %x \n", val_nlAvgEmpty[1], val_nlAvgEmpty[0]);
+    printf("val_nFullCapRep value: %x %x \n", val_nFullCapRep[1], val_nFullCapRep[0]);
+    printf("val_nDesignCap value: %x %x \n", val_nDesignCap[1], val_nDesignCap[0]);
+    printf("val_nPackCfg value: %x %x \n", val_nPackCfg[1], val_nPackCfg[0]);
+    printf("val_nConvgCfg value: %x %x \n", val_nConvgCfg[1], val_nConvgCfg[0]);
+    printf("val_nNVCfg0 value: %x %x \n", val_nNVCfg0[1], val_nNVCfg0[0]);
+    printf("val_AgeForecast value: %x %x \n", val_AgeForecast[1], val_AgeForecast[0]);
+    printf("val_nNVCfg0 value: %x %x \n", val_nRSense[1], val_nRSense[0]);
+
+
 }
 
 /**
@@ -1324,6 +1397,7 @@ info()
 
 	printf("state @ %p\n", g_dev);
 	g_dev->print_info();
+
 
 	exit(0);
 }

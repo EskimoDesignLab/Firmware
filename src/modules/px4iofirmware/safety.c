@@ -99,7 +99,7 @@ safety_check_button(void *arg)
 	 * Debounce the safety button, change state if it has been held for long enough.
 	 *
 	 */
-	safety_button_pressed = BUTTON_SAFETY;
+	//safety_button_pressed = BUTTON_SAFETY;
 
 	/*
 	 * Keep pressed for a while to arm.

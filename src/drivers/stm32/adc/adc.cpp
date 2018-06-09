@@ -370,12 +370,12 @@ ADC::update_system_power(hrt_abstime now)
 
 	system_power.usb_connected = BOARD_ADC_USB_CONNECTED;
 
-	system_power.brick_valid   = BOARD_ADC_BRICK_VALID;
-	system_power.servo_valid   = BOARD_ADC_SERVO_VALID;
+	//system_power.brick_valid   = BOARD_ADC_BRICK_VALID;
+	//system_power.servo_valid   = BOARD_ADC_SERVO_VALID;
 
 	// OC pins are active low
-	system_power.periph_5V_OC  = BOARD_ADC_PERIPH_5V_OC;
-	system_power.hipower_5V_OC = BOARD_ADC_HIPOWER_5V_OC;
+	//system_power.periph_5V_OC  = BOARD_ADC_PERIPH_5V_OC;
+	//system_power.hipower_5V_OC = BOARD_ADC_HIPOWER_5V_OC;
 
 	/* lazily publish */
 	if (_to_system_power != nullptr) {

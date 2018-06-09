@@ -132,13 +132,13 @@ __END_DECLS
 __EXPORT void board_peripheral_reset(int ms)
 {
 	/* set the peripheral rails off */
-	stm32_configgpio(GPIO_PERIPH_3V3_EN);
+	//stm32_configgpio(GPIO_PERIPH_3V3_EN);
 
-	stm32_gpiowrite(GPIO_PERIPH_3V3_EN, 0);
+	//stm32_gpiowrite(GPIO_PERIPH_3V3_EN, 0);
 
-	bool last = stm32_gpioread(GPIO_SPEKTRUM_PWR_EN);
+	//bool last = stm32_gpioread(GPIO_SPEKTRUM_PWR_EN);
 	/* Keep Spektum on to discharge rail*/
-	stm32_gpiowrite(GPIO_SPEKTRUM_PWR_EN, 1);
+	//stm32_gpiowrite(GPIO_SPEKTRUM_PWR_EN, 1);
 
 	/* wait for the peripheral rail to reach GND */
 	usleep(ms * 1000);
@@ -147,8 +147,8 @@ __EXPORT void board_peripheral_reset(int ms)
 	/* re-enable power */
 
 	/* switch the peripheral rail back on */
-	stm32_gpiowrite(GPIO_SPEKTRUM_PWR_EN, last);
-	stm32_gpiowrite(GPIO_PERIPH_3V3_EN, 1);
+	//stm32_gpiowrite(GPIO_SPEKTRUM_PWR_EN, last);
+	//stm32_gpiowrite(GPIO_PERIPH_3V3_EN, 1);
 
 }
 

@@ -169,7 +169,7 @@ extern pwm_limit_t pwm_limit;
 #ifdef CONFIG_ARCH_BOARD_PX4IO_V1
 
 # define PX4IO_RELAY_CHANNELS		4
-# define POWER_SERVO(_s)		px4_arch_gpiowrite(GPIO_SERVO_PWR_EN, (_s))
+//# define POWER_SERVO(_s)		px4_arch_gpiowrite(GPIO_SERVO_PWR_EN, (_s))
 # define POWER_ACC1(_s)			px4_arch_gpiowrite(GPIO_ACC1_PWR_EN, (_s))
 # define POWER_ACC2(_s)			px4_arch_gpiowrite(GPIO_ACC2_PWR_EN, (_s))
 # define POWER_RELAY1(_s)		px4_arch_gpiowrite(GPIO_RELAY1_EN, (_s))
@@ -187,7 +187,7 @@ extern pwm_limit_t pwm_limit;
 #ifdef CONFIG_ARCH_BOARD_PX4IO_V2
 
 # define PX4IO_RELAY_CHANNELS		0
-# define ENABLE_SBUS_OUT(_s)		px4_arch_gpiowrite(GPIO_SBUS_OENABLE, !(_s))
+//# define ENABLE_SBUS_OUT(_s)		px4_arch_gpiowrite(GPIO_SBUS_OENABLE, !(_s))
 
 # define VDD_SERVO_FAULT		(!px4_arch_gpioread(GPIO_SERVO_FAULT_DETECT))
 
@@ -197,7 +197,7 @@ extern pwm_limit_t pwm_limit;
 
 #endif
 
-#define BUTTON_SAFETY		px4_arch_gpioread(GPIO_BTN_SAFETY)
+//#define BUTTON_SAFETY		px4_arch_gpioread(GPIO_BTN_SAFETY)
 
 #define CONTROL_PAGE_INDEX(_group, _channel) (_group * PX4IO_CONTROL_CHANNELS + _channel)
 

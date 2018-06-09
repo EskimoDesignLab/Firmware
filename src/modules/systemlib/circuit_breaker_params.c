@@ -81,7 +81,7 @@ PARAM_DEFINE_INT32(CBRK_RATE_CTRL, 0);
  * @max 22027
  * @group Circuit Breaker
  */
-PARAM_DEFINE_INT32(CBRK_IO_SAFETY, 0);
+PARAM_DEFINE_INT32(CBRK_IO_SAFETY, 22027);
 
 /**
  * Circuit breaker for airspeed sensor
