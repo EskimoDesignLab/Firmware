@@ -44,6 +44,7 @@ param set NAV_LOITER_RAD 2
 param set SENS_BOARD_ROT 0
 param set SENS_BOARD_X_OFF 0.000001
 param set SENS_DPRES_OFF 0.001
+param set SDLOG_DIRS_MAX 7
 param set SYS_AUTOSTART 50002
 param set SYS_MC_EST_GROUP 2
 param set SYS_RESTART_TYPE 2
@@ -53,10 +54,9 @@ tone_alarm start
 gyrosim start
 accelsim start
 barosim start
-adcsim start
 gpssim start
 measairspeedsim start
-pwm_out_sim mode_pwm
+pwm_out_sim start
 sleep 1
 sensors start
 commander start
@@ -66,8 +66,8 @@ ekf2 start
 gnd_pos_control start
 gnd_att_control start
 mixer load /dev/pwm_output0 ROMFS/sitl/mixers/rover_sitl.main.mix
-mavlink start -u 14556 -r 4000000
-mavlink start -u 14557 -r 4000000 -m onboard -o 14540
+mavlink start -x -u 14556 -r 4000000
+mavlink start -x -u 14557 -r 4000000 -m onboard -o 14540
 mavlink stream -r 80 -s POSITION_TARGET_LOCAL_NED -u 14556
 mavlink stream -r 80 -s LOCAL_POSITION_NED -u 14556
 mavlink stream -r 80 -s GLOBAL_POSITION_INT -u 14556

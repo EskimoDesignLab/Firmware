@@ -32,33 +32,17 @@
 ############################################################################
 
 set(SRCS
-	perf_counter.c
 	conversions.c
 	cpuload.c
-	pid/pid.c
-	airspeed.c
-	mavlink_log.c
-	rc_check.c
-	otp.c
-	board_serial.c
-	pwm_limit/pwm_limit.c
-	bson/tinybson.c
-	circuit_breaker.cpp
-	battery.cpp
+	crc.c
 	hysteresis/hysteresis.cpp
+	mavlink_log.c
+	otp.c
 	)
 
 if(${OS} STREQUAL "nuttx")
 	list(APPEND SRCS
-		err.c
-		printload.c
-		flashparams/flashparams.c
-		flashparams/flashfs.c
-		up_cxxinitialize.c
-		)
-elseif ("${CONFIG_SHMEM}" STREQUAL "1")
-	list(APPEND SRCS
-		print_load_posix.c
+		print_load_nuttx.c
 		)
 else()
 	list(APPEND SRCS
@@ -66,18 +50,10 @@ else()
 		)
 endif()
 
-if(NOT ${OS} STREQUAL "qurt")
-	list(APPEND SRCS
-		hx_stream.c
-		)
+# TODO: find a better way to do this
+if (NOT "${CONFIG}" MATCHES "px4io")
+	px4_add_library(systemlib ${SRCS})
+else()
+	add_library(systemlib ${PX4_SOURCE_DIR}/src/platforms/empty.c)
+	add_dependencies(systemlib prebuild_targets)
 endif()
-
-px4_add_module(
-	MODULE modules__systemlib
-	COMPILE_FLAGS
-		-Wno-sign-compare
-	SRCS ${SRCS}
-	DEPENDS
-		platforms__common
-	)
-# vim: set noet ft=cmake fenc=utf-8 ff=unix :

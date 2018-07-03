@@ -24,7 +24,7 @@ if [ $AUTOCNF == yes ]
 then
 	param set VT_TYPE 2
 	param set VT_MOT_COUNT 4
-	param set VT_TRANS_THR 0.75
+	param set VT_F_TRANS_THR 0.75
 	param set VT_ARSP_TRANS 12
 	param set VT_ARSP_BLEND 6
 
@@ -62,7 +62,7 @@ then
 	param set VT_TYPE 2
 fi
 
-set MIXER vtol_quad_x
+set MIXER quad_x
 set PWM_OUT 1234
 set PWM_RATE 400
 

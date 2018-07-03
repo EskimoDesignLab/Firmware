@@ -39,9 +39,6 @@
 #include <systemlib/px4_macros.h>
 
 #ifdef __PX4_NUTTX
-#include <nuttx/arch.h>
-#define ATOMIC_ENTER irqstate_t flags = px4_enter_critical_section()
-#define ATOMIC_LEAVE px4_leave_critical_section(flags)
 #define FILE_FLAGS(filp) filp->f_oflags
 #define FILE_PRIV(filp) filp->f_priv
 #define ITERATE_NODE_MAP() \
@@ -55,8 +52,6 @@
 #include <algorithm>
 #define FILE_FLAGS(filp) filp->flags
 #define FILE_PRIV(filp) filp->priv
-#define ATOMIC_ENTER lock()
-#define ATOMIC_LEAVE unlock()
 #define ITERATE_NODE_MAP() \
 	for (const auto &node_iter : _node_map)
 #define INIT_NODE_MAP_VARS(node_obj, node_name_str) \
@@ -68,7 +63,11 @@
 #include "uORBDevices.hpp"
 #include "uORBUtils.hpp"
 #include "uORBManager.hpp"
+
+#ifdef ORB_COMMUNICATOR
 #include "uORBCommunicator.hpp"
+#endif /* ORB_COMMUNICATOR */
+
 #include <px4_sem.hpp>
 #include <stdlib.h>
 
@@ -88,19 +87,11 @@ uORB::DeviceNode::SubscriberData *uORB::DeviceNode::filp_to_sd(device::file_t *f
 
 uORB::DeviceNode::DeviceNode(const struct orb_metadata *meta, const char *name, const char *path,
 			     int priority, unsigned int queue_size) :
-	VDev(name, path),
+	CDev(name, path),
 	_meta(meta),
-	_data(nullptr),
-	_last_update(0),
-	_generation(0),
 	_priority((uint8_t)priority),
-	_published(false),
-	_queue_size(queue_size),
-	_subscriber_count(0),
-	_publisher(0)
+	_queue_size(queue_size)
 {
-	// enable debug() calls
-	//_debug_enabled = true;
 }
 
 uORB::DeviceNode::~DeviceNode()
@@ -134,7 +125,7 @@ uORB::DeviceNode::open(device::file_t *filp)
 
 		/* now complete the open */
 		if (ret == PX4_OK) {
-			ret = VDev::open(filp);
+			ret = CDev::open(filp);
 
 			/* open failed - not the publisher anymore */
 			if (ret != PX4_OK) {
@@ -149,32 +140,41 @@ uORB::DeviceNode::open(device::file_t *filp)
 	if (FILE_FLAGS(filp) == PX4_F_RDONLY) {
 
 		/* allocate subscriber data */
-		SubscriberData *sd = new SubscriberData;
+		SubscriberData *sd = new SubscriberData{};
 
 		if (nullptr == sd) {
 			return -ENOMEM;
 		}
 
-		memset(sd, 0, sizeof(*sd));
+		/* If queue size >1, allow the subscriber to read the data in the queue. Otherwise, assume subscriber is up to date.*/
+		if (_queue_size <= 1) {
+			sd->generation = _generation;
 
-		/* default to no pending update */
-		sd->generation = _generation;
+		} else {
+			sd->generation = _generation - (_queue_size < _generation ? _queue_size : _generation);
+		}
 
 		/* set priority */
 		sd->set_priority(_priority);
 
 		FILE_PRIV(filp) = (void *)sd;
 
-		ret = VDev::open(filp);
+		ret = CDev::open(filp);
 
+#ifdef ORB_COMMUNICATOR
 		add_internal_subscriber();
+#endif /* ORB_COMMUNICATOR */
 
 		if (ret != PX4_OK) {
-			PX4_ERR("VDev::open failed");
+			PX4_ERR("CDev::open failed");
 			delete sd;
 		}
 
 		return ret;
+	}
+
+	if (FILE_FLAGS(filp) == 0) {
+		return CDev::open(filp);
 	}
 
 	/* can only be pub or sub, not both */
@@ -196,13 +196,16 @@ uORB::DeviceNode::close(device::file_t *filp)
 				hrt_cancel(&sd->update_interval->update_call);
 			}
 
+#ifdef ORB_COMMUNICATOR
 			remove_internal_subscriber();
+#endif /* ORB_COMMUNICATOR */
+
 			delete sd;
 			sd = nullptr;
 		}
 	}
 
-	return VDev::close(filp);
+	return CDev::close(filp);
 }
 
 ssize_t
@@ -412,9 +415,14 @@ uORB::DeviceNode::ioctl(device::file_t *filp, int cmd, unsigned long arg)
 
 		return OK;
 
+	case ORBIOCISPUBLISHED:
+		*(unsigned long *)arg = _published;
+
+		return OK;
+
 	default:
 		/* give it to the superclass */
-		return VDev::ioctl(filp, cmd, arg);
+		return CDev::ioctl(filp, cmd, arg);
 	}
 }
 
@@ -427,13 +435,13 @@ uORB::DeviceNode::publish(const orb_metadata *meta, orb_advert_t handle, const v
 	/* check if the device handle is initialized */
 	if ((devnode == nullptr) || (meta == nullptr)) {
 		errno = EFAULT;
-		return ERROR;
+		return PX4_ERROR;
 	}
 
 	/* check if the orb meta data matches the publication */
 	if (devnode->_meta != meta) {
 		errno = EINVAL;
-		return ERROR;
+		return PX4_ERROR;
 	}
 
 	/* call the devnode write method with no file pointer */
@@ -441,14 +449,15 @@ uORB::DeviceNode::publish(const orb_metadata *meta, orb_advert_t handle, const v
 
 	if (ret < 0) {
 		errno = -ret;
-		return ERROR;
+		return PX4_ERROR;
 	}
 
 	if (ret != (int)meta->o_size) {
 		errno = EIO;
-		return ERROR;
+		return PX4_ERROR;
 	}
 
+#ifdef ORB_COMMUNICATOR
 	/*
 	 * if the write is successful, send the data over the Multi-ORB link
 	 */
@@ -456,11 +465,12 @@ uORB::DeviceNode::publish(const orb_metadata *meta, orb_advert_t handle, const v
 
 	if (ch != nullptr) {
 		if (ch->send_message(meta->o_name, meta->o_size, (uint8_t *)data) != 0) {
-			warnx("[uORB::DeviceNode::publish(%d)]: Error Sending [%s] topic data over comm_channel",
-			      __LINE__, meta->o_name);
-			return ERROR;
+			PX4_ERR("Error Sending [%s] topic data over comm_channel", meta->o_name);
+			return PX4_ERROR;
 		}
 	}
+
+#endif /* ORB_COMMUNICATOR */
 
 	return PX4_OK;
 }
@@ -489,6 +499,7 @@ int uORB::DeviceNode::unadvertise(orb_advert_t handle)
 	return PX4_OK;
 }
 
+#ifdef ORB_COMMUNICATOR
 int16_t uORB::DeviceNode::topic_advertised(const orb_metadata *meta, int priority)
 {
 	uORBCommunicator::IChannel *ch = uORB::Manager::get_instance()->get_uorb_communicator();
@@ -499,6 +510,7 @@ int16_t uORB::DeviceNode::topic_advertised(const orb_metadata *meta, int priorit
 
 	return -1;
 }
+
 /*
 //TODO: Check if we need this since we only unadvertise when things all shutdown and it doesn't actually remove the device
 int16_t uORB::DeviceNode::topic_unadvertised(const orb_metadata *meta, int priority)
@@ -510,6 +522,7 @@ int16_t uORB::DeviceNode::topic_unadvertised(const orb_metadata *meta, int prior
 	return -1;
 }
 */
+#endif /* ORB_COMMUNICATOR */
 
 pollevent_t
 uORB::DeviceNode::poll_state(device::file_t *filp)
@@ -535,7 +548,7 @@ uORB::DeviceNode::poll_notify_one(px4_pollfd_struct_t *fds, pollevent_t events)
 	 * If the topic looks updated to the subscriber, go ahead and notify them.
 	 */
 	if (appears_updated(sd)) {
-		VDev::poll_notify_one(fds, events);
+		CDev::poll_notify_one(fds, events);
 	}
 }
 
@@ -724,8 +737,7 @@ uORB::DeviceNode::print_statistics(bool reset)
 	return true;
 }
 
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
+#ifdef ORB_COMMUNICATOR
 void uORB::DeviceNode::add_internal_subscriber()
 {
 	uORBCommunicator::IChannel *ch = uORB::Manager::get_instance()->get_uorb_communicator();
@@ -742,8 +754,6 @@ void uORB::DeviceNode::add_internal_subscriber()
 	}
 }
 
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
 void uORB::DeviceNode::remove_internal_subscriber()
 {
 	uORBCommunicator::IChannel *ch = uORB::Manager::get_instance()->get_uorb_communicator();
@@ -760,31 +770,6 @@ void uORB::DeviceNode::remove_internal_subscriber()
 	}
 }
 
-
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
-bool uORB::DeviceNode::is_published()
-{
-	return _published;
-}
-
-int uORB::DeviceNode::update_queue_size(unsigned int queue_size)
-{
-	if (_queue_size == queue_size) {
-		return PX4_OK;
-	}
-
-	//queue size is limited to 255 for the single reason that we use uint8 to store it
-	if (_data || _queue_size > queue_size || queue_size > 255) {
-		return ERROR;
-	}
-
-	_queue_size = queue_size;
-	return PX4_OK;
-}
-
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
 int16_t uORB::DeviceNode::process_add_subscription(int32_t rateInHz)
 {
 	// if there is already data in the node, send this out to
@@ -799,52 +784,55 @@ int16_t uORB::DeviceNode::process_add_subscription(int32_t rateInHz)
 	return PX4_OK;
 }
 
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
 int16_t uORB::DeviceNode::process_remove_subscription()
 {
 	return PX4_OK;
 }
 
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
 int16_t uORB::DeviceNode::process_received_message(int32_t length, uint8_t *data)
 {
 	int16_t ret = -1;
 
 	if (length != (int32_t)(_meta->o_size)) {
-		warnx("[uORB::DeviceNode::process_received_message(%d)]Error:[%s] Received DataLength[%d] != ExpectedLen[%d]",
-		      __LINE__, _meta->o_name, (int)length, (int)_meta->o_size);
-		return ERROR;
+		PX4_ERR("Received DataLength[%d] != ExpectedLen[%d]", _meta->o_name, (int)length, (int)_meta->o_size);
+		return PX4_ERROR;
 	}
 
 	/* call the devnode write method with no file pointer */
 	ret = write(nullptr, (const char *)data, _meta->o_size);
 
 	if (ret < 0) {
-		return ERROR;
+		return PX4_ERROR;
 	}
 
 	if (ret != (int)_meta->o_size) {
 		errno = EIO;
-		return ERROR;
+		return PX4_ERROR;
 	}
 
 	return PX4_OK;
 }
+#endif /* ORB_COMMUNICATOR */
 
-uORB::DeviceMaster::DeviceMaster(Flavor f) :
-	VDev((f == PUBSUB) ? "obj_master" : "param_master",
-	     (f == PUBSUB) ? TOPIC_MASTER_DEVICE_PATH : PARAM_MASTER_DEVICE_PATH),
-	_flavor(f)
+int uORB::DeviceNode::update_queue_size(unsigned int queue_size)
 {
-	// enable debug() calls
-	//_debug_enabled = true;
-	_last_statistics_output = hrt_absolute_time();
+	if (_queue_size == queue_size) {
+		return PX4_OK;
+	}
+
+	//queue size is limited to 255 for the single reason that we use uint8 to store it
+	if (_data || _queue_size > queue_size || queue_size > 255) {
+		return PX4_ERROR;
+	}
+
+	_queue_size = queue_size;
+	return PX4_OK;
 }
 
-uORB::DeviceMaster::~DeviceMaster()
+uORB::DeviceMaster::DeviceMaster() :
+	CDev("obj_master", TOPIC_MASTER_DEVICE_PATH)
 {
+	_last_statistics_output = hrt_absolute_time();
 }
 
 int
@@ -856,19 +844,16 @@ uORB::DeviceMaster::ioctl(device::file_t *filp, int cmd, unsigned long arg)
 	case ORBIOCADVERTISE: {
 			const struct orb_advertdata *adv = (const struct orb_advertdata *)arg;
 			const struct orb_metadata *meta = adv->meta;
-			const char *objname;
-			const char *devpath;
 			char nodepath[orb_maxpath];
-			uORB::DeviceNode *node;
 
 			/* construct a path to the node - this also checks the node name */
-			ret = uORB::Utils::node_mkpath(nodepath, _flavor, meta, adv->instance);
+			ret = uORB::Utils::node_mkpath(nodepath, meta, adv->instance);
 
 			if (ret != PX4_OK) {
 				return ret;
 			}
 
-			ret = ERROR;
+			ret = PX4_ERROR;
 
 			/* try for topic groups */
 			const unsigned max_group_tries = (adv->instance != nullptr) ? ORB_MULTI_MAX_INSTANCES : 1;
@@ -895,17 +880,17 @@ uORB::DeviceMaster::ioctl(device::file_t *filp, int cmd, unsigned long arg)
 					*(adv->instance) = group_tries;
 				}
 
-				objname = meta->o_name; //no need for a copy, meta->o_name will never be freed or changed
+				const char *objname = meta->o_name; //no need for a copy, meta->o_name will never be freed or changed
 
 				/* driver wants a permanent copy of the path, so make one here */
-				devpath = strdup(nodepath);
+				const char *devpath = strdup(nodepath);
 
 				if (devpath == nullptr) {
 					return -ENOMEM;
 				}
 
 				/* construct the new node */
-				node = new uORB::DeviceNode(meta, objname, devpath, adv->priority);
+				uORB::DeviceNode *node = new uORB::DeviceNode(meta, objname, devpath, adv->priority);
 
 				/* if we didn't get a device, that's bad */
 				if (node == nullptr) {
@@ -927,6 +912,7 @@ uORB::DeviceMaster::ioctl(device::file_t *filp, int cmd, unsigned long arg)
 
 						if ((existing_node != nullptr) && !(existing_node->is_published())) {
 							/* nothing has been published yet, lets claim it */
+							existing_node->set_priority(adv->priority);
 							ret = PX4_OK;
 
 						} else {
@@ -959,7 +945,7 @@ uORB::DeviceMaster::ioctl(device::file_t *filp, int cmd, unsigned long arg)
 
 	default:
 		/* give it to the superclass */
-		return VDev::ioctl(filp, cmd, arg);
+		return CDev::ioctl(filp, cmd, arg);
 	}
 }
 

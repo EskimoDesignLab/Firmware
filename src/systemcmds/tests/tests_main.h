@@ -69,6 +69,10 @@ extern int	test_jig_voltages(int argc, char *argv[]);
 extern int	test_led(int argc, char *argv[]);
 extern int	test_mathlib(int argc, char *argv[]);
 extern int	test_matrix(int argc, char *argv[]);
+extern int	test_microbench_hrt(int argc, char *argv[]);
+extern int	test_microbench_math(int argc, char *argv[]);
+extern int	test_microbench_matrix(int argc, char *argv[]);
+extern int	test_microbench_uorb(int argc, char *argv[]);
 extern int	test_mixer(int argc, char *argv[]);
 extern int	test_mount(int argc, char *argv[]);
 extern int	test_param(int argc, char *argv[]);
@@ -87,6 +91,8 @@ extern int	test_uart_console(int argc, char *argv[]);
 extern int	test_uart_loopback(int argc, char *argv[]);
 extern int	test_uart_send(int argc, char *argv[]);
 extern int	test_parameters(int argc, char *argv[]);
+extern int	test_versioning(int argc, char *argv[]);
+extern int  test_smooth_z(int argc, char *argv[]);
 
 /* external */
 extern int commander_tests_main(int argc, char *argv[]);
@@ -96,7 +102,7 @@ extern int uorb_tests_main(int argc, char *argv[]);
 extern int rc_tests_main(int argc, char *argv[]);
 extern int sf0x_tests_main(int argc, char *argv[]);
 extern int mc_pos_control_tests_main(int argc, char *argv[]);
-
+extern int test_controlmath(int argc, char *argv[]);
 
 __END_DECLS
 

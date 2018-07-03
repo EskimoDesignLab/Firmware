@@ -48,6 +48,7 @@ static int _control_task = -1;			/**< task handle for sensor task */
 
 using matrix::Eulerf;
 using matrix::Quatf;
+using matrix::Vector3f;
 
 /**
  * L1 control app start / stop handling function
@@ -64,7 +65,9 @@ GroundRoverPositionControl	*g_control = nullptr;
 
 GroundRoverPositionControl::GroundRoverPositionControl() :
 	/* performance counters */
-	_loop_perf(perf_alloc(PC_ELAPSED, "fw l1 control"))
+	_sub_attitude(ORB_ID(vehicle_attitude), 0, 0, nullptr),
+	_sub_sensors(ORB_ID(sensor_bias), 0, 0, nullptr),
+	_loop_perf(perf_alloc(PC_ELAPSED, "rover position control")) // TODO : do we even need these perf counters
 {
 	_parameter_handles.l1_period = param_find("GND_L1_PERIOD");
 	_parameter_handles.l1_damping = param_find("GND_L1_DAMPING");
@@ -179,17 +182,6 @@ GroundRoverPositionControl::manual_control_setpoint_poll()
 }
 
 void
-GroundRoverPositionControl::control_state_poll()
-{
-	bool ctrl_state_updated;
-	orb_check(_ctrl_state_sub, &ctrl_state_updated);
-
-	if (ctrl_state_updated) {
-		orb_copy(ORB_ID(control_state), _ctrl_state_sub, &_ctrl_state);
-	}
-}
-
-void
 GroundRoverPositionControl::position_setpoint_triplet_poll()
 {
 	bool pos_sp_triplet_updated;
@@ -213,8 +205,8 @@ void GroundRoverPositionControl::gnd_pos_ctrl_status_publish()
 }
 
 bool
-GroundRoverPositionControl::control_position(const math::Vector<2> &current_position,
-		const math::Vector<3> &ground_speed, const position_setpoint_triplet_s &pos_sp_triplet)
+GroundRoverPositionControl::control_position(const matrix::Vector2f &current_position,
+		const matrix::Vector3f &ground_speed, const position_setpoint_triplet_s &pos_sp_triplet)
 {
 	float dt = 0.01; // Using non zero value to a avoid division by zero
 
@@ -235,17 +227,17 @@ GroundRoverPositionControl::control_position(const math::Vector<2> &current_posi
 		bool was_circle_mode = _gnd_control.circle_mode();
 
 		/* current waypoint (the one currently heading for) */
-		math::Vector<2> curr_wp((float)pos_sp_triplet.current.lat, (float)pos_sp_triplet.current.lon);
+		matrix::Vector2f curr_wp((float)pos_sp_triplet.current.lat, (float)pos_sp_triplet.current.lon);
 
 		/* previous waypoint */
-		math::Vector<2> prev_wp = curr_wp;
+		matrix::Vector2f prev_wp = curr_wp;
 
 		if (pos_sp_triplet.previous.valid) {
 			prev_wp(0) = (float)pos_sp_triplet.previous.lat;
 			prev_wp(1) = (float)pos_sp_triplet.previous.lon;
 		}
 
-		math::Vector<2> ground_speed_2d = {ground_speed(0), ground_speed(1)};
+		matrix::Vector2f ground_speed_2d = {ground_speed(0), ground_speed(1)};
 
 		float mission_throttle = _parameters.throttle_cruise;
 
@@ -260,9 +252,16 @@ GroundRoverPositionControl::control_position(const math::Vector<2> &current_posi
 				mission_target_speed = _pos_sp_triplet.current.cruising_speed;
 			}
 
-			//Compute airspeed control out and just scale it as a constant
+			// Velocity in body frame
+			const Dcmf R_to_body(Quatf(_sub_attitude.get().q).inversed());
+			const Vector3f vel = R_to_body * Vector3f(ground_speed(0), ground_speed(1), ground_speed(2));
+
+			const float x_vel = vel(0);
+			const float x_acc = _sub_sensors.get().accel_x;
+
+			// Compute airspeed control out and just scale it as a constant
 			mission_throttle = _parameters.throttle_speed_scaler
-					   * pid_calculate(&_speed_ctrl, mission_target_speed, _ctrl_state.x_vel, _ctrl_state.x_acc, dt);
+					   * pid_calculate(&_speed_ctrl, mission_target_speed, x_vel, x_acc, dt);
 
 			// Constrain throttle between min and max
 			mission_throttle = math::constrain(mission_throttle, _parameters.throttle_min, _parameters.throttle_max);
@@ -331,7 +330,6 @@ void
 GroundRoverPositionControl::task_main()
 {
 	_control_mode_sub = orb_subscribe(ORB_ID(vehicle_control_mode));
-	_ctrl_state_sub = orb_subscribe(ORB_ID(control_state));
 	_global_pos_sub = orb_subscribe(ORB_ID(vehicle_global_position));
 	_manual_control_sub = orb_subscribe(ORB_ID(manual_control_setpoint));
 	_params_sub = orb_subscribe(ORB_ID(parameter_update));
@@ -409,12 +407,13 @@ GroundRoverPositionControl::task_main()
 			// update the reset counters in any case
 			_pos_reset_counter = _global_pos.lat_lon_reset_counter;
 
-			control_state_poll();
 			manual_control_setpoint_poll();
 			position_setpoint_triplet_poll();
+			_sub_attitude.update();
+			_sub_sensors.update();
 
-			math::Vector<3> ground_speed(_global_pos.vel_n, _global_pos.vel_e,  _global_pos.vel_d);
-			math::Vector<2> current_position((float)_global_pos.lat, (float)_global_pos.lon);
+			matrix::Vector3f ground_speed(_global_pos.vel_n, _global_pos.vel_e,  _global_pos.vel_d);
+			matrix::Vector2f current_position((float)_global_pos.lat, (float)_global_pos.lon);
 
 			/*
 			 * Attempt to control position, on success (= sensors present and not in manual mode),
@@ -461,9 +460,9 @@ GroundRoverPositionControl::task_main()
 					_gnd_pos_ctrl_status.target_bearing = _gnd_control.target_bearing();
 					_gnd_pos_ctrl_status.xtrack_error = _gnd_control.crosstrack_error();
 
-					math::Vector<2> curr_wp((float)_pos_sp_triplet.current.lat, (float)_pos_sp_triplet.current.lon);
-					_gnd_pos_ctrl_status.wp_dist = get_distance_to_next_waypoint(current_position(0), current_position(1), curr_wp(0),
-								       curr_wp(1));
+					matrix::Vector2f curr_wp((float)_pos_sp_triplet.current.lat, (float)_pos_sp_triplet.current.lon);
+					_gnd_pos_ctrl_status.wp_dist = get_distance_to_next_waypoint((double)current_position(0), (double)current_position(1),
+								       (double)curr_wp(0), (double)curr_wp(1));
 
 					gnd_pos_ctrl_status_publish();
 				}
@@ -480,36 +479,35 @@ GroundRoverPositionControl::task_main()
 	_control_task = -1;
 }
 
-void
+int
 GroundRoverPositionControl::task_main_trampoline(int argc, char *argv[])
 {
 	gnd_control::g_control = new GroundRoverPositionControl();
 
 	if (gnd_control::g_control == nullptr) {
 		warnx("OUT OF MEM");
-		return;
+		return -1;
 	}
 
 	/* only returns on exit */
 	gnd_control::g_control->task_main();
 	delete gnd_control::g_control;
 	gnd_control::g_control = nullptr;
+	return 0;
 }
 
 int
 GroundRoverPositionControl::start()
 {
 	ASSERT(_control_task == -1);
-	warn("Starting by marco");
 
 	/* start the task */
 	_control_task = px4_task_spawn_cmd("gnd_pos_ctrl",
 					   SCHED_DEFAULT,
-					   SCHED_PRIORITY_MAX - 5,
+					   SCHED_PRIORITY_POSITION_CONTROL,
 					   1700,
 					   (px4_main_t)&GroundRoverPositionControl::task_main_trampoline,
 					   nullptr);
-	warn("done");
 
 	if (_control_task < 0) {
 		warn("task start failed");

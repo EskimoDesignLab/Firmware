@@ -59,7 +59,7 @@ CameraFeedback::CameraFeedback() :
 	// Parameters
 	_p_feedback = param_find("CAM_FBACK_MODE");
 
-	param_get(_p_feedback, &_camera_feedback_mode);
+	param_get(_p_feedback, (int32_t *)&_camera_feedback_mode);
 
 }
 
@@ -92,8 +92,6 @@ CameraFeedback::~CameraFeedback()
 int
 CameraFeedback::start()
 {
-
-	ASSERT(_main_task == -1);
 
 	/* start the task */
 	_main_task = px4_task_spawn_cmd("camera_feedback",

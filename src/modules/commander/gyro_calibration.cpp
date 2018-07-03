@@ -57,7 +57,7 @@
 #include <uORB/topics/sensor_correction.h>
 #include <drivers/drv_gyro.h>
 #include <systemlib/mavlink_log.h>
-#include <systemlib/param/param.h>
+#include <parameters/param.h>
 #include <systemlib/err.h>
 
 static const char *sensor_name = "gyro";
@@ -193,7 +193,7 @@ static calibrate_return gyro_calibration_worker(int cancel_sub, void* data)
 
 	for (unsigned s = 0; s < max_gyros; s++) {
 		if (worker_data->device_id[s] != 0 && calibration_counter[s] < calibration_count / 2) {
-			calibration_log_critical(worker_data->mavlink_log_pub, "[cal] ERROR: missing data, sensor %d", s)
+			calibration_log_critical(worker_data->mavlink_log_pub, "ERROR: missing data, sensor %d", s)
 			return calibrate_return_error;
 		}
 
@@ -237,7 +237,7 @@ int do_gyro_calibration(orb_advert_t *mavlink_log_pub)
 		(void)sprintf(str, "CAL_GYRO%u_ID", s);
 		res = param_set_no_notification(param_find(str), &(worker_data.device_id[s]));
 		if (res != PX4_OK) {
-			calibration_log_critical(mavlink_log_pub, "[cal] Unable to reset CAL_GYRO%u_ID", s);
+			calibration_log_critical(mavlink_log_pub, "Unable to reset CAL_GYRO%u_ID", s);
 			return PX4_ERROR;
 		}
 
@@ -297,7 +297,7 @@ int do_gyro_calibration(orb_advert_t *mavlink_log_pub)
 
 	// Warn that we will not calibrate more than max_gyros gyroscopes
 	if (orb_gyro_count > max_gyros) {
-		calibration_log_critical(mavlink_log_pub, "[cal] Detected %u gyros, but will calibrate only %u", orb_gyro_count, max_gyros);
+		calibration_log_critical(mavlink_log_pub, "Detected %u gyros, but will calibrate only %u", orb_gyro_count, max_gyros);
 	}
 
 	for (unsigned cur_gyro = 0; cur_gyro < orb_gyro_count && cur_gyro < max_gyros; cur_gyro++) {
@@ -316,7 +316,7 @@ int do_gyro_calibration(orb_advert_t *mavlink_log_pub)
 			// and match it up with the one from the uORB subscription, because the
 			// instance ordering of uORB and the order of the FDs may not be the same.
 
-			if(report.device_id == worker_data.device_id[cur_gyro]) {
+			if (report.device_id == (uint32_t)worker_data.device_id[cur_gyro]) {
 				// Device IDs match, correct ORB instance for this gyro
 				found_cur_gyro = true;
 			} else {
@@ -333,7 +333,7 @@ int do_gyro_calibration(orb_advert_t *mavlink_log_pub)
 		}
 
 		if(!found_cur_gyro) {
-			calibration_log_critical(mavlink_log_pub, "[cal] Gyro #%u (ID %u) no matching uORB devid", cur_gyro, worker_data.device_id[cur_gyro]);
+			calibration_log_critical(mavlink_log_pub, "Gyro #%u (ID %u) no matching uORB devid", cur_gyro, worker_data.device_id[cur_gyro]);
 			res = calibrate_return_error;
 			break;
 		}
@@ -348,7 +348,7 @@ int do_gyro_calibration(orb_advert_t *mavlink_log_pub)
 				device_id_primary = worker_data.device_id[cur_gyro];
 			}
 		} else {
-			calibration_log_critical(mavlink_log_pub, "[cal] Gyro #%u no device id, abort", cur_gyro);
+			calibration_log_critical(mavlink_log_pub, "Gyro #%u no device id, abort", cur_gyro);
 		}
 	}
 
@@ -386,7 +386,7 @@ int do_gyro_calibration(orb_advert_t *mavlink_log_pub)
 			    fabsf(ydiff) > maxoff ||
 			    fabsf(zdiff) > maxoff) {
 
-				calibration_log_critical(mavlink_log_pub, "[cal] motion, retrying..");
+				calibration_log_critical(mavlink_log_pub, "motion, retrying..");
 				res = PX4_ERROR;
 
 			} else {
@@ -398,7 +398,7 @@ int do_gyro_calibration(orb_advert_t *mavlink_log_pub)
 	} while (res == PX4_ERROR && try_count <= max_tries);
 
 	if (try_count >= max_tries) {
-		calibration_log_critical(mavlink_log_pub, "[cal] ERROR: Motion during calibration");
+		calibration_log_critical(mavlink_log_pub, "ERROR: Motion during calibration");
 		res = PX4_ERROR;
 	}
 
@@ -494,17 +494,10 @@ int do_gyro_calibration(orb_advert_t *mavlink_log_pub)
 		}
 
 		if (failed) {
-			calibration_log_critical(mavlink_log_pub, "[cal] ERROR: failed to set offset params");
+			calibration_log_critical(mavlink_log_pub, "ERROR: failed to set offset params");
 			res = PX4_ERROR;
 		}
 	}
-
-	/* store board ID */
-	uuid_uint32_t mcu_id;
-	board_get_uuid32(mcu_id);
-
-	/* store last 32bit number - not unique, but unique in a given set */
-	(void)param_set(param_find("CAL_BOARD_ID"), &mcu_id[PX4_CPU_UUID_WORD32_UNIQUE_H]);
 
 	/* if there is a any preflight-check system response, let the barrage of messages through */
 	usleep(200000);

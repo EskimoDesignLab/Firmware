@@ -1,4 +1,6 @@
-include(posix/px4_impl_posix)
+include(common/px4_git)
+px4_add_git_submodule(TARGET git_cmake_hexagon PATH "cmake/cmake_hexagon")
+
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PX4_SOURCE_DIR}/cmake/cmake_hexagon")
 
@@ -17,15 +19,13 @@ else()
 endif()
 
 set(CONFIG_SHMEM "1")
-
+add_definitions(-DORB_COMMUNICATOR)
 
 set(config_module_list
-	drivers/device
 	drivers/blinkm
+	drivers/linux_sbus
 	drivers/pwm_out_sim
 	drivers/rgbled
-	drivers/led
-	drivers/boards/sitl
 	drivers/qshell/posix
 
 	systemcmds/param
@@ -33,21 +33,19 @@ set(config_module_list
 	systemcmds/mixer
 	systemcmds/ver
 	systemcmds/topic_listener
+	systemcmds/tune_control
 
 	modules/mavlink
 
 	modules/attitude_estimator_q
 	modules/position_estimator_inav
 	modules/local_position_estimator
+	modules/landing_target_estimator
 	modules/ekf2
 
 	modules/mc_pos_control
 	modules/mc_att_control
 
-	modules/systemlib/param
-	modules/systemlib
-	modules/systemlib/mixer
-	modules/uORB
 	modules/muorb/krait
 	modules/sensors
 	modules/dataman
@@ -56,22 +54,4 @@ set(config_module_list
 	modules/simulator
 	modules/commander
 	modules/navigator
-
-	lib/controllib
-	lib/mathlib
-	lib/mathlib/math/filter
-	lib/conversion
-	lib/ecl
-	lib/geo
-	lib/geo_lookup
-	lib/led
-	lib/terrain_estimation
-	lib/runway_takeoff
-	lib/tailsitter_recovery
-	lib/version
-	lib/DriverFramework/framework
-
-	platforms/common
-	platforms/posix/px4_layer
-	platforms/posix/work_queue
 	)

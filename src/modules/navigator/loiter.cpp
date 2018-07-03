@@ -39,34 +39,12 @@
  * @author Anton Babushkin <anton.babushkin@me.com>
  */
 
-#include <string.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <math.h>
-#include <fcntl.h>
-
-#include <geo/geo.h>
-
-#include <systemlib/mavlink_log.h>
-#include <systemlib/err.h>
-
-#include <uORB/uORB.h>
-#include <uORB/topics/position_setpoint_triplet.h>
-
 #include "loiter.h"
 #include "navigator.h"
 
-Loiter::Loiter(Navigator *navigator, const char *name) :
-	MissionBlock(navigator, name),
-	_param_min_alt(this, "MIS_LTRMIN_ALT", false),
-	_param_yawmode(this, "MIS_YAWMODE", false),
-	_loiter_pos_set(false)
-{
-	// load initial params
-	updateParams();
-}
-
-Loiter::~Loiter()
+Loiter::Loiter(Navigator *navigator) :
+	MissionBlock(navigator),
+	ModuleParams(navigator)
 {
 }
 
@@ -123,13 +101,14 @@ Loiter::set_loiter_position()
 	_loiter_pos_set = true;
 
 	// set current mission item to loiter
-	set_loiter_item(&_mission_item, _param_min_alt.get());
+	set_loiter_item(&_mission_item, _navigator->get_loiter_min_alt());
 
 	// convert mission item to current setpoint
 	struct position_setpoint_triplet_s *pos_sp_triplet = _navigator->get_position_setpoint_triplet();
 	pos_sp_triplet->current.velocity_valid = false;
 	pos_sp_triplet->previous.valid = false;
-	mission_item_to_position_setpoint(&_mission_item, &pos_sp_triplet->current);
+	mission_apply_limitation(_mission_item);
+	mission_item_to_position_setpoint(_mission_item, &pos_sp_triplet->current);
 	pos_sp_triplet->next.valid = false;
 
 	_navigator->set_can_loiter_at_sp(pos_sp_triplet->current.type == position_setpoint_s::SETPOINT_TYPE_LOITER);

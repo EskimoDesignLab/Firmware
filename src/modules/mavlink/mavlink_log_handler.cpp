@@ -429,6 +429,7 @@ LogListHelper::get_log_data(uint8_t len, uint8_t *buffer)
 
 	if (offset && fseek(current_log_filep, offset, SEEK_CUR)) {
 		fclose(current_log_filep);
+		current_log_filep = nullptr;
 		PX4LOG_WARN("MavlinkLogHandler::get_log_data Seek error in %s\n", current_log_filename);
 		return 0;
 	}
@@ -476,7 +477,7 @@ LogListHelper::_init()
 			time_t tt = 0;
 			char log_path[128];
 			int ret = snprintf(log_path, sizeof(log_path), "%s/%s", kLogRoot, result->d_name);
-			bool path_is_ok = (ret > 0) && (ret < sizeof(log_path));
+			bool path_is_ok = (ret > 0) && (ret < (int)sizeof(log_path));
 
 			if (path_is_ok) {
 				if (_get_session_date(log_path, result->d_name, tt)) {
@@ -538,7 +539,7 @@ LogListHelper::_scan_logs(FILE *f, const char *dir, time_t &date)
 				uint32_t size = 0;
 				char log_file_path[128];
 				int ret = snprintf(log_file_path, sizeof(log_file_path), "%s/%s", dir, result->d_name);
-				bool path_is_ok = (ret > 0) && (ret < sizeof(log_file_path));
+				bool path_is_ok = (ret > 0) && (ret < (int)sizeof(log_file_path));
 
 				if (path_is_ok) {
 					if (_get_log_time_size(log_file_path, result->d_name, ldate, size)) {
@@ -608,7 +609,7 @@ LogListHelper::delete_all(const char *dir)
 		if (result->d_type == PX4LOG_DIRECTORY && result->d_name[0] != '.') {
 			char log_path[128];
 			int ret = snprintf(log_path, sizeof(log_path), "%s/%s", dir, result->d_name);
-			bool path_is_ok = (ret > 0) && (ret < sizeof(log_path));
+			bool path_is_ok = (ret > 0) && (ret < (int)sizeof(log_path));
 
 			if (path_is_ok) {
 				LogListHelper::delete_all(log_path);
@@ -622,7 +623,7 @@ LogListHelper::delete_all(const char *dir)
 		if (result->d_type == PX4LOG_REGULAR_FILE) {
 			char log_path[128];
 			int ret = snprintf(log_path, sizeof(log_path), "%s/%s", dir, result->d_name);
-			bool path_is_ok = (ret > 0) && (ret < sizeof(log_path));
+			bool path_is_ok = (ret > 0) && (ret < (int)sizeof(log_path));
 
 			if (path_is_ok) {
 				if (unlink(log_path)) {

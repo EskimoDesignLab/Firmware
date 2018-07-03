@@ -94,7 +94,7 @@
 #define PX4_MAIN_FUNCTION(_prefix) int _prefix##_task_main(int argc, char *argv[])
 
 /* Parameter handle datatype */
-#include <systemlib/param/param.h>
+#include <parameters/param.h>
 typedef param_t px4_param_t;
 
 /* Get value of parameter by name */
@@ -110,7 +110,7 @@ typedef param_t px4_param_t;
  * NuttX specific defines.
  ****************************************************************************/
 
-#define PX4_ROOTFSDIR
+#define PX4_ROOTFSDIR ""
 #define _PX4_IOC(x,y) _IOC(x,y)
 #define px4_statfs_buf_f_bavail_t int
 
@@ -152,7 +152,9 @@ using ::isfinite;
  ****************************************************************************/
 
 // Flag is meaningless on Linux
+#ifndef O_BINARY
 #define O_BINARY 0
+#endif
 
 // mode for open with O_CREAT
 #define PX4_O_MODE_777 (S_IRWXU | S_IRWXG | S_IRWXO)
@@ -165,7 +167,7 @@ using ::isfinite;
 /* FIXME - Used to satisfy build */
 #define getreg32(a)    (*(volatile uint32_t *)(a))
 
-#define USEC_PER_TICK (1000000UL/PX4_TICKS_PER_SEC)
+#define USEC_PER_TICK (1000000/PX4_TICKS_PER_SEC)
 #define USEC2TICK(x) (((x)+(USEC_PER_TICK/2))/USEC_PER_TICK)
 
 #define px4_statfs_buf_f_bavail_t unsigned long
@@ -174,7 +176,7 @@ using ::isfinite;
 
 // QURT specific
 #  include "dspal_math.h"
-#  define PX4_ROOTFSDIR
+#  define PX4_ROOTFSDIR ""
 #  define PX4_TICKS_PER_SEC 1000L
 #  define SIOCDEVPRIVATE 999999
 

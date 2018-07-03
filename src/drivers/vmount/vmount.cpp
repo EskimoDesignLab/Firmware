@@ -36,6 +36,7 @@
  * @author Leon Müller (thedevleon)
  * @author Beat Küng <beat-kueng@gmx.net>
  * @author Julian Oes <julian@oes.ch>
+ * @author Matthew Edwards (mje-nz)
  *
  * Driver for to control mounts such as gimbals or servos.
  * Inputs for the mounts can RC and/or mavlink commands.
@@ -63,6 +64,7 @@
 #include <uORB/topics/parameter_update.h>
 
 #include <px4_config.h>
+#include <px4_module.h>
 
 using namespace vmount;
 
@@ -70,37 +72,55 @@ using namespace vmount;
 static volatile bool thread_should_exit = false;
 static volatile bool thread_running = false;
 
-static constexpr unsigned input_objs_len_max = 3;
+static constexpr int input_objs_len_max = 3;
 
 struct ThreadData {
 	InputBase *input_objs[input_objs_len_max] = {nullptr, nullptr, nullptr};
-	unsigned input_objs_len = 0;
+	int input_objs_len = 0;
 	OutputBase *output_obj = nullptr;
 };
 static volatile ThreadData *g_thread_data = nullptr;
 
 struct Parameters {
-	int mnt_mode_in;
-	int mnt_mode_out;
-	int mnt_mav_sysid;
-	int mnt_mav_compid;
-	int mnt_ob_lock_mode;
-	int mnt_ob_norm_mode;
-	int mnt_man_pitch;
-	int mnt_man_roll;
-	int mnt_man_yaw;
+	int32_t mnt_mode_in;
+	int32_t mnt_mode_out;
+	int32_t mnt_mav_sysid;
+	int32_t mnt_mav_compid;
+	float mnt_ob_lock_mode;
+	float mnt_ob_norm_mode;
+	int32_t mnt_man_pitch;
+	int32_t mnt_man_roll;
+	int32_t mnt_man_yaw;
+	int32_t mnt_do_stab;
+	float mnt_range_pitch;
+	float mnt_range_roll;
+	float mnt_range_yaw;
+	float mnt_off_pitch;
+	float mnt_off_roll;
+	float mnt_off_yaw;
 
 	bool operator!=(const Parameters &p)
 	{
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wfloat-equal"
 		return mnt_mode_in != p.mnt_mode_in ||
 		       mnt_mode_out != p.mnt_mode_out ||
 		       mnt_mav_sysid != p.mnt_mav_sysid ||
 		       mnt_mav_compid != p.mnt_mav_compid ||
-		       mnt_ob_lock_mode != p.mnt_ob_lock_mode ||
-		       mnt_ob_norm_mode != p.mnt_ob_norm_mode ||
+		       fabsf(mnt_ob_lock_mode - p.mnt_ob_lock_mode) > 1e-6f ||
+		       fabsf(mnt_ob_norm_mode - p.mnt_ob_norm_mode) > 1e-6f ||
 		       mnt_man_pitch != p.mnt_man_pitch ||
 		       mnt_man_roll != p.mnt_man_roll ||
-		       mnt_man_yaw != p.mnt_man_yaw;
+		       mnt_man_yaw != p.mnt_man_yaw ||
+		       mnt_do_stab != p.mnt_do_stab ||
+		       mnt_range_pitch != p.mnt_range_pitch ||
+		       mnt_range_roll != p.mnt_range_roll ||
+		       mnt_range_yaw != p.mnt_range_yaw ||
+		       mnt_off_pitch != p.mnt_off_pitch ||
+		       mnt_off_roll != p.mnt_off_roll ||
+		       mnt_off_yaw != p.mnt_off_yaw;
+#pragma GCC diagnostic pop
+
 	}
 };
 
@@ -114,6 +134,13 @@ struct ParameterHandles {
 	param_t mnt_man_pitch;
 	param_t mnt_man_roll;
 	param_t mnt_man_yaw;
+	param_t mnt_do_stab;
+	param_t mnt_range_pitch;
+	param_t mnt_range_roll;
+	param_t mnt_range_yaw;
+	param_t mnt_off_pitch;
+	param_t mnt_off_roll;
+	param_t mnt_off_yaw;
 };
 
 
@@ -127,8 +154,30 @@ extern "C" __EXPORT int vmount_main(int argc, char *argv[]);
 
 static void usage()
 {
-	PX4_INFO("usage: vmount {start|stop|status|test}");
-	PX4_INFO("       vmount test {roll|pitch|yaw} <angle_deg>");
+	PRINT_MODULE_DESCRIPTION(
+		R"DESCR_STR(
+### Description
+Mount (Gimbal) control driver. It maps several different input methods (eg. RC or MAVLink) to a configured
+output (eg. AUX channels or MAVLink).
+
+Documentation how to use it is on the [gimbal_control](https://dev.px4.io/en/advanced/gimbal_control.html) page.
+
+### Implementation
+Each method is implemented in its own class, and there is a common base class for inputs and outputs.
+They are connected via an API, defined by the `ControlData` data structure. This makes sure that each input method
+can be used with each output method and new inputs/outputs can be added with minimal effort.
+
+### Examples
+Test the output by setting a fixed yaw angle (and the other axes to 0):
+$ vmount stop
+$ vmount test yaw 30
+)DESCR_STR");
+
+	PRINT_MODULE_USAGE_NAME("vmount", "driver");
+	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_COMMAND_DESCR("test", "Test the output: set a fixed angle for one axis (vmount must not be running)");
+	PRINT_MODULE_USAGE_ARG("roll|pitch|yaw <angle>", "Specify an axis and an angle in degrees", false);
+	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 }
 
 static int vmount_thread_main(int argc, char *argv[])
@@ -190,6 +239,7 @@ static int vmount_thread_main(int argc, char *argv[])
 
 	if (!get_params(param_handles, params)) {
 		PX4_ERR("could not get mount parameters!");
+		delete test_input;
 		return -1;
 	}
 
@@ -206,6 +256,12 @@ static int vmount_thread_main(int argc, char *argv[])
 
 			output_config.gimbal_normal_mode_value = params.mnt_ob_norm_mode;
 			output_config.gimbal_retracted_mode_value = params.mnt_ob_lock_mode;
+			output_config.pitch_scale = 1.0f / ((params.mnt_range_pitch / 2.0f) * M_DEG_TO_RAD_F);
+			output_config.roll_scale = 1.0f / ((params.mnt_range_roll / 2.0f) * M_DEG_TO_RAD_F);
+			output_config.yaw_scale = 1.0f / ((params.mnt_range_yaw / 2.0f) * M_DEG_TO_RAD_F);
+			output_config.pitch_offset = params.mnt_off_pitch * M_DEG_TO_RAD_F;
+			output_config.roll_offset = params.mnt_off_roll * M_DEG_TO_RAD_F;
+			output_config.yaw_offset = params.mnt_off_yaw * M_DEG_TO_RAD_F;
 			output_config.mavlink_sys_id = params.mnt_mav_sysid;
 			output_config.mavlink_comp_id = params.mnt_mav_compid;
 
@@ -220,19 +276,19 @@ static int vmount_thread_main(int argc, char *argv[])
 				case 0:
 
 					// Automatic
-					thread_data.input_objs[0] = new InputMavlinkCmdMount();
+					thread_data.input_objs[0] = new InputMavlinkCmdMount(params.mnt_do_stab);
 					thread_data.input_objs[1] = new InputMavlinkROI();
 
 					// RC is on purpose last here so that if there are any mavlink
 					// messages, they will take precedence over RC.
 					// This logic is done further below while update() is called.
-					thread_data.input_objs[2] = new InputRC(params.mnt_man_roll, params.mnt_man_pitch, params.mnt_man_yaw);
+					thread_data.input_objs[2] = new InputRC(params.mnt_do_stab, params.mnt_man_roll, params.mnt_man_pitch, params.mnt_man_yaw);
 					thread_data.input_objs_len = 3;
 
 					break;
 
 				case 1: //RC
-					thread_data.input_objs[0] = new InputRC(params.mnt_man_roll, params.mnt_man_pitch, params.mnt_man_yaw);
+					thread_data.input_objs[0] = new InputRC(params.mnt_do_stab, params.mnt_man_roll, params.mnt_man_pitch, params.mnt_man_yaw);
 					break;
 
 				case 2: //MAVLINK_ROI
@@ -240,7 +296,7 @@ static int vmount_thread_main(int argc, char *argv[])
 					break;
 
 				case 3: //MAVLINK_DO_MOUNT
-					thread_data.input_objs[0] = new InputMavlinkCmdMount();
+					thread_data.input_objs[0] = new InputMavlinkCmdMount(params.mnt_do_stab);
 					break;
 
 				default:
@@ -313,7 +369,7 @@ static int vmount_thread_main(int argc, char *argv[])
 					continue;
 				}
 
-				if (control_data_to_check != nullptr) {
+				if (control_data_to_check != nullptr || already_active) {
 					control_data = control_data_to_check;
 					last_active = i;
 				}
@@ -414,8 +470,8 @@ int vmount_main(int argc, char *argv[])
 		thread_should_exit = false;
 		int vmount_task = px4_task_spawn_cmd("vmount",
 						     SCHED_DEFAULT,
-						     SCHED_PRIORITY_DEFAULT + 40,
-						     1500,
+						     SCHED_PRIORITY_DEFAULT,
+						     1900,
 						     vmount_thread_main,
 						     (char *const *)argv + 1);
 
@@ -496,6 +552,13 @@ void update_params(ParameterHandles &param_handles, Parameters &params, bool &go
 	param_get(param_handles.mnt_man_pitch, &params.mnt_man_pitch);
 	param_get(param_handles.mnt_man_roll, &params.mnt_man_roll);
 	param_get(param_handles.mnt_man_yaw, &params.mnt_man_yaw);
+	param_get(param_handles.mnt_do_stab, &params.mnt_do_stab);
+	param_get(param_handles.mnt_range_pitch, &params.mnt_range_pitch);
+	param_get(param_handles.mnt_range_roll, &params.mnt_range_roll);
+	param_get(param_handles.mnt_range_yaw, &params.mnt_range_yaw);
+	param_get(param_handles.mnt_off_pitch, &params.mnt_off_pitch);
+	param_get(param_handles.mnt_off_roll, &params.mnt_off_roll);
+	param_get(param_handles.mnt_off_yaw, &params.mnt_off_yaw);
 
 	got_changes = prev_params != params;
 }
@@ -511,6 +574,13 @@ bool get_params(ParameterHandles &param_handles, Parameters &params)
 	param_handles.mnt_man_pitch = param_find("MNT_MAN_PITCH");
 	param_handles.mnt_man_roll = param_find("MNT_MAN_ROLL");
 	param_handles.mnt_man_yaw = param_find("MNT_MAN_YAW");
+	param_handles.mnt_do_stab = param_find("MNT_DO_STAB");
+	param_handles.mnt_range_pitch = param_find("MNT_RANGE_PITCH");
+	param_handles.mnt_range_roll = param_find("MNT_RANGE_ROLL");
+	param_handles.mnt_range_yaw = param_find("MNT_RANGE_YAW");
+	param_handles.mnt_off_pitch = param_find("MNT_OFF_PITCH");
+	param_handles.mnt_off_roll = param_find("MNT_OFF_ROLL");
+	param_handles.mnt_off_yaw = param_find("MNT_OFF_YAW");
 
 	if (param_handles.mnt_mode_in == PARAM_INVALID ||
 	    param_handles.mnt_mode_out == PARAM_INVALID ||
@@ -520,7 +590,14 @@ bool get_params(ParameterHandles &param_handles, Parameters &params)
 	    param_handles.mnt_ob_norm_mode == PARAM_INVALID ||
 	    param_handles.mnt_man_pitch == PARAM_INVALID ||
 	    param_handles.mnt_man_roll == PARAM_INVALID ||
-	    param_handles.mnt_man_yaw == PARAM_INVALID) {
+	    param_handles.mnt_man_yaw == PARAM_INVALID ||
+		param_handles.mnt_do_stab == PARAM_INVALID ||
+		param_handles.mnt_range_pitch == PARAM_INVALID ||
+		param_handles.mnt_range_roll == PARAM_INVALID ||
+		param_handles.mnt_range_yaw == PARAM_INVALID ||
+		param_handles.mnt_off_pitch == PARAM_INVALID ||
+		param_handles.mnt_off_roll == PARAM_INVALID ||
+		param_handles.mnt_off_yaw == PARAM_INVALID) {
 		return false;
 	}
 

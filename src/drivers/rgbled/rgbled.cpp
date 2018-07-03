@@ -57,19 +57,20 @@
 
 #include <px4_workqueue.h>
 
-#include <systemlib/perf_counter.h>
+#include <perf/perf_counter.h>
 #include <systemlib/err.h>
-#include <systemlib/systemlib.h>
 
 #include <board_config.h>
 
 #include <drivers/drv_led.h>
 #include <lib/led/led.h>
 
+#include "uORB/topics/parameter_update.h"
+
 #define RGBLED_ONTIME 120
 #define RGBLED_OFFTIME 120
 
-#define ADDR			PX4_I2C_OBDEV_LED	/**< I2C adress of TCA62724FMG */
+#define ADDR			0x55	/**< I2C adress of TCA62724FMG */
 #define SUB_ADDR_START		0x01	/**< write everything (with auto-increment) */
 #define SUB_ADDR_PWM0		0x81	/**< blue     (without auto-increment) */
 #define SUB_ADDR_PWM1		0x82	/**< green    (without auto-increment) */
@@ -187,12 +188,11 @@ RGBLED::probe()
 
 	/**
 	   this may look strange, but is needed. There is a serial
-	   EEPROM (Microchip-24aa01) on the PX4FMU-v1 that responds to
-	   a bunch of I2C addresses, including the 0x55 used by this
-	   LED device. So we need to do enough operations to be sure
-	   we are talking to the right device. These 3 operations seem
-	   to be enough, as the 3rd one consistently fails if no
-	   RGBLED is on the bus.
+	   EEPROM (Microchip-24aa01) that responds to a bunch of I2C
+	   addresses, including the 0x55 used by this LED device. So
+	   we need to do enough operations to be sure we are talking
+	   to the right device. These 3 operations seem to be enough,
+	   as the 3rd one consistently fails if no RGBLED is on the bus.
 	 */
 
 	unsigned prevretries = _retries;
@@ -387,8 +387,8 @@ RGBLED::get(bool &on, bool &powersave, uint8_t &r, uint8_t &g, uint8_t &b)
 	ret = transfer(nullptr, 0, &result[0], 2);
 
 	if (ret == OK) {
-		on = result[0] & SETTING_ENABLE;
-		powersave = !(result[0] & SETTING_NOT_POWERSAVE);
+		on = ((result[0] >> 4) & SETTING_ENABLE);
+		powersave = !((result[0] >> 4) & SETTING_NOT_POWERSAVE);
 		/* XXX check, looks wrong */
 		r = (result[0] & 0x0f) << 4;
 		g = (result[1] & 0xf0);

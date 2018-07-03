@@ -195,53 +195,56 @@ function(px4_add_module)
 		ONE_VALUE MODULE MAIN STACK STACK_MAIN STACK_MAX PRIORITY
 		MULTI_VALUE COMPILE_FLAGS LINK_FLAGS SRCS INCLUDES DEPENDS
 		OPTIONS EXTERNAL
-		REQUIRED MODULE
+		REQUIRED MODULE MAIN
 		ARGN ${ARGN})
 
-	if (EXTERNAL)
-		px4_mangle_name("${EXTERNAL_MODULES_LOCATION}/src/${MODULE}" MODULE)
-	endif()
+	add_library(${MODULE} STATIC EXCLUDE_FROM_ALL ${SRCS})
 
-	px4_add_library(${MODULE} STATIC EXCLUDE_FROM_ALL ${SRCS})
+	# all modules can potentially use parameters and uORB
+	add_dependencies(${MODULE} uorb_headers)
+	target_link_libraries(${MODULE} PRIVATE prebuild_targets parameters_interface platforms__common px4_layer systemlib)
+
+	set_property(GLOBAL APPEND PROPERTY PX4_MODULE_LIBRARIES ${MODULE})
+	set_property(GLOBAL APPEND PROPERTY PX4_MODULE_PATHS ${CMAKE_CURRENT_SOURCE_DIR})
+
+	px4_add_optimization_flags_for_target(${MODULE})
+
+	# Pass variable to the parent px4_add_module.
+	set(_no_optimization_for_target ${_no_optimization_for_target} PARENT_SCOPE)
 
 	# set defaults if not set
 	set(MAIN_DEFAULT MAIN-NOTFOUND)
 	set(STACK_MAIN_DEFAULT 1024)
 	set(PRIORITY_DEFAULT SCHED_PRIORITY_DEFAULT)
 
-	# default stack max to stack main
-	if(NOT STACK_MAIN AND STACK)
-		set(STACK_MAIN ${STACK})
-		message(AUTHOR_WARNING "STACK deprecated, USE STACK_MAIN instead!")
-	endif()
-
 	foreach(property MAIN STACK_MAIN PRIORITY)
 		if(NOT ${property})
 			set(${property} ${${property}_DEFAULT})
 		endif()
-		set_target_properties(${MODULE} PROPERTIES ${property}
-			${${property}})
+		set_target_properties(${MODULE} PROPERTIES ${property} ${${property}})
 	endforeach()
 
 	# default stack max to stack main
 	if(NOT STACK_MAX)
 		set(STACK_MAX ${STACK_MAIN})
 	endif()
-	set_target_properties(${MODULE} PROPERTIES STACK_MAX
-		${STACK_MAX})
+	set_target_properties(${MODULE} PROPERTIES STACK_MAX ${STACK_MAX})
 
 	if(${OS} STREQUAL "qurt" )
 		set_property(TARGET ${MODULE} PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 	elseif(${OS} STREQUAL "nuttx" )
-		list(APPEND COMPILE_FLAGS -Wframe-larger-than=${STACK_MAX})
+		target_compile_options(${MODULE} PRIVATE -Wframe-larger-than=${STACK_MAX})
 	endif()
 
 	if(MAIN)
-		set_target_properties(${MODULE} PROPERTIES
-			COMPILE_DEFINITIONS PX4_MAIN=${MAIN}_app_main)
-		add_definitions(-DMODULE_NAME="${MAIN}")
+		target_compile_definitions(${MODULE} PRIVATE PX4_MAIN=${MAIN}_app_main)
+		target_compile_definitions(${MODULE} PRIVATE MODULE_NAME="${MAIN}")
 	else()
-		add_definitions(-DMODULE_NAME="${MODULE}")
+		target_compile_definitions(${MODULE} PRIVATE MODULE_NAME="${MODULE}")
+	endif()
+
+	if(COMPILE_FLAGS)
+		target_compile_options(${MODULE} PRIVATE ${COMPILE_FLAGS})
 	endif()
 
 	if(INCLUDES)
@@ -249,11 +252,20 @@ function(px4_add_module)
 	endif()
 
 	if(DEPENDS)
-		add_dependencies(${MODULE} ${DEPENDS})
+		# using target_link_libraries for dependencies provides linking
+		#  as well as interface include and libraries
+		foreach(dep ${DEPENDS})
+			get_target_property(dep_type ${dep} TYPE)
+			if (${dep_type} STREQUAL "STATIC_LIBRARY")
+				target_link_libraries(${MODULE} PRIVATE ${dep})
+			else()
+				add_dependencies(${MODULE} ${dep})
+			endif()
+		endforeach()
 	endif()
 
 	# join list variables to get ready to send to compiler
-	foreach(prop LINK_FLAGS COMPILE_FLAGS)
+	foreach(prop LINK_FLAGS)
 		if(${prop})
 			px4_join(OUT ${prop} LIST ${${prop}} GLUE " ")
 		endif()
@@ -265,12 +277,11 @@ function(px4_add_module)
 	if(COMPILE_FLAGS AND ${_no_optimization_for_target})
 		px4_strip_optimization(COMPILE_FLAGS ${COMPILE_FLAGS})
 	endif()
-	foreach (prop COMPILE_FLAGS LINK_FLAGS STACK_MAIN MAIN PRIORITY)
+	foreach (prop LINK_FLAGS STACK_MAIN MAIN PRIORITY)
 		if (${prop})
 			set_target_properties(${MODULE} PROPERTIES ${prop} ${${prop}})
 		endif()
 	endforeach()
-
 endfunction()
 
 #=============================================================================
@@ -324,20 +335,28 @@ function(px4_add_common_flags)
 
 	set(warnings
 		-Wall
-		-Warray-bounds
-		-Werror
 		-Wextra
+		-Werror
+
+		-Warray-bounds
+		-Wdisabled-optimization
+		-Wdouble-promotion
 		-Wfatal-errors
 		-Wfloat-equal
 		-Wformat-security
 		-Winit-self
+		-Wlogical-op
 		-Wmissing-declarations
+		-Wmissing-field-initializers
+
 		-Wpointer-arith
 		-Wshadow
 		-Wuninitialized
+		-Wunknown-pragmas
 		-Wunused-variable
 
-		-Wno-sign-compare
+		-Wno-implicit-fallthrough # set appropriate level and update
+		-Wno-missing-include-dirs # TODO: fix and enable
 		-Wno-unused-parameter
 		)
 
@@ -350,28 +369,25 @@ function(px4_add_common_flags)
 				-Wno-varargs
 				-Wno-address-of-packed-member
 				-Wno-unknown-warning-option
+				-Wunused-but-set-variable
 			)
 		endif()
 	else()
 		list(APPEND warnings
 			-Wunused-but-set-variable
 			-Wformat=1
-			#-Wlogical-op # very verbose due to eigen
-			-Wdouble-promotion
 		)
-	endif()
-
-	if ("${OS}" STREQUAL "qurt")
-		set(PIC_FLAG -fPIC)
 	endif()
 
 	set(_optimization_flags
 		-fno-strict-aliasing
 		-fomit-frame-pointer
+
+		-fno-math-errno
 		-funsafe-math-optimizations
+
 		-ffunction-sections
 		-fdata-sections
-		${PIC_FLAG}
 		)
 
 	set(c_warnings
@@ -389,6 +405,7 @@ function(px4_add_common_flags)
 
 	set(cxx_warnings
 		-Wno-missing-field-initializers
+		-Wno-overloaded-virtual # TODO: fix and remove
 		-Wreorder
 		)
 
@@ -429,6 +446,10 @@ function(px4_add_common_flags)
 				-fdiagnostics-color=always
 			)
 		endif()
+
+		list(APPEND cxx_warnings
+			-Wno-format-truncation # TODO: fix
+		)
 	endif()
 
 	set(visibility_flags
@@ -454,10 +475,13 @@ function(px4_add_common_flags)
 		${_optimization_flags}
 		)
 
-	set(added_include_dirs
+	include_directories(
 		${PX4_BINARY_DIR}
 		${PX4_BINARY_DIR}/src
+		${PX4_BINARY_DIR}/src/lib
 		${PX4_BINARY_DIR}/src/modules
+
+
 		${PX4_SOURCE_DIR}/src
 		${PX4_SOURCE_DIR}/src/drivers/boards/${BOARD}
 		${PX4_SOURCE_DIR}/src/include
@@ -468,24 +492,13 @@ function(px4_add_common_flags)
 		${PX4_SOURCE_DIR}/src/platforms
 		)
 
-	set(added_link_dirs) # none used currently
-	set(added_exe_linker_flags)
-
 	string(TOUPPER ${BOARD} board_upper)
 	string(REPLACE "-" "_" board_config ${board_upper})
 
-	set(added_definitions
+	add_definitions(
 		-DCONFIG_ARCH_BOARD_${board_config}
 		-D__STDC_FORMAT_MACROS
 		)
-
-	if (NOT (APPLE AND (${CMAKE_C_COMPILER_ID} MATCHES ".*Clang.*")))
-		set(added_exe_linker_flags
-			-Wl,--warn-common
-			-Wl,--gc-sections
-			#,--print-gc-sections
-			)
-	endif()
 
 	# output
 	foreach(var ${inout_vars})
@@ -494,31 +507,6 @@ function(px4_add_common_flags)
 		#message(STATUS "set(${${var}} ${${${var}}} ${added_${lower_var}} PARENT_SCOPE)")
 	endforeach()
 
-endfunction()
-
-#=============================================================================
-#
-#	px4_mangle_name
-#
-#	Convert a path name to a module name
-#
-#	Usage:
-#		px4_mangle_name(dirname newname)
-#
-#	Input:
-#		dirname					: path to module dir
-#
-#	Output:
-#		newname					: module name
-#
-#	Example:
-#		px4_mangle_name(${dirpath} mangled_name)
-#		message(STATUS "module name is ${mangled_name}")
-#
-function(px4_mangle_name dirname newname)
-	set(tmp)
-	string(REPLACE "/" "__" tmp ${dirname})
-	set(${newname} ${tmp} PARENT_SCOPE)
 endfunction()
 
 #=============================================================================
@@ -585,9 +573,25 @@ endfunction()
 #
 function(px4_add_library target)
 	add_library(${target} ${ARGN})
+
+	target_compile_definitions(${target} PRIVATE MODULE_NAME="${target}")
+
+	# all PX4 libraries have access to parameters and uORB
+	add_dependencies(${target} uorb_headers)
+	target_link_libraries(${target} PRIVATE prebuild_targets parameters_interface uorb_msgs)
+
+	# TODO: move to platform layer
+	if ("${OS}" MATCHES "nuttx")
+		target_link_libraries(${target} PRIVATE m nuttx_c)
+	endif()
+
 	px4_add_optimization_flags_for_target(${target})
+
 	# Pass variable to the parent px4_add_module.
 	set(_no_optimization_for_target ${_no_optimization_for_target} PARENT_SCOPE)
+
+	set_property(GLOBAL APPEND PROPERTY PX4_LIBRARIES ${target})
+	set_property(GLOBAL APPEND PROPERTY PX4_MODULE_PATHS ${CMAKE_CURRENT_SOURCE_DIR})
 endfunction()
 
 #=============================================================================
@@ -623,10 +627,9 @@ function(px4_find_python_module module)
 		\nfor debian systems try: \
 		\n\tsudo apt-get install python-${module} \
 		\nor for all other OSs/debian: \
-		\n\tpip install ${module}\n" PY_${module_upper})
+		\n\tsudo -H pip install ${module}\n" PY_${module_upper})
 	#if (NOT PY_${module}_FOUND)
-		#message(FATAL_ERROR "python module not found, exitting")
+		#message(FATAL_ERROR "python module not found, exiting")
 	#endif()
 endfunction(px4_find_python_module)
 
-# vim: set noet fenc=utf-8 ff=unix nowrap:

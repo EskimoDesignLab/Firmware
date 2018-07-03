@@ -6,9 +6,11 @@ class ParameterGroup(object):
     """
     Single parameter group
     """
-    def __init__(self, name):
+    def __init__(self, name, af_class):
         self.name = name
+        self.af_class = af_class
         self.params = []
+
 
     def AddParameter(self, param):
         """
@@ -22,6 +24,12 @@ class ParameterGroup(object):
         """
         return self.name
 
+    def GetClass(self):
+        """
+        Get parameter group vehicle type.
+        """
+        return self.af_class
+        
     def GetImageName(self):
         """
         Get parameter group image base name (w/o extension)
@@ -50,6 +58,8 @@ class ParameterGroup(object):
             return "QuadRotorWide"
         elif (self.name == "Quadrotor H"):
             return "QuadRotorH"
+        elif (self.name == "Dodecarotor cox"):
+            return "DodecaRotorXCoaxial"
         elif (self.name == "Simulation"):
             return "AirframeSimulation"
         elif (self.name == "Plane A-Tail"):
@@ -86,8 +96,8 @@ class ParameterGroup(object):
         object. Note that returned object is not a copy. Modifications affect
         state of the parser.
         """
-        return sorted(self.params,
-                key=lambda x: x.GetFieldValue("code"))
+
+        return sorted(self.params, key=lambda x: x.GetId())
 
 class Parameter(object):
     """
@@ -393,11 +403,18 @@ class SourceParser(object):
         # Store outputs
         for arch in archs:
             param.SetArch(arch, archs[arch])
+            
+
+        
 
         # Store the parameter
-        if airframe_type not in self.param_groups:
-            self.param_groups[airframe_type] = ParameterGroup(airframe_type)
-        self.param_groups[airframe_type].AddParameter(param)
+        
+        #Create a class-specific airframe group. This is needed to catch cases where an airframe type might cross classes (e.g. simulation)
+        class_group_identifier=airframe_type+airframe_class
+        if class_group_identifier not in self.param_groups:
+            #self.param_groups[airframe_type] = ParameterGroup(airframe_type)  #HW TEST REMOVE
+            self.param_groups[class_group_identifier] = ParameterGroup(airframe_type, airframe_class)
+        self.param_groups[class_group_identifier].AddParameter(param)
 
         return True
 
@@ -424,28 +441,7 @@ class SourceParser(object):
                         sys.stderr.write("Duplicate parameter definition: {0}\n".format(name_plus_board))
                         return False
                 seenParamNames.append(name_plus_board)
-                # Validate values
-                default = param.GetDefault()
-                min = param.GetFieldValue("min")
-                max = param.GetFieldValue("max")
-                #sys.stderr.write("{0} default:{1} min:{2} max:{3}\n".format(name, default, min, max))
-                if default != "" and not self.IsNumber(default):
-                    sys.stderr.write("Default value not number: {0} {1}\n".format(name, default))
-                    return False
-                if min != "":
-                    if not self.IsNumber(min):
-                        sys.stderr.write("Min value not number: {0} {1}\n".format(name, min))
-                        return False
-                    if default != "" and float(default) < float(min):
-                        sys.stderr.write("Default value is smaller than min: {0} default:{1} min:{2}\n".format(name, default, min))
-                        return False
-                if max != "":
-                    if not self.IsNumber(max):
-                        sys.stderr.write("Max value not number: {0} {1}\n".format(name, max))
-                        return False
-                    if default != "" and float(default) > float(max):
-                        sys.stderr.write("Default value is larger than max: {0} default:{1} max:{2}\n".format(name, default, max))
-                        return False
+
         return True
 
     def GetParamGroups(self):
@@ -456,5 +452,20 @@ class SourceParser(object):
         """
         groups = self.param_groups.values()
         groups = sorted(groups, key=lambda x: x.GetName())
+        groups = sorted(groups, key=lambda x: x.GetClass())
         groups = sorted(groups, key=lambda x: self.priority.get(x.GetName(), 0), reverse=True)
+        
+        #Rename duplicate groups to include the class (creating unique headings in page TOC)
+        duplicate_test=set()
+        duplicate_set=set()
+        for group in groups:
+            if group.GetName() in duplicate_test:
+                duplicate_set.add(group.GetName())
+            else:
+                duplicate_test.add(group.GetName() )
+        for group in groups:
+            if group.GetName() in duplicate_set:
+                group.name=group.GetName()+' (%s)' % group.GetClass()
+
+        
         return groups

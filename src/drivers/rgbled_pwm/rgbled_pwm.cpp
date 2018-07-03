@@ -56,9 +56,8 @@
 #include <nuttx/wqueue.h>
 #include <drivers/drv_hrt.h>
 
-#include <systemlib/perf_counter.h>
+#include <perf/perf_counter.h>
 #include <systemlib/err.h>
-#include <systemlib/systemlib.h>
 
 #include <board_config.h>
 
@@ -101,7 +100,7 @@ private:
 	int			get(bool &on, bool &powersave, uint8_t &r, uint8_t &g, uint8_t &b);
 };
 
-extern "C" __EXPORT int rgbled_main(int argc, char *argv[]);
+extern "C" __EXPORT int rgbled_pwm_main(int argc, char *argv[]);
 extern int led_pwm_servo_set(unsigned channel, uint8_t  value);
 extern unsigned led_pwm_servo_get(unsigned channel);
 extern int led_pwm_servo_init(void);
@@ -114,10 +113,8 @@ namespace
 RGBLED_PWM *g_rgbled = nullptr;
 }
 
-void rgbled_usage();
-
 RGBLED_PWM::RGBLED_PWM() :
-	CDev("rgbled", RGBLED0_DEVICE_PATH),
+	CDev("rgbled_pwm", RGBLED_PWM0_DEVICE_PATH),
 	_work{},
 	_r(0),
 	_g(0),
@@ -263,10 +260,17 @@ RGBLED_PWM::led()
 int
 RGBLED_PWM::send_led_rgb()
 {
-
+#if defined(BOARD_HAS_LED_PWM)
 	led_pwm_servo_set(0, _r);
 	led_pwm_servo_set(1, _g);
 	led_pwm_servo_set(2, _b);
+#endif
+
+#if defined(BOARD_HAS_UI_LED_PWM)
+	led_pwm_servo_set(3, _r);
+	led_pwm_servo_set(4, _g);
+	led_pwm_servo_set(5, _b);
+#endif
 
 	return (OK);
 }
@@ -282,14 +286,14 @@ RGBLED_PWM::get(bool &on, bool &powersave, uint8_t &r, uint8_t &g, uint8_t &b)
 	return OK;
 }
 
-void
+static void
 rgbled_usage()
 {
 	PX4_INFO("missing command: try 'start', 'status', 'stop'");
 }
 
 int
-rgbled_main(int argc, char *argv[])
+rgbled_pwm_main(int argc, char *argv[])
 {
 	int ch;
 

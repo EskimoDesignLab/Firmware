@@ -63,6 +63,8 @@
 #define GPIO_LED_GREEN               GPIO_LED2
 #define GPIO_LED_BLUE                GPIO_LED3
 
+#define BOARD_HAS_CONTROL_STATUS_LEDS      1
+
 /*  Define the Chip Selects for SPI1
  *  CS           Devices                                 DRDY
  *  ---- ----------------------------------------------- -----
@@ -132,42 +134,35 @@
 #define PX4_SPI_BUS_RAMTRON          2
 #define PX4_SPI_BUS_BARO             PX4_SPI_BUS_RAMTRON
 
-/* Use these in place of the spi_dev_e enumeration to select a specific SPI device on SPI1 */
-#define PX4_SPIDEV_GYRO              1
-#define PX4_SPIDEV_ACCEL_MAG         2
-#define PX4_SPIDEV_MPU               4
-#define PX4_SPIDEV_HMC               5
-#define PX4_SPIDEV_ICM               6
-#define PX4_SPIDEV_LIS               7
-#define PX4_SPIDEV_BMI               8
-#define PX4_SPIDEV_BMA               9
-#define PX4_SPIDEV_ICM_20608         10
-#define PX4_SPIDEV_ICM_20602         11
-#define PX4_SPIDEV_BMI055_ACC        12
-#define PX4_SPIDEV_BMI055_GYR        13
+/* Use these in place of the uint32_t enumeration to select a specific SPI device on SPI1 */
+#define PX4_SPIDEV_GYRO              PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS, 1)
+#define PX4_SPIDEV_ACCEL_MAG         PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS, 2)
+#define PX4_SPIDEV_MPU               PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS, 4)
+#define PX4_SPIDEV_HMC               PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS, 5)
+#define PX4_SPIDEV_ICM               PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS, 6)
+#define PX4_SPIDEV_LIS               PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS, 7)
+#define PX4_SPIDEV_BMI               PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS, 8)
+#define PX4_SPIDEV_BMA               PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS, 9)
+#define PX4_SPIDEV_ICM_20608         PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS, 10)
+#define PX4_SPIDEV_ICM_20602         PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS, 11)
+#define PX4_SPIDEV_BMI055_ACC        PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS, 12)
+#define PX4_SPIDEV_BMI055_GYR        PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS, 13)
+#define PX4_SPIDEV_MPU2              PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS, 14)
 
 /* onboard MS5611 and FRAM are both on bus SPI2
  * spi_dev_e:SPIDEV_FLASH has the value 2 and is used in the NuttX ramtron driver
- * use 3 for the barometer to differentiate
+ * PX4_MK_SPI_SEL  differentiate by adding in PX4_SPI_DEVICE_ID
  */
-#define PX4_SPIDEV_BARO               3
-#if (PX4_SPIDEV_BARO == SPIDEV_FLASH)
-#error PX4_SPIDEV_BARO must not be equal to SPIDEV_FLASH as they share the same bus
-#endif
+#define PX4_SPIDEV_BARO             PX4_MK_SPI_SEL(PX4_SPI_BUS_BARO, 3)
 
 /* I2C busses */
 #define PX4_I2C_BUS_EXPANSION        1
 #define PX4_I2C_BUS_LED              PX4_I2C_BUS_EXPANSION
-#define PX4_I2C_BUS_BMM150           PX4_I2C_BUS_EXPANSION
 
 /* Devices on the external bus.
  *
  * Note that these are unshifted addresses.
  */
-#define PX4_I2C_OBDEV_LED            0x55
-#define PX4_I2C_OBDEV_HMC5883        0x1e
-#define PX4_I2C_OBDEV_LIS3MDL        0x1e
-#define PX4_I2C_OBDEV_BMM150         0x10
 #define PX4_I2C_OBDEV_BMP280         0x76
 
 /*
@@ -210,6 +205,7 @@
 
 /* Power supply control and monitoring GPIOs */
 #define GPIO_VDD_BRICK_VALID         (GPIO_INPUT|GPIO_PULLUP|GPIO_PORTB|GPIO_PIN5)
+#define GPIO_VDD_USB_VALID           (GPIO_INPUT|GPIO_PULLUP|GPIO_PORTC|GPIO_PIN0)
 #define GPIO_VDD_3V3_SENSORS_EN      (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTE|GPIO_PIN3)
 
 /* Tone alarm output */
@@ -311,6 +307,7 @@
  */
 #define BOARD_ADC_USB_CONNECTED      (px4_arch_gpioread(GPIO_OTGFS_VBUS))
 #define BOARD_ADC_BRICK_VALID        (px4_arch_gpioread(GPIO_VDD_BRICK_VALID))
+#define BOARD_ADC_USB_VALID          (px4_arch_gpioread(GPIO_VDD_USB_VALID))
 #define BOARD_ADC_SERVO_VALID        (1)
 #define BOARD_ADC_PERIPH_5V_OC       (0)
 #define BOARD_ADC_HIPOWER_5V_OC      (0)
@@ -325,7 +322,8 @@
 		{GPIO_GPIO4_INPUT,       GPIO_GPIO4_OUTPUT,       0}, \
 		{GPIO_GPIO5_INPUT,       GPIO_GPIO5_OUTPUT,       0}, \
 		{0,                      GPIO_VDD_3V3_SENSORS_EN, 0}, \
-		{GPIO_VDD_BRICK_VALID,   0,                       0}, }
+		{GPIO_VDD_BRICK_VALID,   0,                       0}, \
+		{GPIO_VDD_USB_VALID,     0,                       0}, }
 
 /*
  * PX4FMUv4 GPIO numbers.
@@ -341,6 +339,7 @@
 
 #define GPIO_3V3_SENSORS_EN          (1<<7)  /**< PE3 - VDD_3V3_SENSORS_EN */
 #define GPIO_BRICK_VALID             (1<<8)  /**< PB5 - !VDD_BRICK_VALID */
+#define GPIO_USB_VALID               (1<<9)  /**< PC0 - !GPIO_VDD_USB_VALID */
 
 /* This board provides a DMA pool and APIs */
 #define BOARD_DMA_ALLOC_POOL_SIZE    5120

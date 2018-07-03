@@ -70,10 +70,6 @@ PX4IO_Uploader::PX4IO_Uploader() :
 {
 }
 
-PX4IO_Uploader::~PX4IO_Uploader()
-{
-}
-
 int
 PX4IO_Uploader::upload(const char *filenames[])
 {
@@ -645,6 +641,13 @@ PX4IO_Uploader::verify_rev3(size_t fw_size_local)
 		return ret;
 	}
 
+	ret = get_sync();
+
+	if (ret != OK) {
+		log("did not receive CRC checksum");
+		return ret;
+	}
+
 	/* compare the CRC sum from the IO with the one calculated */
 	if (sum != crc) {
 		log("CRC wrong: received: %d, expected: %d", crc, sum);
@@ -657,11 +660,19 @@ PX4IO_Uploader::verify_rev3(size_t fw_size_local)
 int
 PX4IO_Uploader::reboot()
 {
+	int ret;
+
 	send(PROTO_REBOOT);
 	up_udelay(100 * 1000); // Ensure the farend is in wait for char.
 	send(PROTO_EOC);
 
-	return OK;
+	ret = get_sync();
+
+	if (ret == OK) {
+		up_udelay(10 * 1000);	// Ensure that we do not close UART too soon
+	}
+
+	return ret;
 }
 
 void
