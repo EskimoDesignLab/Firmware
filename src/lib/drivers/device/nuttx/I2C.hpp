@@ -67,7 +67,6 @@ protected:
 	uint8_t		_retries{0};
 
 
-    px4_i2c_dev_t		*_dev;
 
 	/**
 	 * @ Constructor
