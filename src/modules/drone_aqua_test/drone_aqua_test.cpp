@@ -158,11 +158,11 @@ private:
     bool        _climb_take_off;    /**< climb mode, fly backwards */
 
     bool _flag_qd_calculated;
-    math::Quaternion _qe;
+    math::Quaternion _qAtt2Des;
     math::Quaternion _qd_offset;
-    math::Quaternion _qd;
-    math::Quaternion _qm;
-    math::Vector<3> _euler_error;
+    math::Quaternion _qDes;
+    math::Quaternion _qAtt;
+    math::Vector<3> _EulAtt2Des;
     math::Vector<3> _euler_error_old;
     math::Vector<3> _derivate;
     math::Vector<3> _integrate;
@@ -478,7 +478,7 @@ DroneAquaTest::DroneAquaTest() :
     _climb_take_off(false),
 
     _flag_qd_calculated(false),
-    _euler_error(0),
+    _EulAtt2Des(0),
     _euler_error_old(0),
     _derivate(0),
     _integrate(0),
@@ -625,7 +625,7 @@ DroneAquaTest::DroneAquaTest() :
 
 
     _qd_offset.from_euler(0.0f, 1.57f, 0.0f);
-    _qd.from_euler(0.0f, 0.0f, 0.0f);
+    _qDes.from_euler(0.0f, 0.0f, 0.0f);
 
     // changed from 4 to 5 (DM)
     _gain.Kp.reserve(5);
@@ -1062,12 +1062,22 @@ DroneAquaTest::task_main() {
                 }
             }
 
-            // IDLE DU THRUST A 30% PENDANT UN CERTAIN TEMPS
+            // GAB : IDLE DU THRUST A 30% PENDANT UN CERTAIN TEMPS ==> Etienne Edit : Debut du full throttle et du controleur
             if (mode_seq7) {
-                _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.30f;
-				_actuators_airframe.control[1] = _parameters.take_off_up_pos;
+                _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
 
-                if (hrt_absolute_time() - present_time >=
+				_qDes.from_euler(0.0f, _parameters.take_off_custom_pitch, 0.0f);
+				_qAtt = q_att;
+				_qAtt2Des = _qAtt.conjugated() * _qDes;
+
+				_EulAtt2Des = _qAtt2Des.to_euler();
+				//warn("Error real : %0.3f , %0.3f , %0.3f", (double)(_EulAtt2Des(0)*R2D), (double)(_EulAtt2Des(1)*R2D), (double)(_EulAtt2Des(2)*R2D));
+				float r2servo = (_parameters.take_off_up_pos - _parameters.take_off_horizontal_pos) / (3.14159f / 2);
+
+				_actuators_airframe.control[1] = (_parameters.take_off_control_kp*_EulAtt2Des(1) - _parameters.take_off_control_kd*_ctrl_state.pitch_rate) * r2servo + _parameters.take_off_horizontal_pos;
+
+
+				if (hrt_absolute_time() - present_time >=
                     (int) _parameters.take_off_custom_time_08) // 2 sec
                 {
                     present_time = hrt_absolute_time();
@@ -1079,14 +1089,14 @@ DroneAquaTest::task_main() {
             // FULL THROTTLE PENDANT UN CERTAIN TEMPS
             if (mode_seq8) {
 
-				_qd.from_euler(0.0f, _parameters.take_off_custom_pitch, _yaw);
-				_qm = q_att;
-				_qe = _qm.conjugated() * _qd;
+				_qDes.from_euler(0.0f, _parameters.take_off_custom_pitch, _yaw);
+				_qAtt = q_att;
+				_qAtt2Des = _qAtt.conjugated() * _qDes;
 
-				_euler_error = _qe.to_euler();
-				_derivate = (_euler_error - _euler_error_old) / DT;
-				_euler_error_old = _euler_error;
-				//warn("Error real : %0.3f , %0.3f , %0.3f", (double)(_euler_error(0)*R2D), (double)(_euler_error(1)*R2D), (double)(_euler_error(2)*R2D));
+				_EulAtt2Des = _qAtt2Des.to_euler();
+				_derivate = (_EulAtt2Des - _euler_error_old) / DT;
+				_euler_error_old = _EulAtt2Des;
+				//warn("Error real : %0.3f , %0.3f , %0.3f", (double)(_EulAtt2Des(0)*R2D), (double)(_EulAtt2Des(1)*R2D), (double)(_EulAtt2Des(2)*R2D));
 				float r2servo = (_parameters.take_off_up_pos - _parameters.take_off_horizontal_pos) / (3.14159f / 2);
                 float throttleFunction = 0.30f + _parameters.take_off_custom_time_10*(hrt_absolute_time() - present_time)/1000000.0f;
                 if (throttleFunction < 1) {
@@ -1095,7 +1105,7 @@ DroneAquaTest::task_main() {
                 else {
                     _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
                 }
-                _actuators_airframe.control[1] = (_parameters.take_off_control_kp*_euler_error(1)+_parameters.take_off_control_kd*_derivate(1)) * r2servo + _parameters.take_off_horizontal_pos;
+                _actuators_airframe.control[1] = (_parameters.take_off_control_kp*_EulAtt2Des(1)+_parameters.take_off_control_kd*_derivate(1)) * r2servo + _parameters.take_off_horizontal_pos;
 
                 if (hrt_absolute_time() - present_time >=
                     (int) _parameters.take_off_custom_time_09) // 120 ms
