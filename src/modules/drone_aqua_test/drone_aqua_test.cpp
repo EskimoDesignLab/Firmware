@@ -39,6 +39,8 @@
  *
  */
 
+#include <drivers/drv_pwm_output.h>
+
 #include <px4_config.h>
 #include <px4_defines.h>
 #include <px4_tasks.h>
@@ -95,6 +97,9 @@
 #include <vector>
 
 #define SENSOR_COUNT_MAX		3
+#define DT 0.005f
+#define R2D 57.2957795f
+#define D2R  0.0174533f
 
 /**
  * Fixedwing attitude control app start / stop handling function
@@ -135,7 +140,7 @@ public:
 
 private:
 
-    // ID POUR LA COMMANDE DE LA TETE DU FLYING WING
+	// ID POUR LA COMMANDE DE LA TETE DU FLYING WING
 #define INDEX_SERVO_ROT 1
 #define INDEX_WIRE_POS_UP 2
 #define INDEX_WIRE_POS_DOWN 3
@@ -146,88 +151,75 @@ private:
 
 	bool		_wall_landing;
 	bool		_threshold_accel;
-    bool        _landed;
-    bool        _take_off;          /**< Take off from the wall */
-    bool        _accel_stop;        /**< if true, stop hover control */
-    bool        _climb;             /**< climb mode, fly into wall */
-    bool        _climb_take_off;    /**< climb mode, fly backwards */
+	bool        _landed;
+	bool        _take_off;          /**< Take off from the wall */
+	bool        _accel_stop;        /**< if true, stop hover control */
+	bool        _climb;             /**< climb mode, fly into wall */
+	bool        _climb_take_off;    /**< climb mode, fly backwards */
 
-    bool _flag_qd_calculated;
-    math::Quaternion _qe;
-    math::Quaternion _qd_offset;
-    math::Quaternion _qd;
-    math::Quaternion _qm;
-    math::Vector<3> _euler_error;
-    math::Vector<3> _euler_error_old;
-    math::Vector<3> _derivate;
-    math::Vector<3> _integrate;
-    math::Vector<3> _integrate_old;
-    std::vector<float> _outputs;
-    float _dt;
-    float _yaw_sp;
-    float _hover_speed_comm;
-   // float takeoff_correction;
-    //float _angle_correction;
-    float _speed_z_axis;
-    float _speed_z_axis_old;
-    float _speed_error;
-    float _speed_error_old;
-    float _speed_derivate;
-    float _speed_integrate;
-    float _speed_integrate_old;
+	bool _flag_qd_calculated;
+	math::Quaternion _qAtt2Des;
+	math::Quaternion _qd_offset;
+	math::Quaternion _qDes;
+	math::Quaternion _qAtt;
+	math::Vector<3> _EulAtt2Des;
+	math::Vector<3> _euler_error_old;
+	math::Vector<3> _derivate;
+	math::Vector<3> _integrate;
+	math::Vector<3> _integrate_old;
+	std::vector<float> _outputs;
+	float _dt;
+	float _yaw_sp;
+	float _hover_speed_comm;
+	float _speed_z_axis;
+	float _speed_z_axis_old;
+	float _speed_error;
+	float _speed_error_old;
+	float _speed_derivate;
+	float _speed_integrate;
+	float _speed_integrate_old;
 
 
-    struct {
-        std::vector<float> Kp;
-        std::vector<float> Kd;
-        std::vector<float> Ki;
-    } _gain;
+	struct {
+		std::vector<float> Kp;
+		std::vector<float> Kd;
+		std::vector<float> Ki;
+	} _gain;
 
 
 	int		_control_task;			/**< task handle */
 
-    int		_ctrl_state_sub;	/**< control state subscription */
+	int		_ctrl_state_sub;	/**< control state subscription */
 	int		_accel_sub;			/**< accelerometer subscription */
 	int		_att_sp_sub;			/**< vehicle attitude setpoint */
 	int		_attitude_sub;			/**< raw rc channels data subscription */
 	int		_vcontrol_mode_sub;		/**< vehicle status subscription */
-    int 	_params_sub;			/**< notification of parameter updates */
-    int 	_manual_sub;			/**< notification of manual control updates */
+	int 		_params_sub;			/**< notification of parameter updates */
+	int 		_manual_sub;			/**< notification of manual control updates */
 	int		_global_pos_sub;		/**< global position subscription */
 	int		_vehicle_status_sub;		/**< vehicle status subscription */
 	int		_vehicle_land_detected_sub;	/**< vehicle land detected subscription */
-    //int 	_distance_sub;
+	int 		_charging_info_sub; /* pour le module de balancing i2c */
+	int 		_wake_up_slave_info_sub;
 
-        ///////////////////////////////////////////////////////////////////////////
-    	int 		_charging_info_sub; /* pour le module de balancing i2c */
-    	int 		_wake_up_slave_info_sub;
-	///////////////////////////////////////////////////////////////////////////
-
-#if 1
-    int _counter;
-#endif
+	int _counter;
 
 	orb_advert_t	_rate_sp_pub;			/**< rate setpoint publication */
 	orb_advert_t	_attitude_sp_pub;		/**< attitude setpoint point */
 	orb_advert_t	_actuators_0_pub;		/**< actuator control group 0 setpoint */
 	orb_advert_t	_actuators_2_pub;		/**< actuator control group 1 setpoint (Airframe) */
 
-    	///////////////////////////////////////////////////////////////////////////
-    	orb_advert_t     _charging_info_topic_2;          /* pour publish charging i2c */
-     	orb_advert_t     _wake_up_slave_topic_2;    
-	///////////////////////////////////////////////////////////////////////////
+	orb_advert_t     _charging_info_topic_2;          /* pour publish charging i2c */
+	orb_advert_t     _wake_up_slave_topic_2;
 
 	orb_id_t _rates_sp_id;	// pointer to correct rates setpoint uORB metadata structure
 	orb_id_t _actuators_id;	// pointer to correct actuator controls0 uORB metadata structure
 
-    //orb_id_t _actuators2_id;    // TEST CONTROL GROUP 2 ****
 
 	orb_id_t _attitude_setpoint_id;
 
-	///////////////////////////////////////////////////////////////////////////
 	struct charging_info_s				_charging;	/* charging i2c topic */
-	struct wake_up_slave_info_s			_wake_up_slave;	
-	///////////////////////////////////////////////////////////////////////////
+	struct wake_up_slave_info_s			_wake_up_slave;
 
 	struct control_state_s				_ctrl_state;	/**< control state */
 	struct accel_report				_accel;			/**< body frame accelerations */
@@ -240,12 +232,9 @@ private:
 	struct vehicle_global_position_s		_global_pos;		/**< global position */
 	struct vehicle_status_s				_vehicle_status;	/**< vehicle status */
 	struct vehicle_land_detected_s			_vehicle_land_detected;	/**< vehicle land detected */
-    //struct distance_sensor_s			_distance;
 
-	///////////////////////////////////////////////////////////////////////////
 	struct charging_info_2_s 				report_charging_2;
-	struct wake_up_slave_info_2_s 				report_wake_up_slave_2;	
-	///////////////////////////////////////////////////////////////////////////
+	struct wake_up_slave_info_2_s 				report_wake_up_slave_2;
 
 	perf_counter_t	_loop_perf;			/**< loop performance counter */
 	perf_counter_t	_nonfinite_input_perf;		/**< performance counter for non finite input */
@@ -258,8 +247,8 @@ private:
 	float _flaperons_cmd_last;
 
 	float _time;
-    float _time_yaw_sp;
-    float _time_climb;
+	float _time_yaw_sp;
+	float _time_climb;
 	float _g;
 
 
@@ -310,6 +299,25 @@ private:
 
 		int vtol_type;					/**< VTOL type: 0 = tailsitter, 1 = tiltrotor */
 
+		// timing parameter for takeoff custom
+		float take_off_custom_time_01;
+		//float take_off_custom_time_02;
+		//float take_off_custom_time_03;
+		//float take_off_custom_time_04;
+		//float take_off_custom_time_05;
+		//float take_off_custom_time_06;
+		//float take_off_custom_time_07;
+		float take_off_custom_time_08;
+		float take_off_custom_time_09;
+		float take_off_custom_time_10;
+		float take_off_custom_time_11;
+		float take_off_horizontal_pos;
+		float take_off_up_pos;
+		float take_off_down_pos;
+		float take_off_control_kp;
+		float take_off_control_kd;
+		float take_off_custom_pitch;
+
 	}		_parameters;			/**< local copies of interesting parameters */
 
 	struct {
@@ -358,19 +366,25 @@ private:
 
 		param_t vtol_type;
 
-        /* Gain for hover control */
-        param_t Kp_aileron;
-        param_t Kp_elevation;
-        param_t Kp_rudder;
-        param_t Kp_vel_thrust;
-        param_t Kd_aileron;
-        param_t Kd_elevation;
-        param_t Kd_rudder;
-        param_t Kd_vel_thrust;
-        param_t Ki_aileron;
-        param_t Ki_elevation;
-        param_t Ki_rudder;
-        param_t Ki_vel_thrust;
+		// timing parameter for takeoff custom
+		param_t take_off_custom_time_01;
+		//param_t take_off_custom_time_02;
+		//param_t take_off_custom_time_03;
+		//param_t take_off_custom_time_04;
+		//param_t take_off_custom_time_05;
+		//param_t take_off_custom_time_06;
+		//param_t take_off_custom_time_07;
+		param_t take_off_custom_time_08;
+		param_t take_off_custom_time_09;
+		param_t take_off_custom_time_10;
+		param_t take_off_custom_time_11;
+		param_t take_off_horizontal_pos;
+		param_t take_off_up_pos;
+		param_t take_off_down_pos;
+		param_t take_off_control_kp;
+		param_t take_off_control_kd;
+		param_t take_off_custom_pitch;
+
 
 
 	}		_parameter_handles;		/**< handles for interesting parameters */
@@ -393,12 +407,6 @@ private:
 	 * Update our local parameter cache.
 	 */
 	int		parameters_update();
-
-	/**
-	 * Update control outputs
-	 *
-	 */
-	void		control_update();
 
 	/**
 	 * Check for changes in vehicle control mode.
@@ -431,32 +439,6 @@ private:
 	void		vehicle_status_poll();
 
 	/**
-	 * Check for vehicle land detected updates.
-	 */
-	void		vehicle_land_detected_poll();
-
-	/**
-	 * Check for distance sensor
-	 */
-    //void 		distance_poll();
-
-
-	/**
-	 *
-	 * @param q
-	 */
-    void		hover_control(const math::Quaternion &q);
-
-	/**
-	 * fonction qui effectu la sequence de decollage
-	 */
-    void 		drone_aqua_take_off(int *compteur);
-
-    void calculation_error(const math::Quaternion &val_q);
-    void discrete_derivative();
-    void discrete_integrate();
-
-	/**
 	 * Shim for calling task_main from task_create.
 	 */
 	static void	task_main_trampoline(int argc, char *argv[]);
@@ -475,9 +457,9 @@ namespace drone_aqua_test_control
 #ifdef ERROR
 # undef ERROR
 #endif
-static const int ERROR = -1;
+	static const int ERROR = -1;
 
-DroneAquaTest	*g_control = nullptr;
+	DroneAquaTest	*g_control = nullptr;
 }
 
 //********************************************//
@@ -485,86 +467,76 @@ DroneAquaTest	*g_control = nullptr;
 //********************************************//
 DroneAquaTest::DroneAquaTest() :
 
-	_task_should_exit(false),
-	_task_running(false),
-	_wall_landing(false),
-	_threshold_accel(false),
-    _landed(false),
-    _take_off(false),
-    _accel_stop(false),
-    _climb(false),
-    _climb_take_off(false),
+		_task_should_exit(false),
+		_task_running(false),
+		_wall_landing(false),
+		_threshold_accel(false),
+		_landed(false),
+		_take_off(false),
+		_accel_stop(false),
+		_climb(false),
+		_climb_take_off(false),
 
-    _flag_qd_calculated(false),
-    _euler_error(0),
-    _euler_error_old(0),
-    _derivate(0),
-    _integrate(0),
-    _integrate_old(0),
-    _outputs(4),
-    _dt(0.005),
-    _yaw_sp(0.0f),
-    _hover_speed_comm(0.0f),
-    //takeoff_correction(1.0f),
-    _speed_z_axis(0.0f),
-    _speed_z_axis_old(0.0f),
-    _speed_error(0.0f),
-    _speed_error_old(0.0f),
-    _speed_derivate(0.0f),
-    _speed_integrate(0.0f),
-    _speed_integrate_old(0.0f),
-   // _angle_correction(1.0f),
+		_flag_qd_calculated(false),
+		_EulAtt2Des(0),
+		_euler_error_old(0),
+		_derivate(0),
+		_integrate(0),
+		_integrate_old(0),
+		_outputs(4),
+		_dt(0.005),
+		_yaw_sp(0.0f),
+		_hover_speed_comm(0.0f),
+		_speed_z_axis(0.0f),
+		_speed_z_axis_old(0.0f),
+		_speed_error(0.0f),
+		_speed_error_old(0.0f),
+		_speed_derivate(0.0f),
+		_speed_integrate(0.0f),
+		_speed_integrate_old(0.0f),
 
+		_control_task(-1),
 
-	_control_task(-1),
+		/* subscriptions */
+		_ctrl_state_sub(-1),
+		_accel_sub(-1),
+		_vcontrol_mode_sub(-1),
+		_params_sub(-1),
+		_manual_sub(-1),
+		_global_pos_sub(-1),
+		_vehicle_status_sub(-1),
+		_vehicle_land_detected_sub(-1),
+		//_distance_sub(-1),
+		_charging_info_sub(-1),
+		_wake_up_slave_info_sub(-1),
 
-	/* subscriptions */
-	_ctrl_state_sub(-1),
-	_accel_sub(-1),
-	_vcontrol_mode_sub(-1),
-	_params_sub(-1),
-	_manual_sub(-1),
-	_global_pos_sub(-1),
-	_vehicle_status_sub(-1),
-	_vehicle_land_detected_sub(-1),
-        //_distance_sub(-1),
-        _charging_info_sub(-1),
-        _wake_up_slave_info_sub(-1),
+		/* publications */
+		_rate_sp_pub(nullptr),
+		_attitude_sp_pub(nullptr),
+		_actuators_0_pub(nullptr),
+		_actuators_2_pub(nullptr),
 
-	/* publications */
-	_rate_sp_pub(nullptr),
-	_attitude_sp_pub(nullptr),
-	_actuators_0_pub(nullptr),
-	_actuators_2_pub(nullptr),
+		_charging_info_topic_2(nullptr),
+		_wake_up_slave_topic_2(nullptr),
 
-	///////////////////////////////////////////////////////////////////////////
-	_charging_info_topic_2(nullptr),
-	_wake_up_slave_topic_2(nullptr),
-	///////////////////////////////////////////////////////////////////////////
+		_rates_sp_id(0),
+		_actuators_id(0),
+		_attitude_setpoint_id(0),
 
-	_rates_sp_id(0),
-	_actuators_id(0),
-	_attitude_setpoint_id(0),
+		/* performance counters */
+		_loop_perf(perf_alloc(PC_ELAPSED, "fwa_dt")),
 
-	/* performance counters */
-	_loop_perf(perf_alloc(PC_ELAPSED, "fwa_dt")),
-
-#if 0
-	_nonfinite_input_perf(perf_alloc(PC_COUNT, "fwa_nani")),
-	_nonfinite_output_perf(perf_alloc(PC_COUNT, "fwa_nano")),
-#else
-	_nonfinite_input_perf(nullptr),
-	_nonfinite_output_perf(nullptr),
-#endif
-	/* states */
-	_setpoint_valid(false),
-	_debug(false),
-	_flaps_cmd_last(0),
-	_flaperons_cmd_last(0),
-	_time(0),
-        _time_yaw_sp(0),
-        _time_climb(0),
-	_g(9.81f)
+		_nonfinite_input_perf(nullptr),
+		_nonfinite_output_perf(nullptr),
+		/* states */
+		_setpoint_valid(false),
+		_debug(false),
+		_flaps_cmd_last(0),
+		_flaperons_cmd_last(0),
+		_time(0),
+		_time_yaw_sp(0),
+		_time_climb(0),
+		_g(9.81f)
 {
 	/* safely initialize structs */
 	_ctrl_state = {};
@@ -578,9 +550,9 @@ DroneAquaTest::DroneAquaTest() :
 	_global_pos = {};
 	_vehicle_status = {};
 	_vehicle_land_detected = {};
-        //_distance ={};
+	//_distance ={};
 
-    _counter = 0;
+	_counter = 0;
 
 
 	_parameter_handles.p_tc = param_find("FW_P_TC");
@@ -631,28 +603,34 @@ DroneAquaTest::DroneAquaTest() :
 
 	_parameter_handles.vtol_type = param_find("VT_TYPE");
 
+	// timing for each step of aqua drone take off
+	_parameter_handles.take_off_custom_time_01 = param_find("TK_WAIT_TIME");
+	//_parameter_handles.take_off_custom_time_02 = param_find("TK_CUSTM_T2");
+	//_parameter_handles.take_off_custom_time_03 = param_find("TK_UP_TIME");
+	//_parameter_handles.take_off_custom_time_04 = param_find("TK_CUSTM_T4");
+	//_parameter_handles.take_off_custom_time_05 = param_find("TK_CUSTM_T5");
+	//_parameter_handles.take_off_custom_time_06 = param_find("TK_CUSTM_T6");
+	//_parameter_handles.take_off_custom_time_07 = param_find("TK_CUSTM_T7");
+	_parameter_handles.take_off_custom_time_08 = param_find("TK_IDLE_UP_TIME");
+	_parameter_handles.take_off_custom_time_09 = param_find("TK_FULL_UP_TIME");
+	_parameter_handles.take_off_custom_time_10 = param_find("TK_CON_TIME");
+	_parameter_handles.take_off_custom_time_11 = param_find("TK_FULL_DN_TIME");
+	_parameter_handles.take_off_horizontal_pos = param_find("TK_HOR_POS");
+	_parameter_handles.take_off_up_pos = param_find("TK_UP_POS");
+	_parameter_handles.take_off_down_pos = param_find("TK_DN_POS");
+	_parameter_handles.take_off_control_kp = param_find("TK_CON_KP");
+	_parameter_handles.take_off_control_kd = param_find("TK_CON_KD");
+	_parameter_handles.take_off_custom_pitch = param_find("TK_CUSTM_PITCH");
 
 
-    _qd_offset.from_euler(0.0f, 1.57f, 0.0f);
-    _qd.from_euler(0.0f, 0.0f, 0.0f);
 
-    // changed from 4 to 5 (DM)
-    _gain.Kp.reserve(5);
-    _gain.Kd.reserve(5);
-    _gain.Ki.reserve(5);
+	_qd_offset.from_euler(0.0f, 1.57f, 0.0f);
+	_qDes.from_euler(0.0f, 0.0f, 0.0f);
 
-    _parameter_handles.Kp_aileron = param_find("ALLO");
-    _parameter_handles.Kp_elevation = param_find("KP_ELEVATION");
-    _parameter_handles.Kp_rudder = param_find("KP_RUDDER");
-    _parameter_handles.Kp_vel_thrust = param_find("KP_VEL_THRUST");
-    _parameter_handles.Kd_aileron = param_find("KD_AILERON");
-    _parameter_handles.Kd_elevation = param_find("KD_ELEVATION");
-    _parameter_handles.Kd_rudder = param_find("KD_RUDDER");
-    _parameter_handles.Kd_vel_thrust = param_find("KD_VEL_THRUST");
-    _parameter_handles.Ki_aileron = param_find("KI_AILERON");
-    _parameter_handles.Ki_elevation = param_find("KI_ELEVATION");
-    _parameter_handles.Ki_rudder = param_find("KI_RUDDER");
-    _parameter_handles.Ki_vel_thrust = param_find("KI_VEL_THRUST");
+	// changed from 4 to 5 (DM)
+	_gain.Kp.reserve(5);
+	_gain.Kd.reserve(5);
+	_gain.Ki.reserve(5);
 
 	/* fetch initial parameter values */
 	parameters_update();
@@ -781,26 +759,27 @@ DroneAquaTest::parameters_update()
 	_wheel_ctrl.set_integrator_max(_parameters.w_integrator_max);
 	_wheel_ctrl.set_max_rate(math::radians(_parameters.w_rmax));
 
-
-    param_get(_parameter_handles.Kp_aileron, &_gain.Kp[0]);
-    param_get(_parameter_handles.Kp_elevation, &_gain.Kp[1]);
-    param_get(_parameter_handles.Kp_rudder, &_gain.Kp[2]);
-    param_get(_parameter_handles.Kp_vel_thrust, &_gain.Kp[3]);
-    param_get(_parameter_handles.Kd_aileron,  &_gain.Kd[0]);
-    param_get(_parameter_handles.Kd_elevation, & _gain.Kd[1]);
-    param_get(_parameter_handles.Kd_rudder, &_gain.Kd[2]);
-    param_get(_parameter_handles.Kd_vel_thrust,  &_gain.Kd[3]);
-    param_get(_parameter_handles.Ki_aileron, &_gain.Ki[0]);
-    param_get(_parameter_handles.Ki_elevation, &_gain.Ki[1]);
-    param_get(_parameter_handles.Ki_rudder, &_gain.Ki[2]);
-    param_get(_parameter_handles.Ki_vel_thrust, &_gain.Ki[3]);
-
+	// timing for each step of aqua drone take off
+	param_get(_parameter_handles.take_off_custom_time_01, &_parameters.take_off_custom_time_01);
+	//param_get(_parameter_handles.take_off_custom_time_02, &_parameters.take_off_custom_time_02);
+	//param_get(_parameter_handles.take_off_custom_time_03, &_parameters.take_off_custom_time_03);
+	//param_get(_parameter_handles.take_off_custom_time_04, &_parameters.take_off_custom_time_04);
+	//param_get(_parameter_handles.take_off_custom_time_05, &_parameters.take_off_custom_time_05);
+	//param_get(_parameter_handles.take_off_custom_time_06, &_parameters.take_off_custom_time_06);
+	//param_get(_parameter_handles.take_off_custom_time_07, &_parameters.take_off_custom_time_07);
+	param_get(_parameter_handles.take_off_custom_time_08, &_parameters.take_off_custom_time_08);
+	param_get(_parameter_handles.take_off_custom_time_09, &_parameters.take_off_custom_time_09);
+	param_get(_parameter_handles.take_off_custom_time_10, &_parameters.take_off_custom_time_10);
+	param_get(_parameter_handles.take_off_custom_time_11, &_parameters.take_off_custom_time_11);
+	param_get(_parameter_handles.take_off_horizontal_pos, &_parameters.take_off_horizontal_pos);
+	param_get(_parameter_handles.take_off_up_pos, &_parameters.take_off_up_pos);
+	param_get(_parameter_handles.take_off_down_pos, &_parameters.take_off_down_pos);
+	param_get(_parameter_handles.take_off_control_kp, &_parameters.take_off_control_kp);
+	param_get(_parameter_handles.take_off_control_kd, &_parameters.take_off_control_kd);
+	param_get(_parameter_handles.take_off_custom_pitch, &_parameters.take_off_custom_pitch);
 	return OK;
 }
 
-//********************************************//
-// POLLING VEHICULE CONTROL MODE            ////
-//********************************************//
 void
 DroneAquaTest::vehicle_control_mode_poll()
 {
@@ -815,9 +794,6 @@ DroneAquaTest::vehicle_control_mode_poll()
 	}
 }
 
-//********************************************//
-// POLLING MODE MANUEL                      ////
-//********************************************//
 void
 DroneAquaTest::vehicle_manual_poll()
 {
@@ -832,9 +808,6 @@ DroneAquaTest::vehicle_manual_poll()
 	}
 }
 
-//********************************************//
-// POLLING CAPTEUR ACCEL                    ////
-//********************************************//
 void
 DroneAquaTest::vehicle_accel_poll()
 {
@@ -847,9 +820,6 @@ DroneAquaTest::vehicle_accel_poll()
 	}
 }
 
-//********************************************//
-// POLLING SETPOINT                         ////
-//********************************************//
 void
 DroneAquaTest::vehicle_setpoint_poll()
 {
@@ -863,9 +833,6 @@ DroneAquaTest::vehicle_setpoint_poll()
 	}
 }
 
-//********************************************//
-// POLLING VEHICULE POSITION                ////
-//********************************************//
 void
 DroneAquaTest::global_pos_poll()
 {
@@ -878,9 +845,6 @@ DroneAquaTest::global_pos_poll()
 	}
 }
 
-//********************************************//
-// POLLING STATUS VEHICULE                  ////
-//********************************************//
 void
 DroneAquaTest::vehicle_status_poll()
 {
@@ -902,8 +866,8 @@ DroneAquaTest::vehicle_status_poll()
 				_rates_sp_id = ORB_ID(vehicle_rates_setpoint);
 				_actuators_id = ORB_ID(actuator_controls_0);
 
-                // TEST CONTROL ACTUATEUR GROUP 2
-                //_actuators2_id = ORB_ID(actuator_controls_1);
+				// TEST CONTROL ACTUATEUR GROUP 2
+				//_actuators2_id = ORB_ID(actuator_controls_1);
 
 				_attitude_setpoint_id = ORB_ID(vehicle_attitude_setpoint);
 			}
@@ -911,205 +875,20 @@ DroneAquaTest::vehicle_status_poll()
 	}
 }
 
-//********************************************//
-// POLLING LANDING DETECTED                 ////
-//********************************************//
-void
-DroneAquaTest::vehicle_land_detected_poll()
-{
-	/* check if there is new status information */
-	bool vehicle_land_detected_updated;
-	orb_check(_vehicle_land_detected_sub, &vehicle_land_detected_updated);
-
-	if (vehicle_land_detected_updated) {
-		orb_copy(ORB_ID(vehicle_land_detected), _vehicle_land_detected_sub, &_vehicle_land_detected);
-	}
-}
-
-// POUR MODULE DU PERCHING WALL -> PAS UTILE
-/*
-void
-DroneAquaTest::distance_poll()
-{
-	bool distance_updated;
-	orb_check(_distance_sub, &distance_updated);
-
-	if (distance_updated) {
-		orb_copy(ORB_ID(distance_sensor), _distance_sub, &_distance);
-	}
-}
-*/
-
-//********************************************//
-// SEQUENCE DE DÉCOLLAGE	                ////
-//********************************************//
-void
-DroneAquaTest::drone_aqua_take_off(int *compteur)
-{
-
-}
-
-// POUR MODULE DU PERCHING WALL -> PAS UTILE
-void
-DroneAquaTest::hover_control(const math::Quaternion &q)
-{
-	std::vector<float> outputs(4);
-
-    calculation_error(q);
-    discrete_derivative();
-    discrete_integrate();
-
-    // Calcul la valeur de chaque sortie
-    for (int i = 0; i < (_outputs.size() - 1); ++i) {
-        outputs[i] = ((_gain.Kp[i] * _euler_error(i)) + (_derivate(i) * _gain.Kd[i]) + (_integrate(i) * _gain.Ki[i]));
-
-        // Conditions de staturation
-        if (outputs[i] >= 1.0f) {
-            outputs[i] = 1.0f;
-        } else if (outputs[i] <= -1.0f) {
-            outputs[i] = -1.0f;
-        }
-    }
-
-    // Vertical velocity and position controller with switch at given pitch angle
-    if (_wall_landing) {
-        // Force l'élévation à 100% pour ralentir
-
-        // Thrust feedback
-
-        if (q.to_euler()(1) < 1.39f && _hover_speed_comm > -0.1f) { //&& _hover_speed_comm < 0.0f // making sure to not go back to 0.0f speed command
-             _hover_speed_comm = 0.0f;
-        } else {
-            _hover_speed_comm = -0.2f;
-           // outputs[0] = outputs[0] + 0.0f;
-        }
-
-        //_hover_speed_comm = 0.0f;
-
-        outputs[3] = ((_gain.Kp[3] * _speed_error) + (_speed_derivate * _gain.Kd[3]) + _speed_integrate * _gain.Ki[3]) + 0.65f;
-
-        if (outputs[3] < 0.23f){
-                outputs[3] = 0.23f;
-        }
-            // Thrust feedback through integration of IMU measurements for vertical velocity
- } else if (_take_off) {
-        if (_time < 1.0f) {
-            //outputs[3] = 0.68f;
-            _hover_speed_comm = 0.8f;
-            //outputs[3] = 0.60f;
-            outputs[3] = ((_gain.Kp[3] * _speed_error) + (_speed_derivate * _gain.Kd[3]) + _speed_integrate * _gain.Ki[3]) + 0.65f;
-            if (outputs[3] > 1.0f)
-                outputs[3] = 1.0f;
-            //outputs[3] = 0.0f;
-            else if (outputs[3] < 0.5f)
-                outputs[3] = 0.5f;
-            //outputs[3] = 0.0f;
-        } else {
-            //outputs[3] = 0.60f;
-             _hover_speed_comm = 0.2f;
-            outputs[3] = ((_gain.Kp[3] * _speed_error) + (_speed_derivate * _gain.Kd[3]) + _speed_integrate * _gain.Ki[3]) + 0.65f;
-            if (outputs[3] > 1.0f)
-                outputs[3] = 1.0f;
-            //outputs[3] = 0.0f;
-            else if (outputs[3] < 0.5f)
-                outputs[3] = 0.5f;
-            //outputs[3] = 0.0f;
-        }
-}
-
-    // DONNE LES OUTPUTS DU
-	_actuators.control[actuator_controls_s::INDEX_ROLL] = outputs[0];
-    _actuators.control[actuator_controls_s::INDEX_PITCH] = outputs[1];
-	_actuators.control[actuator_controls_s::INDEX_YAW] = outputs[2];
-    _actuators.control[actuator_controls_s::INDEX_THROTTLE] = outputs[3];
-}
-
-// POUR MODULE DU PERCHING WALL -> PAS UTILE
-void
-DroneAquaTest::calculation_error(const math::Quaternion &q)
-{
-    _qm = q.conjugated();
-    _qe = _qm * _qd;
-    _euler_error = _qe.to_euler();
-
-    /* Speed estimation */
-    //AccelZ = -(-PixAccelX.*sin(PixPitch*pi/180) + PixAccelZ.*cos(PixPitch*pi/180) + 9.714);
-
-    //float accelZ = -(-_ctrl_state.x_acc*(float)sin(q.to_euler()(1)) + _ctrl_state.z_acc*(float)cos(q.to_euler()(1)) + 9.714f); // g = 9.714
-
-
-    float angle2 = q.to_euler()(1);
-    float angle3 = q.to_euler()(0);
-
-    float s2 = (float)sin(angle2);
-    float c2 = (float)cos(angle2);
-    float s3 = (float)sin(angle3);
-    float c3 = (float)cos(angle3);
-
-    float ax = _ctrl_state.x_acc;
-    float ay = _ctrl_state.y_acc;
-    float az = _ctrl_state.z_acc;
-
-    float gi = 9.724f;
-
-    float accelZ = -(-ax*s2 + ay*s3*c2 + az*c2*c3 + gi);
-
-
-    _speed_z_axis_old = _speed_z_axis;
-    _speed_z_axis = _speed_z_axis_old + accelZ * _dt; //
-
-   // if (angle2 > 1.39f) {
-        _speed_error = _hover_speed_comm - (_speed_z_axis); // float added ro _speed_z_axis as speed calculation bias
-    //} else {
-    //    _speed_error = _hover_speed_comm - _speed_z_axis;
-   // }
-}
-
-void
-DroneAquaTest::discrete_derivative()
-{
-    _derivate = (_euler_error - _euler_error_old) / _dt;
-    _euler_error_old = _euler_error;
-
-    _speed_derivate = (_speed_error - _speed_error_old) / _dt;
-    _speed_error_old = _speed_error;
-
-}
-
-void
-DroneAquaTest::discrete_integrate()
-{
-    _integrate = (_euler_error * _dt) + _integrate_old;
-    _integrate_old = _integrate;
-
-    _speed_integrate = (_speed_error * _dt) + _speed_integrate_old;
-    _speed_integrate_old = _speed_integrate;
-
-}
-
 void
 DroneAquaTest::task_main_trampoline(int argc, char *argv[])
 {
 	drone_aqua_test_control::g_control->task_main();
 }
-
-//********************************************//
-// BOUCLE DE CONTROLE                       ////
-//********************************************//
 void
-DroneAquaTest::task_main()
-{
+DroneAquaTest::task_main() {
 
-	///////////////////////////////////////////////////////////////////////////
-	// pour publish dans wake_up_slave_info_2 / charging_info_2
-	///////////////////////////////////////////////////////////////////////////
 	_wake_up_slave_topic_2 = orb_advertise(ORB_ID(wake_up_slave_info_2), &report_wake_up_slave_2);
 	_charging_info_topic_2 = orb_advertise(ORB_ID(charging_info_2), &report_charging_2);
-	///////////////////////////////////////////////////////////////////////////
 
 	/*
-	 * do subscriptions ()
-	 */
+     * do subscriptions ()
+     */
 	_att_sp_sub = orb_subscribe(ORB_ID(vehicle_attitude_setpoint));
 	_ctrl_state_sub = orb_subscribe(ORB_ID(control_state));
 	_accel_sub = orb_subscribe_multi(ORB_ID(sensor_accel), 0);
@@ -1119,14 +898,9 @@ DroneAquaTest::task_main()
 	_global_pos_sub = orb_subscribe(ORB_ID(vehicle_global_position));
 	_vehicle_status_sub = orb_subscribe(ORB_ID(vehicle_status));
 	_vehicle_land_detected_sub = orb_subscribe(ORB_ID(vehicle_land_detected));
-        //_distance_sub = orb_subscribe(ORB_ID(distance_sensor));
 
-	///////////////////////////////////////////////////////////////////////////
-	// pour subscribe a wake_up_slave_info / charging_info
-	///////////////////////////////////////////////////////////////////////////
 	_wake_up_slave_info_sub = orb_subscribe(ORB_ID(wake_up_slave_info));
-	_charging_info_sub = orb_subscribe(ORB_ID(charging_info));	
-	///////////////////////////////////////////////////////////////////////////
+	_charging_info_sub = orb_subscribe(ORB_ID(charging_info));
 
 	// Set l'intervale à 200Hz ( boucle de controle )
 	orb_set_interval(_ctrl_state_sub, 5);
@@ -1139,8 +913,6 @@ DroneAquaTest::task_main()
 	vehicle_control_mode_poll();
 	vehicle_manual_poll();
 	vehicle_status_poll();
-	vehicle_land_detected_poll();
-        //distance_poll();
 
 	/* wakeup source */
 	px4_pollfd_struct_t fds[2];
@@ -1153,36 +925,45 @@ DroneAquaTest::task_main()
 
 	_task_running = true;
 
+	static bool mode_seq0 = false;
+	static bool mode_seq2 = false;
+	static bool mode_seq7 = false;
+	static bool mode_seq8 = false;
+	static bool mode_seq9 = false;
+	static bool mode_seq10 = false;
+	static bool mode_seq11 = false;
+	float err0 = 0.0;
+
+	static bool flagidle = false;
+
+	static int present_time = 0;
+
 	while (!_task_should_exit) {
 
-        	static int loop_counter = 0;
+		static int loop_counter = 0;
+		//static int time_count = 0;
 
-	        // VARIABLES UTILES À LA MANOEUVRE DE DÉCOLLAGE
+		// VARIABLES UTILES À LA MANOEUVRE DE DÉCOLLAGE
 
-	        /*****************************************************/
-	    
-#if 0
-	        static int compteur = 0;
+		/*****************************************************/
 
-	        static bool mode_seq0 = false;
-	        static bool mode_seq1 = false;
-	        static bool mode_seq2 = false;
-	        static bool mode_seq3 = false;
-	        static bool mode_seq4 = false;
-	        static bool mode_seq5 = false;       
-	        static bool mode_seq6 = false;
-	        static bool mode_seq7 = false;
-	        static bool mode_seq8 = false;
-	        static bool mode_seq9 = false;
-	        static bool mode_seq10 = false;
-	        static bool mode_seq11 = false;
+		//static int compteur = 0;
 
-	        static bool flagidle = false;
-#endif
-        
-	        /*****************************************************/
+		//static bool mode_seq0 = false;
+		//static bool mode_seq2 = false;
+		//static bool mode_seq7 = false;
+		//static bool mode_seq8 = false;
+		//static bool mode_seq9 = false;
+		//static bool mode_seq10 = false;
+		//static bool mode_seq11 = false;
+		//float err0 = 0.0;
 
-	        // SI PAS DUPDATE DANS 500ms -> LE PILOTE REPREND LES COMMANDES
+		//static bool flagidle = false;
+
+		//static int present_time = 0;
+
+		/*****************************************************/
+
 		/* wait for up to 500ms for data */
 		int pret = px4_poll(&fds[0], (sizeof(fds) / sizeof(fds[0])), 100);
 
@@ -1199,7 +980,7 @@ DroneAquaTest::task_main()
 
 		perf_begin(_loop_perf);
 
-        	// UPDATE DES PARAMETRES SI EVENT DU 200 HZ
+		// UPDATE DES PARAMETRES SI EVENT DU 200 HZ
 		/* only update parameters if they changed */
 		if (fds[0].revents & POLLIN) {
 			/* read from param to clear updated flag */
@@ -1210,7 +991,7 @@ DroneAquaTest::task_main()
 			parameters_update();
 		}
 
-        	// LORSQUE LUPDATE DES PARAMETRE SURVIENT -> ON VA DANS LE IF
+		// LORSQUE LUPDATE DES PARAMETRE SURVIENT -> ON VA DANS LE IF
 		/* only run controller if attitude changed */
 		if (fds[1].revents & POLLIN) {
 			static uint64_t last_run = 0;
@@ -1226,273 +1007,200 @@ DroneAquaTest::task_main()
 			// uORB des control state (acc, gyro, compass, etc. qui viennent dun autre process)
 			orb_copy(ORB_ID(control_state), _ctrl_state_sub, &_ctrl_state);
 
-            // POLLING DES PARAMETRES
-            vehicle_status_poll();
-            vehicle_accel_poll();
-            vehicle_manual_poll();
+			/* get current rotation matrix and euler angles from control state quaternions */
+			math::Quaternion q_att(_ctrl_state.q[0], _ctrl_state.q[1], _ctrl_state.q[2], _ctrl_state.q[3]);
+			_R = q_att.to_dcm();
 
-            //****************************************************************************************************//
-            //A FARE -> METTRE CETTE SÉQUENCE DANS UNE FONCTION APPROPRIÉE ET RENOMMER LE MODULE "AQUA_TAKE_OFF"
-            //****************************************************************************************************//    
+			math::Vector<3> euler_angles;
+			euler_angles = _R.to_euler();
+			_roll = euler_angles(0);
+			_pitch = euler_angles(1);
+			_yaw = euler_angles(2);
 
-            // CES COMMANDES DE LAVION VIENNENT DE LA MANETTE (MODE SEMI MANUEL POUR LINSTANT)
-            _actuators.control[actuator_controls_s::INDEX_ROLL] = _manual.y; //0.0f + _parameters.trim_roll;
-            _actuators.control[actuator_controls_s::INDEX_PITCH] = _manual.x; //0.3f + _parameters.trim_pitch;
-            _actuators.control[actuator_controls_s::INDEX_YAW] = _manual.r; // 0.0f + _parameters.trim_yaw
-            _actuators.control[actuator_controls_s::INDEX_THROTTLE] = _manual.z; // pass-through de la commande du trigger
+			vehicle_status_poll();
+			vehicle_accel_poll();
+			vehicle_manual_poll();
+			vehicle_control_mode_poll();
 
-#if 0
 
-            // WAIT AVANT LA SEQUENCE (FALCULTATIF)
-            if(mode_seq0)
-            {
-                _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f; 
-                _actuators_airframe.control[INDEX_WIRE_POS_UP] = -1.0f;                             	
-                _actuators_airframe.control[INDEX_WIRE_POS_DOWN] = -1.0f;
-                _actuators_airframe.control[INDEX_SERVO_ROT] = 0.0f;
+			//****************************************************************************************************//
+			//A FARE -> METTRE CETTE SÉQUENCE DANS UNE FONCTION APPROPRIÉE ET RENOMMER LE MODULE "AQUA_TAKE_OFF"
+			//****************************************************************************************************//
 
-                flagidle = true; // pour pas remettre le mode idle pendant la suite de la sequence
+			// CES COMMANDES DE LAVION VIENNENT DE LA MANETTE (MODE SEMI MANUEL POUR LINSTANT)
+			_actuators.control[actuator_controls_s::INDEX_ROLL] = _manual.y; //0.0f + _parameters.trim_roll;
+			_actuators.control[actuator_controls_s::INDEX_PITCH] = _manual.x; //0.3f + _parameters.trim_pitch;
+			_actuators.control[actuator_controls_s::INDEX_YAW] = _manual.r; // 0.0f + _parameters.trim_yaw
+			_actuators.control[actuator_controls_s::INDEX_THROTTLE] = _manual.z; // pass-through de la commande du trigger
 
-                if(compteur++ >= 400)
-                {
-                   compteur = 0;
-                   mode_seq0 = false;
-                   mode_seq1 = true;
-                }
-            }
-            
-            // COMMENCE À ACTIVER LE MUSCLE WIRE DU VERROU HORIZONTAL
-            if(mode_seq1)
-            {
-                _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f;  
-                _actuators_airframe.control[INDEX_WIRE_POS_UP] = -1.0f;                                 	
-            	_actuators_airframe.control[INDEX_WIRE_POS_DOWN] = 1.0f;
-            	_actuators_airframe.control[INDEX_SERVO_ROT] = 0.0f;
-				
-                if(compteur++ >= 120) //timing optimal entre 140-170
-                {
-                   compteur = 0;
-                   mode_seq1 = false;
-                   mode_seq2 = true;             
-                }               
-            }
+			// WAIT AVANT LA SEQUENCE (FALCULTATIF)
+			if (mode_seq0) {
+				_actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f;
+				_actuators_airframe.control[1] = _parameters.take_off_horizontal_pos; //0.28f;
 
-            // ACTIVE LE SERVO POUR REMONTER LE PIVOT EN CONTINUANT DACTIVER LE MEME MUSCLE WIRE
-            if(mode_seq2)
-            {
-                _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f;  
-                _actuators_airframe.control[INDEX_WIRE_POS_UP] = -1.0f;                                	
-                _actuators_airframe.control[INDEX_WIRE_POS_DOWN] = 1.0f;
-                _actuators_airframe.control[INDEX_SERVO_ROT] = -0.4f;
-               
-                if(compteur++ >= 200)
-                {
-                   compteur = 0;
-                   mode_seq2 = false;
-                   mode_seq3 = true;
-                }               
-            }  
+				if (hrt_absolute_time() - present_time >=
+					(int) _parameters.take_off_custom_time_01) // 2 sec
+				{
+					present_time = hrt_absolute_time();
+					mode_seq0 = false;
+					mode_seq2 = true;
+					//flagidle = true;
+				}
+			}
 
-            // DÉSACTIVE LE MUSCLE WIRE ET FINI LA SEQUENCE POUR REMONTER LE PIVOT
-            if(mode_seq3)
-            {
-                _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f; 
-                _actuators_airframe.control[INDEX_WIRE_POS_UP] = -1.0f;                              	
-                _actuators_airframe.control[INDEX_WIRE_POS_DOWN] = -1.0f;
-                _actuators_airframe.control[INDEX_SERVO_ROT] = -0.4f;
-             
-                if(compteur++ >= 27)
-                {
-                   compteur = 0;
-                   mode_seq3 = false;
-                   mode_seq4 = true;
-                }                              
-            }    
+			// ACTIVE LE SERVO POUR REMONTER LE PIVOT
+			if (mode_seq2) {
+				_actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f;
+				_actuators_airframe.control[1] = _parameters.take_off_up_pos;
 
-          	// DÉSACTIVE TOUT UNE FOIS LE PIVOT REMONTÉ
-            if(mode_seq4)
-            {
-                _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f;  
-                _actuators_airframe.control[INDEX_WIRE_POS_UP] = -1.0f;                 
-                _actuators_airframe.control[INDEX_WIRE_POS_DOWN] = -1.0f;
-                _actuators_airframe.control[INDEX_SERVO_ROT] = 0.0f;
-                
-                if(compteur++ >= 800)
-                {
-                   compteur = 0;
-                   mode_seq4 = false;
-                   mode_seq5 = true;
-                }                                     
-            }     
+				if (hrt_absolute_time() - present_time >=
+					1000000) //(int)_parameters.take_off_custom_time_03) // 1 sec
+				{
+					present_time = hrt_absolute_time();
+					mode_seq2 = false;
+					mode_seq7 = true;
+				}
+			}
 
-            // REMET LE SERVO DU PIVOT DANS SA POSITION INITIALE
-            if(mode_seq5)
-            {
-                _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f;  
-                _actuators_airframe.control[INDEX_WIRE_POS_UP] = -1.0f;                         	
-                _actuators_airframe.control[INDEX_WIRE_POS_DOWN] = -1.0f;
-                _actuators_airframe.control[INDEX_SERVO_ROT] = 0.4f;
-                
-                if(compteur++ >= 158)
-                {
-                   compteur = 0;
-                   mode_seq5 = false;
-                   mode_seq6 = true;
-                }                                
-            }    
+			// GAB : IDLE DU THRUST A 30% PENDANT UN CERTAIN TEMPS ==> Etienne Edit : Debut du full throttle et du controleur
+			if (mode_seq7) {
+				_actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
 
-            // ARRETE LE SERVO DU PIVOT
-            if(mode_seq6)
-            {
-                _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f;
-                _actuators_airframe.control[INDEX_WIRE_POS_UP] = -1.0f;
-                _actuators_airframe.control[INDEX_WIRE_POS_DOWN] = -1.0f;
-                _actuators_airframe.control[INDEX_SERVO_ROT] = 0.0f;
-                
-                if(compteur++ >= 200) 
-                {
-                   compteur = 0;
-                   mode_seq6 = false;
-                   mode_seq7 = true;
-                }                                             
-            }           
-                  
-            // IDLE DU THRUST A 20% PENDANT 2 SEC
-            if(mode_seq7)
-            {
-                _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.20f;
-                _actuators_airframe.control[INDEX_WIRE_POS_UP] = -1.0f;
-                _actuators_airframe.control[INDEX_WIRE_POS_DOWN] = -1.0f;
-                _actuators_airframe.control[INDEX_SERVO_ROT] = 0.0f;
+				_qDes.from_euler(0.0f, _parameters.take_off_custom_pitch, 0.0f);
+				_qAtt = q_att;
+				_qAtt2Des = _qAtt.conjugated() * _qDes;
 
-                if(compteur++ >= 400) // 2 sec (VALEUR = 400)
-                {
-                   compteur = 0;
-                   mode_seq7 = false;
-                   mode_seq8 = true;
-                }
-            }
+				_EulAtt2Des = _qAtt2Des.to_euler();
+				//warn("Error real : %0.3f , %0.3f , %0.3f", (double)(_EulAtt2Des(0)*R2D), (double)(_EulAtt2Des(1)*R2D), (double)(_EulAtt2Des(2)*R2D));
+				float r2servo = (_parameters.take_off_up_pos - _parameters.take_off_horizontal_pos) / (3.14159f / 2);
 
-            // FULL THROTTLE PENDANT 0.12 SEC
-            if(mode_seq8)
-            {
-                _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
-                _actuators_airframe.control[INDEX_WIRE_POS_UP] = -1.0f;
-                _actuators_airframe.control[INDEX_WIRE_POS_DOWN] = -1.0f;
-                _actuators_airframe.control[INDEX_SERVO_ROT] = 0.0f;
+				_actuators_airframe.control[1] = (_parameters.take_off_control_kp*_EulAtt2Des(1) - _parameters.take_off_control_kd*_ctrl_state.pitch_rate) * r2servo + _parameters.take_off_horizontal_pos;
 
-                if(compteur++ >= 24) // 0.12 sec (VALEUR = 24)
-                {
-                   compteur = 0;
-                   mode_seq8 = false;
-                   mode_seq9 = true;
-                }
-            }
 
-            // ACTIVE LE MUSCLE WIRE UP POUR FAIRE BASCULER LA TETE A LHORIZONTAL
-            if(mode_seq9)
-            {
-                _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
-                _actuators_airframe.control[INDEX_WIRE_POS_UP] = 1.0f;
-                _actuators_airframe.control[INDEX_WIRE_POS_DOWN] = -1.0f;
-                _actuators_airframe.control[INDEX_SERVO_ROT] = 0.0f;
+				if (hrt_absolute_time() - present_time >=
+					(int) _parameters.take_off_custom_time_08) // 2 sec
+				{
+					present_time = hrt_absolute_time();
+					mode_seq7 = false;
+					mode_seq8 = true;
+				}
+			}
 
-                if(compteur++ >= 16) // 0.20 sec (VALEUR = 40)
-                {
-                   compteur = 0;
-                   mode_seq9 = false;
-                   mode_seq10 = true;
-                }
-            }
+			// FULL THROTTLE PENDANT UN CERTAIN TEMPS
+			if (mode_seq8) {
 
-            //ÉTEINT LE MUSCLE WIRE ET MAINTIENT FULL THROTTLE POUR UN CERTAIN TEMPS (A DETERMINER)
-            if(mode_seq10)
-            {
-                _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
-                _actuators_airframe.control[INDEX_WIRE_POS_UP] = -1.0f;
-                _actuators_airframe.control[INDEX_WIRE_POS_DOWN] = -1.0f;
-                _actuators_airframe.control[INDEX_SERVO_ROT] = 0.0f;
+				_qDes.from_euler(0.0f, _parameters.take_off_custom_pitch, _yaw);
+				_qAtt = q_att;
+				_qAtt2Des = _qAtt.conjugated() * _qDes;
 
-                if(compteur++ >= 400) // 2 sec
-                {
-                   compteur = 0;
-                   mode_seq10 = false;
-                   mode_seq11 = true;
-                }
-            }
+				_EulAtt2Des = _qAtt2Des.to_euler();
+				_derivate = (_EulAtt2Des - _euler_error_old) / DT;
+				_euler_error_old = _EulAtt2Des;
+				//warn("Error real : %0.3f , %0.3f , %0.3f", (double)(_EulAtt2Des(0)*R2D), (double)(_EulAtt2Des(1)*R2D), (double)(_EulAtt2Des(2)*R2D));
+				float r2servo = (_parameters.take_off_up_pos - _parameters.take_off_horizontal_pos) / (3.14159f / 2);
+				float throttleFunction = 0.30f + _parameters.take_off_custom_time_10*(hrt_absolute_time() - present_time)/1000000.0f;
+				if (throttleFunction < 1) {
+					_actuators.control[actuator_controls_s::INDEX_THROTTLE] = throttleFunction;
+				}
+				else {
+					_actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
+				}
+				_actuators_airframe.control[1] = (_parameters.take_off_control_kp*_EulAtt2Des(1)+_parameters.take_off_control_kd*_derivate(1)) * r2servo + _parameters.take_off_horizontal_pos;
 
-            //****************************************************************************************************//
-            //DONNE LA COMMANDE DU THROTTLE AU PILOTE (POUR LINSTANT)
-            //ÉVENTUELLEMENT ON CHANGERA CETTE SÉQUENCE PAR UN KILL DE LA THREAD OU UN RETOUR EN MODE IDLE EN ATTENTE
-            //DUNE COMMANDE DU COMMANDER INDIQUANT QUIL EST TEMPS DE FAIR ELA SÉQUENCE DE DÉCOLLAGE
-            //****************************************************************************************************//
-            if(mode_seq11)
-            {
-                _actuators.control[actuator_controls_s::INDEX_THROTTLE] = _manual.z; // pass-through de la commande du trigger
-                _actuators_airframe.control[INDEX_WIRE_POS_UP] = -1.0f;
-                _actuators_airframe.control[INDEX_WIRE_POS_DOWN] = -1.0f;
-                _actuators_airframe.control[INDEX_SERVO_ROT] = 0.0f;
-            }
+				if (hrt_absolute_time() - present_time >=
+					(int) _parameters.take_off_custom_time_09) // 120 ms
+				{
+					present_time = hrt_absolute_time();
+					mode_seq8 = false;
+					mode_seq9 = true;
+				}
+			}
 
-            // COMMANDE DE ZÉRO SI VÉHICULE PAS ARMÉ
-            if (_vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_ARMED) {
+			// MET LA TETE DU PIVOT À LHORIZONTAL ET GARDE FULL THROTTLE
+			if (mode_seq9) {
+				float err = _parameters.take_off_custom_pitch - _pitch;
+				float r2servo = (_parameters.take_off_up_pos - _parameters.take_off_horizontal_pos) / (3.14159f / 2);
+				float derr = (err - err0) / DT;
+				err0 = err;
+				_actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
+				_actuators_airframe.control[1] =
+						(_parameters.take_off_control_kp * err + _parameters.take_off_control_kd * derr) * r2servo +
+						_parameters.take_off_horizontal_pos;
+				_actuators_airframe.control[1] = _parameters.take_off_down_pos;
+
+
+				if (hrt_absolute_time() - present_time >=
+					(int) _parameters.take_off_custom_time_10) // Étienne 1000sec pour débugger
+				{
+					present_time = hrt_absolute_time();
+					mode_seq9 = false;
+					mode_seq10 = true;
+				}
+			}
+
+			//MAINTIENT FULL THROTTLE POUR UN CERTAIN TEMPS
+			if (mode_seq10) {
+				_actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
+				_actuators_airframe.control[1] = _parameters.take_off_horizontal_pos; //0.28f;
+
+				//if(hrt_absolute_time() - present_time >= 2000000)//(int)_parameters.take_off_custom_time_11) // 2 sec
+				if (hrt_absolute_time() - present_time >=
+					(int) _parameters.take_off_custom_time_11) // 2 sec
+				{
+					present_time = hrt_absolute_time();
+					mode_seq10 = false;
+					mode_seq11 = true;
+				}
+			}
+
+			if (mode_seq11) {
+				_actuators.control[actuator_controls_s::INDEX_THROTTLE] = _manual.z; // pass-through de la commande du trigger
+				_actuators_airframe.control[1] = _parameters.take_off_horizontal_pos; //0.28f;
+			}
+
+			// COMMANDE DE ZÉRO SI VÉHICULE PAS ARMÉ
+			if (_vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_ARMED) {
 
 				_actuators.control[actuator_controls_s::INDEX_THROTTLE] = _actuators.control[actuator_controls_s::INDEX_THROTTLE];
 
-                if(flagidle == false)
-                    mode_seq0 = true;
+
+				if (flagidle == false) {
+					flagidle = true;
+					present_time = hrt_absolute_time();
+					mode_seq0 = true;
+				}
 
 			} else {
-                _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f; // quant nuttx boot le thrust est a 0
-                _actuators_airframe.control[INDEX_WIRE_POS_UP] = -1.0f; // quand nuttx boot on est certain quaucun muscle wire nest activé
-                _actuators_airframe.control[INDEX_WIRE_POS_DOWN] = -1.0f; // quand nuttx boot on est certain quaucun muscle wire nest activé
-                _actuators_airframe.control[INDEX_SERVO_ROT] = 0.0f; // le servo ne bouge pas
+				_actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f; // quant nuttx boot le thrust est a 0
+				_actuators_airframe.control[1] = _parameters.take_off_horizontal_pos; //0.28f; // le servo ne bouge pas
 
-		        mode_seq0 = false;
-		        mode_seq1 = false;
-		        mode_seq2 = false;
-		        mode_seq3 = false;
-		        mode_seq4 = false;
-		        mode_seq5 = false;       
-		        mode_seq6 = false;
-		        mode_seq7 = false;
-		        mode_seq8 = false;
-		        mode_seq9 = false;
-        		mode_seq10 = false;
-        		mode_seq11 = false;
+				mode_seq0 = false;
+				mode_seq2 = false;
+				mode_seq7 = false;
+				mode_seq8 = false;
+				mode_seq9 = false;
+				mode_seq10 = false;
+				mode_seq11 = false;
 
-                flagidle = false;
-
-                compteur = 0;
+				flagidle = false;
 			}
 
-            // SÉCURITÉ -> MODE MANUEL ENCLENCHÉ
-            if(_manual.mode_slot == manual_control_setpoint_s::MODE_SLOT_1) // si mode dans la position 1 (mode manuel pour linstant) -> éteint tout
-            {
-                _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f;
-                _actuators_airframe.control[INDEX_WIRE_POS_UP] = -1.0f;
-                _actuators_airframe.control[INDEX_WIRE_POS_DOWN] = -1.0f;
-                _actuators_airframe.control[INDEX_SERVO_ROT] = 0.0f; // le servo ne bouge pas
 
-		        mode_seq0 = false;
-		        mode_seq1 = false;
-		        mode_seq2 = false;
-		        mode_seq3 = false;
-		        mode_seq4 = false;
-		        mode_seq5 = false;       
-		        mode_seq6 = false;
-		        mode_seq7 = false;
-		        mode_seq8 = false;
-		        mode_seq9 = false;
-        		mode_seq10 = false;
-        		mode_seq11 = false;
+			// SÉCURITÉ -> MODE MANUEL ENCLENCHÉ
+			if (_manual.kill_switch == manual_control_setpoint_s::SWITCH_POS_ON) // si en mode manuel
+			{
+				_actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f;
+				_actuators_airframe.control[1] = _parameters.take_off_horizontal_pos; //0.28f; // le servo ne bouge pas
 
-                compteur = 0;
-            }
-#endif
+				mode_seq0 = false;
+				mode_seq2 = false;
+				mode_seq7 = false;
+				mode_seq8 = false;
+				mode_seq9 = false;
+				mode_seq10 = false;
+				mode_seq11 = false;
+			}
 
-            // PUBLIE LA VALEUR DES ACTUATEURS 
-            // DANS CETTE SÉQUENCE ON METTRA PROBABLEMENT LENVOIE DAUTRES VARIABLES
 			/* lazily publish the setpoint only once available */
 			_actuators.timestamp = hrt_absolute_time();
 			_actuators.timestamp_sample = _ctrl_state.timestamp;
@@ -1526,7 +1234,7 @@ DroneAquaTest::task_main()
 	_control_task = -1;
 	_task_running = false;
 	_time = 0;
-    _counter = 0;
+	_counter = 0;
 }
 
 int
@@ -1535,12 +1243,12 @@ DroneAquaTest::start()
 	ASSERT(_control_task == -1);
 
 	/* start the task */
-	_control_task = px4_task_spawn_cmd("perching_wall",
-					   SCHED_DEFAULT,
-					   SCHED_PRIORITY_MAX - 5,
-					   1300,
-					   (px4_main_t)&DroneAquaTest::task_main_trampoline,
-					   nullptr);
+	_control_task = px4_task_spawn_cmd("pivot test",
+									   SCHED_DEFAULT,
+									   SCHED_PRIORITY_MAX - 5,
+									   1300,
+									   (px4_main_t)&DroneAquaTest::task_main_trampoline,
+									   nullptr);
 
 	if (_control_task < 0) {
 		warn("task start failed");
