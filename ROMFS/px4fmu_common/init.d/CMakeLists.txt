@@ -107,12 +107,15 @@ px4_add_romfs_files(
 	rc.interface
 	rc.io
 	rc.logging
+	rc.mavlink
 	rc.mc_apps
 	rc.mc_defaults
-	rcS
 	rc.sensors
+	rc.thermal_cal
 	rc.ugv_apps
 	rc.ugv_defaults
+	rc.vehicle_setup
 	rc.vtol_apps
 	rc.vtol_defaults
+	rcS
 )

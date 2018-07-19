@@ -137,6 +137,7 @@ MavlinkReceiver::MavlinkReceiver(Mavlink *parent) :
 	_rc_pub(nullptr),
 	_manual_pub(nullptr),
 	_obstacle_distance_pub(nullptr),
+	_trajectory_waypoint_pub(nullptr),
 	_land_detector_pub(nullptr),
 	_follow_target_pub(nullptr),
 	_landing_target_pose_pub(nullptr),
@@ -326,6 +327,10 @@ MavlinkReceiver::handle_message(mavlink_message_t *msg)
 
 	case MAVLINK_MSG_ID_OBSTACLE_DISTANCE:
 		handle_message_obstacle_distance(msg);
+		break;
+
+	case MAVLINK_MSG_ID_TRAJECTORY_REPRESENTATION_WAYPOINTS:
+		handle_message_trajectory_representation_waypoints(msg);
 		break;
 
 	case MAVLINK_MSG_ID_NAMED_VALUE_FLOAT:
@@ -1630,6 +1635,53 @@ MavlinkReceiver::handle_message_obstacle_distance(mavlink_message_t *msg)
 	}
 }
 
+void
+MavlinkReceiver::handle_message_trajectory_representation_waypoints(mavlink_message_t *msg)
+{
+	mavlink_trajectory_representation_waypoints_t trajectory;
+	mavlink_msg_trajectory_representation_waypoints_decode(msg, &trajectory);
+
+
+	struct vehicle_trajectory_waypoint_s trajectory_waypoint = {};
+
+	trajectory_waypoint.timestamp = hrt_absolute_time();
+	const int number_valid_points = trajectory.valid_points;
+
+	for (int i = 0; i < vehicle_trajectory_waypoint_s::NUMBER_POINTS; ++i) {
+		trajectory_waypoint.waypoints[i].position[0] = trajectory.pos_x[i];
+		trajectory_waypoint.waypoints[i].position[1] = trajectory.pos_y[i];
+		trajectory_waypoint.waypoints[i].position[2] = trajectory.pos_z[i];
+
+		trajectory_waypoint.waypoints[i].velocity[0] = trajectory.vel_x[i];
+		trajectory_waypoint.waypoints[i].velocity[1] = trajectory.vel_y[i];
+		trajectory_waypoint.waypoints[i].velocity[2] = trajectory.vel_z[i];
+
+		trajectory_waypoint.waypoints[i].acceleration[0] = trajectory.acc_x[i];
+		trajectory_waypoint.waypoints[i].acceleration[1] = trajectory.acc_y[i];
+		trajectory_waypoint.waypoints[i].acceleration[2] = trajectory.acc_z[i];
+
+		trajectory_waypoint.waypoints[i].yaw = trajectory.pos_yaw[i];
+		trajectory_waypoint.waypoints[i].yaw_speed = trajectory.vel_yaw[i];
+
+	}
+
+	for (int i = 0; i < number_valid_points; ++i) {
+		trajectory_waypoint.waypoints[i].point_valid = true;
+	}
+
+	for (int i = number_valid_points; i < vehicle_trajectory_waypoint_s::NUMBER_POINTS; ++i) {
+		trajectory_waypoint.waypoints[i].point_valid = false;
+	}
+
+	if (_trajectory_waypoint_pub == nullptr) {
+		_trajectory_waypoint_pub = orb_advertise(ORB_ID(vehicle_trajectory_waypoint), &trajectory_waypoint);
+
+	} else {
+		orb_publish(ORB_ID(vehicle_trajectory_waypoint), _trajectory_waypoint_pub, &trajectory_waypoint);
+	}
+
+}
+
 switch_pos_t
 MavlinkReceiver::decode_switch_pos(uint16_t buttons, unsigned sw)
 {
@@ -2060,6 +2112,8 @@ MavlinkReceiver::handle_message_hil_gps(mavlink_message_t *msg)
 
 	hil_gps.fix_type = gps.fix_type;
 	hil_gps.satellites_used = gps.satellites_visible;  //TODO: rename mavlink_hil_gps_t sats visible to used?
+
+	hil_gps.heading = NAN;
 
 	if (_gps_pub == nullptr) {
 		_gps_pub = orb_advertise(ORB_ID(vehicle_gps_position), &hil_gps);

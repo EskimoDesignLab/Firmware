@@ -1,6 +1,6 @@
 ############################################################################
 #
-#   Copyright (c) 2015 PX4 Development Team. All rights reserved.
+#   Copyright (c) 2018 PX4 Development Team. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,16 +31,8 @@
 #
 ############################################################################
 px4_add_module(
-	MODULE modules__sdlog2
-	MAIN sdlog2
-	PRIORITY "SCHED_PRIORITY_MAX-30"
-	STACK_MAIN 1200
-	STACK_MAX 1600
-	COMPILE_FLAGS
-		-Wno-sign-compare # TODO: fix all sign-compare
+	MODULE drivers__magnetometer__lsm303agr
+	MAIN lsm303agr
 	SRCS
-		sdlog2.c
-		logbuffer.c
-	DEPENDS
+		LSM303AGR.cpp
 	)
-

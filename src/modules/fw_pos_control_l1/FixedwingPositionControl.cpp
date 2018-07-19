@@ -372,16 +372,21 @@ FixedwingPositionControl::manual_control_setpoint_poll()
 void
 FixedwingPositionControl::airspeed_poll()
 {
-	if (!_parameters.airspeed_disabled && _sub_airspeed.updated()) {
-		_sub_airspeed.update();
-		_airspeed_valid = PX4_ISFINITE(_sub_airspeed.get().indicated_airspeed_m_s)
-				  && PX4_ISFINITE(_sub_airspeed.get().true_airspeed_m_s);
-		_airspeed_last_received = hrt_absolute_time();
-		_airspeed = _sub_airspeed.get().indicated_airspeed_m_s;
+	if (!_parameters.airspeed_disabled && _sub_airspeed.update()) {
 
-		if (_sub_airspeed.get().indicated_airspeed_m_s > 0.0f
-		    && _sub_airspeed.get().true_airspeed_m_s > _sub_airspeed.get().indicated_airspeed_m_s) {
-			_eas2tas = max(_sub_airspeed.get().true_airspeed_m_s / _sub_airspeed.get().indicated_airspeed_m_s, 1.0f);
+		const airspeed_s &airspeed = _sub_airspeed.get();
+
+		_airspeed_valid = PX4_ISFINITE(airspeed.indicated_airspeed_m_s)
+				  && PX4_ISFINITE(airspeed.true_airspeed_m_s)
+				  && (airspeed.indicated_airspeed_m_s > 0.0f);
+
+		_airspeed_last_received = hrt_absolute_time();
+		_airspeed = airspeed.indicated_airspeed_m_s;
+
+		if (_airspeed_valid
+		    && airspeed.true_airspeed_m_s > airspeed.indicated_airspeed_m_s) {
+
+			_eas2tas = max(airspeed.true_airspeed_m_s / airspeed.indicated_airspeed_m_s, 1.0f);
 
 		} else {
 			_eas2tas = 1.0f;
@@ -704,7 +709,7 @@ FixedwingPositionControl::control_position(const Vector2f &curr_pos, const Vecto
 	bool setpoint = true;
 
 	_att_sp.fw_control_yaw = false;		// by default we don't want yaw to be contoller directly with rudder
-	_att_sp.apply_flaps = false;		// by default we don't use flaps
+	_att_sp.apply_flaps = vehicle_attitude_setpoint_s::FLAPS_OFF;		// by default we don't use flaps
 
 	calculate_gndspeed_undershoot(curr_pos, ground_speed, pos_sp_prev, pos_sp_curr);
 
@@ -1137,6 +1142,10 @@ FixedwingPositionControl::control_takeoff(const Vector2f &curr_pos, const Vector
 		prev_wp(1) = (float)pos_sp_curr.lon;
 	}
 
+	// apply flaps for takeoff according to the corresponding scale factor set
+	// via FW_FLAPS_TO_SCL
+	_att_sp.apply_flaps = vehicle_attitude_setpoint_s::FLAPS_TAKEOFF;
+
 	// continuously reset launch detection and runway takeoff until armed
 	if (!_control_mode.flag_armed) {
 		_launchDetector.reset();
@@ -1305,7 +1314,7 @@ FixedwingPositionControl::control_landing(const Vector2f &curr_pos, const Vector
 
 	// apply full flaps for landings. this flag will also trigger the use of flaperons
 	// if they have been enabled using the corresponding parameter
-	_att_sp.apply_flaps = true;
+	_att_sp.apply_flaps = vehicle_attitude_setpoint_s::FLAPS_LAND;
 
 	// save time at which we started landing and reset abort_landing
 	if (_time_started_landing == 0) {
@@ -1603,20 +1612,8 @@ FixedwingPositionControl::run()
 	_manual_control_sub = orb_subscribe(ORB_ID(manual_control_setpoint));
 	_sensor_baro_sub = orb_subscribe(ORB_ID(sensor_baro));
 
-	/* rate limit control mode updates to 5Hz */
-	orb_set_interval(_control_mode_sub, 200);
-
-	/* rate limit vehicle status updates to 5Hz */
-	orb_set_interval(_vehicle_status_sub, 200);
-
-	/* rate limit vehicle land detected updates to 5Hz */
-	orb_set_interval(_vehicle_land_detected_sub, 200);
-
 	/* rate limit position updates to 50 Hz */
 	orb_set_interval(_global_pos_sub, 20);
-
-	/* rate limit barometer updates to 1 Hz */
-	orb_set_interval(_sensor_baro_sub, 1000);
 
 	/* abort on a nonzero return value from the parameter init */
 	if (parameters_update() != PX4_OK) {

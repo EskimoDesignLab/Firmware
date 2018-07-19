@@ -544,13 +544,17 @@ void VotedSensorsUpdate::accel_poll(struct sensor_combined_s &raw)
 		bool accel_updated;
 		orb_check(_accel.subscription[uorb_index], &accel_updated);
 
-		if (accel_updated && _accel.enabled[uorb_index]) {
+		if (accel_updated) {
 			struct accel_report accel_report;
 
 			int ret = orb_copy(ORB_ID(sensor_accel), _accel.subscription[uorb_index], &accel_report);
 
 			if (ret != PX4_OK || accel_report.timestamp == 0) {
 				continue; //ignore invalid data
+			}
+
+			if (!_accel.enabled[uorb_index]) {
+				continue;
 			}
 
 			// First publication with data
@@ -649,13 +653,17 @@ void VotedSensorsUpdate::gyro_poll(struct sensor_combined_s &raw)
 		bool gyro_updated;
 		orb_check(_gyro.subscription[uorb_index], &gyro_updated);
 
-		if (gyro_updated && _gyro.enabled[uorb_index]) {
+		if (gyro_updated) {
 			struct gyro_report gyro_report;
 
 			int ret = orb_copy(ORB_ID(sensor_gyro), _gyro.subscription[uorb_index], &gyro_report);
 
 			if (ret != PX4_OK || gyro_report.timestamp == 0) {
 				continue; //ignore invalid data
+			}
+
+			if (!_gyro.enabled[uorb_index]) {
+				continue;
 			}
 
 			// First publication with data
@@ -752,13 +760,17 @@ void VotedSensorsUpdate::mag_poll(vehicle_magnetometer_s &magnetometer)
 		bool mag_updated;
 		orb_check(_mag.subscription[uorb_index], &mag_updated);
 
-		if (mag_updated && _mag.enabled[uorb_index]) {
+		if (mag_updated) {
 			struct mag_report mag_report;
 
 			int ret = orb_copy(ORB_ID(sensor_mag), _mag.subscription[uorb_index], &mag_report);
 
 			if (ret != PX4_OK || mag_report.timestamp == 0) {
 				continue; //ignore invalid data
+			}
+
+			if (!_mag.enabled[uorb_index]) {
+				continue;
 			}
 
 			// First publication with data
@@ -972,14 +984,15 @@ bool VotedSensorsUpdate::check_failover(SensorData &sensor, const char *sensor_n
 void VotedSensorsUpdate::init_sensor_class(const struct orb_metadata *meta, SensorData &sensor_data,
 		uint8_t sensor_count_max)
 {
-	unsigned group_count = orb_group_count(meta);
+	int max_sensor_index = -1;
 
-	if (group_count > sensor_count_max) {
-		PX4_WARN("Detected %u %s sensors, but will only use %u", group_count, meta->o_name, sensor_count_max);
-		group_count = sensor_count_max;
-	}
+	for (unsigned i = 0; i < sensor_count_max; i++) {
+		if (orb_exists(meta, i) != 0) {
+			continue;
+		}
 
-	for (unsigned i = 0; i < group_count; i++) {
+		max_sensor_index = i;
+
 		if (sensor_data.subscription[i] < 0) {
 			sensor_data.subscription[i] = orb_subscribe_multi(meta, i);
 
@@ -992,7 +1005,10 @@ void VotedSensorsUpdate::init_sensor_class(const struct orb_metadata *meta, Sens
 		}
 	}
 
-	sensor_data.subscription_count = group_count;
+	// never decrease the sensor count, as we could end up with mismatching validators
+	if (max_sensor_index + 1 > sensor_data.subscription_count) {
+		sensor_data.subscription_count = max_sensor_index + 1;
+	}
 }
 
 void VotedSensorsUpdate::print_status()

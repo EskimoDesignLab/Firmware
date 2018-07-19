@@ -106,6 +106,7 @@ set(msg_files
 	telemetry_status.msg
 	test_motor.msg
 	timesync_status.msg
+	trajectory_waypoint.msg
 	transponder_report.msg
 	tune_control.msg
 	uavcan_parameter_request.msg
@@ -126,6 +127,7 @@ set(msg_files
 	vehicle_magnetometer.msg
 	vehicle_rates_setpoint.msg
 	vehicle_roi.msg
+	vehicle_trajectory_waypoint.msg
 	vehicle_status.msg
 	vehicle_status_flags.msg
 	vtol_vehicle_status.msg

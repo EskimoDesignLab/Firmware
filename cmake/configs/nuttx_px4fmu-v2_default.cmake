@@ -7,31 +7,43 @@ set(config_module_list
 	# Board support modules
 	#
 	#drivers/barometer
-	drivers/differential_pressure
+	#drivers/differential_pressure
 	#drivers/distance_sensor
 	#drivers/magnetometer
 	#drivers/telemetry
 
-	#drivers/imu/adis16448
+	#drivers/barometer/bmp280
 	drivers/barometer/ms5611
 	#drivers/blinkm
-	#drivers/imu/bmi160
-	#drivers/barometer/bmp280
 	#drivers/bst
 	drivers/camera_trigger
+	#drivers/differential_pressure/ets
+	drivers/differential_pressure/ms4525
+	drivers/differential_pressure/ms5525
+	drivers/differential_pressure/sdp3x
+	drivers/distance_sensor/ll40ls
+	#drivers/distance_sensor/mb12xx
+	drivers/distance_sensor/sf0x
+	drivers/distance_sensor/sf1xx
+	drivers/distance_sensor/srf02
+	#drivers/distance_sensor/teraranger
+	#drivers/distance_sensor/tfmini
+	#drivers/distance_sensor/ulanding
 	#drivers/frsky_telemetry
 	drivers/gps
 	#drivers/hott
-	#drivers/iridiumsbd
-	#drivers/irlock
+	#drivers/imu/adis16448
+	#drivers/imu/bmi160
 	drivers/imu/l3gd20
 	drivers/imu/lsm303d
+	drivers/imu/mpu6000
+	drivers/imu/mpu9250
+	#drivers/iridiumsbd
+	#drivers/irlock
 	drivers/magnetometer/hmc5883
 	drivers/magnetometer/lis3mdl
 	#drivers/mb12xx
 	#drivers/mkblctrl
-	drivers/imu/mpu6000
-	drivers/imu/mpu9250
 	#drivers/oreoled
 	#drivers/protocol_splitter
 	drivers/pwm_input
@@ -45,22 +57,12 @@ set(config_module_list
 	drivers/stm32/tone_alarm
 	#drivers/tap_esc
 	drivers/vmount
-
-	# distance sensors
-	drivers/distance_sensor/ll40ls
-	#drivers/distance_sensor/mb12xx
-	drivers/distance_sensor/sf0x
-	drivers/distance_sensor/sf1xx
-	drivers/distance_sensor/srf02
-	drivers/distance_sensor/teraranger
-	drivers/distance_sensor/tfmini
-	#drivers/distance_sensor/ulanding
 	modules/sensors
 
 	#
 	# System commands
 	#
-	systemcmds/bl_update
+	#systemcmds/bl_update
 	#systemcmds/config
 	#systemcmds/dumpfile
 	#systemcmds/esc_calib
@@ -132,7 +134,6 @@ set(config_module_list
 	# Logging
 	#
 	modules/logger
-	#modules/sdlog2
 
 	#
 	# Library modules

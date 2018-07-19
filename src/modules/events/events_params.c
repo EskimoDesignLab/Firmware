@@ -1,7 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2013 PX4 Development Team. All rights reserved.
- *   Author: Anton Babushkin <anton.babushkin@me.com>
+ *   Copyright (c) 2018 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,42 +32,40 @@
  ****************************************************************************/
 
 /**
- * @file logbuffer.h
+ * @file events_params.c
  *
- * Ring FIFO buffer for binary log data.
- *
- * @author Anton Babushkin <anton.babushkin@me.com>
+ * Parameters defined by the events module.
  */
 
-#ifndef SDLOG2_RINGBUFFER_H_
-#define SDLOG2_RINGBUFFER_H_
+#include <px4_config.h>
+#include <parameters/param.h>
 
-#include <stdbool.h>
-#include <perf/perf_counter.h>
+/**
+ * Status Display
+ *
+ * Enable/disable event task for displaying the vehicle status using arm-mounted
+ * LEDs. When enabled and if the vehicle supports it, LEDs will flash
+ * indicating various vehicle status changes. Currently PX4 has not implemented
+ * any specific status events.
+ * -
+ *
+ * @group Events
+ * @boolean
+ * @reboot_required true
+ */
+PARAM_DEFINE_INT32(EV_TSK_STAT_DIS, 0);
 
-struct logbuffer_s {
-	// pointers and size are in bytes
-	int write_ptr;
-	int read_ptr;
-	int size;
-	char *data;
-	perf_counter_t perf_dropped;
-};
-
-int logbuffer_init(struct logbuffer_s *lb, int size);
-
-int logbuffer_count(struct logbuffer_s *lb);
-
-int logbuffer_is_empty(struct logbuffer_s *lb);
-
-bool logbuffer_write(struct logbuffer_s *lb, void *ptr, int size);
-
-int logbuffer_get_ptr(struct logbuffer_s *lb, void **ptr, bool *is_part);
-
-void logbuffer_mark_read(struct logbuffer_s *lb, int n);
-
-void logbuffer_free(struct logbuffer_s *lb);
-
-void logbuffer_reset(struct logbuffer_s *lb);
-
-#endif
+/**
+ * RC Loss Alarm
+ *
+ * Enable/disable event task for RC Loss. When enabled, an alarm tune will be
+ * played via buzzer or ESCs, if supported. The alarm will sound after a disarm,
+ * if the vehicle was previously armed and only if the vehicle had RC signal at
+ * some point. Particularly useful for locating crashed drones without a GPS
+ * sensor.
+ *
+ * @group Events
+ * @boolean
+ * @reboot_required true
+ */
+PARAM_DEFINE_INT32(EV_TSK_RC_LOSS, 0);

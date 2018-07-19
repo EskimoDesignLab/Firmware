@@ -35,18 +35,24 @@
 
 #include "subscriber_handler.h"
 #include "status_display.h"
+#include "rc_loss_alarm.h"
 
 #include <px4_workqueue.h>
 #include <px4_module.h>
+#include <px4_module_params.h>
 #include <uORB/topics/vehicle_command.h>
 #include <uORB/topics/vehicle_command_ack.h>
 
+namespace events
+{
+
 extern "C" __EXPORT int send_event_main(int argc, char *argv[]);
 
-class SendEvent : public ModuleBase<SendEvent>
+class SendEvent : public ModuleBase<SendEvent>, public ModuleParams
 {
 public:
 	SendEvent();
+	~SendEvent();
 
 	/**
 	 * Initialize class in the same context as the work queue. And start the background listener.
@@ -82,7 +88,15 @@ private:
 	void answer_command(const vehicle_command_s &cmd, unsigned result);
 
 	static struct work_s _work;
-	events::SubscriberHandler _subscriber_handler;
-	status::StatusDisplay _status_display;
+	SubscriberHandler _subscriber_handler;
+	status::StatusDisplay *_status_display = nullptr;
+	rc_loss::RC_Loss_Alarm *_rc_loss_alarm = nullptr;
 	orb_advert_t _command_ack_pub = nullptr;
+
+	DEFINE_PARAMETERS(
+		(ParamBool<px4::params::EV_TSK_STAT_DIS>) _param_status_display,
+		(ParamBool<px4::params::EV_TSK_RC_LOSS>) _param_rc_loss
+	)
 };
+
+} /* namespace events */

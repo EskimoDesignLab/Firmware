@@ -335,8 +335,7 @@ private:
 			unsigned frame_drops, int rssi);
 
 	void set_rc_scan_state(RC_SCAN _rc_scan_state);
-	void rc_io_invert();
-	void rc_io_invert(bool invert);
+	void rc_io_invert(bool invert, uint32_t uxart_base);
 	void safety_check_button(void);
 	void flash_safety_button(void);
 
@@ -434,11 +433,6 @@ PX4FMU::PX4FMU(bool run_as_task) :
 
 	raw_rc_count = 0;
 
-#ifdef GPIO_SBUS_INV
-	// this board has a GPIO to control SBUS inversion
-	px4_arch_configgpio(GPIO_SBUS_INV);
-#endif
-
 	// If there is no safety button, disable it on boot.
 #ifndef GPIO_BTN_SAFETY
 	_safety_off = true;
@@ -515,8 +509,6 @@ PX4FMU::init()
 	/* initialize PWM limit lib */
 	pwm_limit_init(&_pwm_limit);
 
-	update_pwm_rev_mask();
-
 #ifdef RC_SERIAL_PORT
 
 #  ifdef RF_RADIO_POWER_CONTROL
@@ -526,8 +518,10 @@ PX4FMU::init()
 	_vehicle_cmd_sub = orb_subscribe(ORB_ID(vehicle_command));
 	// dsm_init sets some file static variables and returns a file descriptor
 	_rcs_fd = dsm_init(RC_SERIAL_PORT);
-	// assume SBUS input
-	sbus_config(_rcs_fd, false);
+	// assume SBUS input and immediately switch it to
+	// so that if Single wire mode on TX there will be only
+	// a short contention
+	sbus_config(_rcs_fd, board_supports_single_wire(RC_UXART_BASE));
 #  ifdef GPIO_PPM_IN
 	// disable CPPM input by mapping it away from the timer capture input
 	px4_arch_unconfiggpio(GPIO_PPM_IN);
@@ -536,12 +530,6 @@ PX4FMU::init()
 
 	// Getting initial parameter values
 	update_params();
-
-	for (unsigned i = 0; i < _max_actuators; i++) {
-		char pname[16];
-		sprintf(pname, "PWM_AUX_TRIM%d", i + 1);
-		param_find(pname);
-	}
 
 	return 0;
 }
@@ -926,15 +914,28 @@ PX4FMU::update_pwm_rev_mask()
 {
 	_reverse_pwm_mask = 0;
 
+	const char *pname_format;
+
+	if (_class_instance == CLASS_DEVICE_PRIMARY) {
+		pname_format = "PWM_MAIN_REV%d";
+
+	} else if (_class_instance == CLASS_DEVICE_SECONDARY) {
+		pname_format = "PWM_AUX_REV%d";
+
+	} else {
+		PX4_ERR("PWM REV only for MAIN and AUX");
+		return;
+	}
+
 	for (unsigned i = 0; i < _max_actuators; i++) {
 		char pname[16];
-		int32_t ival;
 
 		/* fill the channel reverse mask from parameters */
-		sprintf(pname, "PWM_AUX_REV%d", i + 1);
+		sprintf(pname, pname_format, i + 1);
 		param_t param_h = param_find(pname);
 
 		if (param_h != PARAM_INVALID) {
+			int32_t ival = 0;
 			param_get(param_h, &ival);
 			_reverse_pwm_mask |= ((int16_t)(ival != 0)) << i;
 		}
@@ -950,15 +951,28 @@ PX4FMU::update_pwm_trims()
 
 		int16_t values[_max_actuators] = {};
 
+		const char *pname_format;
+
+		if (_class_instance == CLASS_DEVICE_PRIMARY) {
+			pname_format = "PWM_MAIN_TRIM%d";
+
+		} else if (_class_instance == CLASS_DEVICE_SECONDARY) {
+			pname_format = "PWM_AUX_TRIM%d";
+
+		} else {
+			PX4_ERR("PWM TRIM only for MAIN and AUX");
+			return;
+		}
+
 		for (unsigned i = 0; i < _max_actuators; i++) {
 			char pname[16];
-			float pval;
 
 			/* fill the struct from parameters */
-			sprintf(pname, "PWM_AUX_TRIM%d", i + 1);
+			sprintf(pname, pname_format, i + 1);
 			param_t param_h = param_find(pname);
 
 			if (param_h != PARAM_INVALID) {
+				float pval = 0.0f;
 				param_get(param_h, &pval);
 				values[i] = (int16_t)(10000 * pval);
 				PX4_DEBUG("%s: %d", pname, values[i]);
@@ -1154,11 +1168,9 @@ void PX4FMU::set_rc_scan_state(RC_SCAN newState)
 	_rc_scan_state = newState;
 }
 
-void PX4FMU::rc_io_invert(bool invert)
+void PX4FMU::rc_io_invert(bool invert, uint32_t uxart_base)
 {
-#ifdef INVERT_RC_INPUT
-	INVERT_RC_INPUT(invert);
-#endif
+	INVERT_RC_INPUT(invert, uxart_base);
 }
 #endif
 
@@ -1556,8 +1568,8 @@ PX4FMU::cycle()
 			if (_rc_scan_begin == 0) {
 				_rc_scan_begin = _cycle_timestamp;
 				// Configure serial port for SBUS
-				sbus_config(_rcs_fd, false);
-				rc_io_invert(true);
+				sbus_config(_rcs_fd, board_supports_single_wire(RC_UXART_BASE));
+				rc_io_invert(true, RC_UXART_BASE);
 
 			} else if (_rc_scan_locked
 				   || _cycle_timestamp - _rc_scan_begin < rc_scan_max) {
@@ -1588,7 +1600,7 @@ PX4FMU::cycle()
 				_rc_scan_begin = _cycle_timestamp;
 				//			// Configure serial port for DSM
 				dsm_config(_rcs_fd);
-				rc_io_invert(false);
+				rc_io_invert(false, RC_UXART_BASE);
 
 			} else if (_rc_scan_locked
 				   || _cycle_timestamp - _rc_scan_begin < rc_scan_max) {
@@ -1619,7 +1631,7 @@ PX4FMU::cycle()
 				_rc_scan_begin = _cycle_timestamp;
 				// Configure serial port for DSM
 				dsm_config(_rcs_fd);
-				rc_io_invert(false);
+				rc_io_invert(false, RC_UXART_BASE);
 
 			} else if (_rc_scan_locked
 				   || _cycle_timestamp - _rc_scan_begin < rc_scan_max) {
@@ -1667,7 +1679,7 @@ PX4FMU::cycle()
 				_rc_scan_begin = _cycle_timestamp;
 				// Configure serial port for DSM
 				dsm_config(_rcs_fd);
-				rc_io_invert(false);
+				rc_io_invert(false, RC_UXART_BASE);
 
 			} else if (_rc_scan_locked
 				   || _cycle_timestamp - _rc_scan_begin < rc_scan_max) {
@@ -1709,7 +1721,7 @@ PX4FMU::cycle()
 				_rc_scan_begin = _cycle_timestamp;
 				// Configure timer input pin for CPPM
 				px4_arch_configgpio(GPIO_PPM_IN);
-				rc_io_invert(false);
+				rc_io_invert(false, RC_UXART_BASE);
 
 			} else if (_rc_scan_locked || _cycle_timestamp - _rc_scan_begin < rc_scan_max) {
 
@@ -1755,14 +1767,8 @@ PX4FMU::cycle()
 #endif  // RC_SERIAL_PORT
 
 		if (rc_updated) {
-			/* lazily advertise on first publication */
-			if (_to_input_rc == nullptr) {
-				int instance = _class_instance;
-				_to_input_rc = orb_advertise_multi(ORB_ID(input_rc), &_rc_in, &instance, ORB_PRIO_DEFAULT);
-
-			} else {
-				orb_publish(ORB_ID(input_rc), _to_input_rc, &_rc_in);
-			}
+			int instance = _class_instance;
+			orb_publish_auto(ORB_ID(input_rc), &_to_input_rc, &_rc_in, &instance, ORB_PRIO_DEFAULT);
 
 		} else if (!rc_updated && ((hrt_absolute_time() - _rc_in.timestamp_last_signal) > 1000 * 1000)) {
 			_rc_scan_locked = false;
