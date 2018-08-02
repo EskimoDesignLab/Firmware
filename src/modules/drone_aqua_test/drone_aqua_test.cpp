@@ -314,8 +314,10 @@ private:
 		float take_off_horizontal_pos;
 		float take_off_up_pos;
 		float take_off_down_pos;
-		float take_off_control_kp;
-		float take_off_control_kd;
+		float take_off_pitch_kp;
+		float take_off_pitch_kd;
+		float take_off_yaw_kp;
+		float take_off_yaw_kd;
 		float take_off_custom_pitch;
 
 	}		_parameters;			/**< local copies of interesting parameters */
@@ -381,8 +383,10 @@ private:
 		param_t take_off_horizontal_pos;
 		param_t take_off_up_pos;
 		param_t take_off_down_pos;
-		param_t take_off_control_kp;
-		param_t take_off_control_kd;
+		param_t take_off_pitch_kp;
+		param_t take_off_pitch_kd;
+		param_t take_off_yaw_kp;
+		param_t take_off_yaw_kd;
 		param_t take_off_custom_pitch;
 
 
@@ -618,8 +622,10 @@ DroneAquaTest::DroneAquaTest() :
 	_parameter_handles.take_off_horizontal_pos = param_find("TK_HOR_POS");
 	_parameter_handles.take_off_up_pos = param_find("TK_UP_POS");
 	_parameter_handles.take_off_down_pos = param_find("TK_DN_POS");
-	_parameter_handles.take_off_control_kp = param_find("TK_CON_KP");
-	_parameter_handles.take_off_control_kd = param_find("TK_CON_KD");
+	_parameter_handles.take_off_pitch_kp = param_find("TK_CON_KP");
+	_parameter_handles.take_off_pitch_kd = param_find("TK_CON_KD");
+	_parameter_handles.take_off_yaw_kp = param_find("TK_YAW_KP");
+	_parameter_handles.take_off_yaw_kd = param_find("TK_YAW_KD");
 	_parameter_handles.take_off_custom_pitch = param_find("TK_CUSTM_PITCH");
 
 
@@ -774,8 +780,10 @@ DroneAquaTest::parameters_update()
 	param_get(_parameter_handles.take_off_horizontal_pos, &_parameters.take_off_horizontal_pos);
 	param_get(_parameter_handles.take_off_up_pos, &_parameters.take_off_up_pos);
 	param_get(_parameter_handles.take_off_down_pos, &_parameters.take_off_down_pos);
-	param_get(_parameter_handles.take_off_control_kp, &_parameters.take_off_control_kp);
-	param_get(_parameter_handles.take_off_control_kd, &_parameters.take_off_control_kd);
+	param_get(_parameter_handles.take_off_pitch_kp, &_parameters.take_off_pitch_kp);
+	param_get(_parameter_handles.take_off_pitch_kd, &_parameters.take_off_pitch_kd);
+	param_get(_parameter_handles.take_off_yaw_kp, &_parameters.take_off_yaw_kp);
+	param_get(_parameter_handles.take_off_yaw_kd, &_parameters.take_off_yaw_kd);
 	param_get(_parameter_handles.take_off_custom_pitch, &_parameters.take_off_custom_pitch);
 	return OK;
 }
@@ -1074,7 +1082,8 @@ DroneAquaTest::task_main() {
 				//warn("Error real : %0.3f , %0.3f , %0.3f", (double)(_EulAtt2Des(0)*R2D), (double)(_EulAtt2Des(1)*R2D), (double)(_EulAtt2Des(2)*R2D));
 				float r2servo = (_parameters.take_off_up_pos - _parameters.take_off_horizontal_pos) / (3.14159f / 2);
 
-				_actuators_airframe.control[1] = (_parameters.take_off_control_kp*_EulAtt2Des(1) - _parameters.take_off_control_kd*_ctrl_state.pitch_rate) * r2servo + _parameters.take_off_horizontal_pos;
+				_actuators_airframe.control[1] = (_parameters.take_off_pitch_kp*_EulAtt2Des(1) - _parameters.take_off_pitch_kd*_ctrl_state.pitch_rate) * r2servo + _parameters.take_off_horizontal_pos;
+				_actuators_airframe.control[2] = (_parameters.take_off_yaw_kp*_EulAtt2Des(2) - _parameters.take_off_yaw_kd*_ctrl_state.yaw_rate);
 
 
 				if (hrt_absolute_time() - present_time >=
@@ -1105,7 +1114,7 @@ DroneAquaTest::task_main() {
                 else {
                     _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
                 }
-                _actuators_airframe.control[1] = (_parameters.take_off_control_kp*_EulAtt2Des(1)+_parameters.take_off_control_kd*_derivate(1)) * r2servo + _parameters.take_off_horizontal_pos;
+                _actuators_airframe.control[1] = (_parameters.take_off_pitch_kp*_EulAtt2Des(1)+_parameters.take_off_pitch_kd*_derivate(1)) * r2servo + _parameters.take_off_horizontal_pos;
 
                 if (hrt_absolute_time() - present_time >=
                     (int) _parameters.take_off_custom_time_09) // 120 ms
@@ -1124,7 +1133,7 @@ DroneAquaTest::task_main() {
                 err0 = err;
                 _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
                 _actuators_airframe.control[1] =
-                        (_parameters.take_off_control_kp * err + _parameters.take_off_control_kd * derr) * r2servo +
+                        (_parameters.take_off_pitch_kp * err + _parameters.take_off_pitch_kd * derr) * r2servo +
                         _parameters.take_off_horizontal_pos;
                 _actuators_airframe.control[1] = _parameters.take_off_down_pos;
 

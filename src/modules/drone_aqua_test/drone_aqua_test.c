@@ -181,10 +181,34 @@ PARAM_DEFINE_FLOAT(TK_CON_KD, 0.01f);
  * @min 0.0
  * @max 10000000.0
  * @decimal 2
+ * @increment 0.001
+ * @group FW Attitude Control
+ */
+PARAM_DEFINE_FLOAT(TK_CUSTM_PITCH, 1.571f);
+
+/**
+ * Custom takeoff yaw controler : Gain Kp
+ *
+ *
+ * @min -10.0
+ * @max 10.0
+ * @decimal 2
  * @increment 0.01
  * @group FW Attitude Control
  */
-PARAM_DEFINE_FLOAT(TK_CUSTM_PITCH, 0.79f);
+PARAM_DEFINE_FLOAT(TK_YAW_KP, 0.20f);
+
+/**
+* Custom takeoff yaw controler : Gain Kd
+*
+*
+* @min -10.0
+* @max 10.0
+* @decimal 3
+* @increment 0.001
+* @group FW Attitude Control
+*/
+PARAM_DEFINE_FLOAT(TK_YAW_KD, 0.01f);
 
 
 
