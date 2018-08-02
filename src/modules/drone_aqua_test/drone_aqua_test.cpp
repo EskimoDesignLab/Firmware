@@ -318,7 +318,8 @@ private:
 		float take_off_pitch_kd;
 		float take_off_yaw_kp;
 		float take_off_yaw_kd;
-		float take_off_custom_pitch;
+        float take_off_rudder_offset;
+        float take_off_custom_pitch;
 
 	}		_parameters;			/**< local copies of interesting parameters */
 
@@ -387,8 +388,8 @@ private:
 		param_t take_off_pitch_kd;
 		param_t take_off_yaw_kp;
 		param_t take_off_yaw_kd;
-		param_t take_off_custom_pitch;
-
+        param_t take_off_rudder_offset;
+        param_t take_off_custom_pitch;
 
 
 	}		_parameter_handles;		/**< handles for interesting parameters */
@@ -625,9 +626,9 @@ DroneAquaTest::DroneAquaTest() :
 	_parameter_handles.take_off_pitch_kp = param_find("TK_CON_KP");
 	_parameter_handles.take_off_pitch_kd = param_find("TK_CON_KD");
 	_parameter_handles.take_off_yaw_kp = param_find("TK_YAW_KP");
-	_parameter_handles.take_off_yaw_kd = param_find("TK_YAW_KD");
-	_parameter_handles.take_off_custom_pitch = param_find("TK_CUSTM_PITCH");
-
+	_parameter_handles.take_off_rudder_offset = param_find("TK_RUD_OFF");
+    _parameter_handles.take_off_yaw_kd = param_find("TK_YAW_KD");
+    _parameter_handles.take_off_custom_pitch = param_find("TK_CUSTM_PITCH");
 
 
     _qd_offset.from_euler(0.0f, 1.57f, 0.0f);
@@ -784,10 +785,10 @@ DroneAquaTest::parameters_update()
 	param_get(_parameter_handles.take_off_pitch_kd, &_parameters.take_off_pitch_kd);
 	param_get(_parameter_handles.take_off_yaw_kp, &_parameters.take_off_yaw_kp);
 	param_get(_parameter_handles.take_off_yaw_kd, &_parameters.take_off_yaw_kd);
-	param_get(_parameter_handles.take_off_custom_pitch, &_parameters.take_off_custom_pitch);
+    param_get(_parameter_handles.take_off_rudder_offset, &_parameters.take_off_rudder_offset);
+    param_get(_parameter_handles.take_off_custom_pitch, &_parameters.take_off_custom_pitch);
 	return OK;
 }
-
 void
 DroneAquaTest::vehicle_control_mode_poll()
 {
@@ -1045,6 +1046,7 @@ DroneAquaTest::task_main() {
             if (mode_seq0) {
                 _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f;
                 _actuators_airframe.control[1] = _parameters.take_off_horizontal_pos; //0.28f;
+                _actuators_airframe.control[2] = _parameters.take_off_rudder_offset;
 
                 if (hrt_absolute_time() - present_time >=
                     (int) _parameters.take_off_custom_time_01) // 2 sec
@@ -1060,6 +1062,7 @@ DroneAquaTest::task_main() {
             if (mode_seq2) {
                 _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f;
                 _actuators_airframe.control[1] = _parameters.take_off_up_pos;
+                _actuators_airframe.control[2] = _parameters.take_off_rudder_offset;
                 if (hrt_absolute_time() - present_time >=
                     1000000) //(int)_parameters.take_off_custom_time_03) // 1 sec
                 {
@@ -1077,15 +1080,15 @@ DroneAquaTest::task_main() {
 				_qAtt2Des = _qAtt.conjugated() * _qDes;
 				_EulAtt2Des = _qAtt2Des.to_euler();
 //                Boucle pour le print et l'incrementation de l'indice compteur
-                /*if (++_countPrint >= 100)
+                if (++_countPrint >= 200)
                 {
                     warn("Error real : %0.3f , %0.3f , %0.3f", (double)(_EulAtt2Des(0)*R2D), (double)(_EulAtt2Des(1)*R2D), (double)(_EulAtt2Des(2)*R2D));
                     _countPrint = 0;
-                }*/
+                }
 				float r2servo = (_parameters.take_off_up_pos - _parameters.take_off_horizontal_pos) / (3.14159f / 2);
 
 				_actuators_airframe.control[1] = (_parameters.take_off_pitch_kp*_EulAtt2Des(1) - _parameters.take_off_pitch_kd*_ctrl_state.pitch_rate) * r2servo + _parameters.take_off_horizontal_pos;
-				_actuators_airframe.control[2] = (_parameters.take_off_yaw_kp*_EulAtt2Des(2) - _parameters.take_off_yaw_kd*_ctrl_state.yaw_rate);
+				_actuators_airframe.control[2] = (_parameters.take_off_yaw_kp*_EulAtt2Des(2) - _parameters.take_off_yaw_kd*_ctrl_state.yaw_rate)+_parameters.take_off_rudder_offset;
 
 
 				if (hrt_absolute_time() - present_time >=
@@ -1184,6 +1187,7 @@ DroneAquaTest::task_main() {
             } else {
                 _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f; // quant nuttx boot le thrust est a 0
                 _actuators_airframe.control[1] = _parameters.take_off_horizontal_pos; //0.28f; // le servo ne bouge pas
+                _actuators_airframe.control[2] = _parameters.take_off_rudder_offset;
 
                 mode_seq0 = false;
                 mode_seq2 = false;

@@ -210,6 +210,19 @@ PARAM_DEFINE_FLOAT(TK_YAW_KP, 0.20f);
 */
 PARAM_DEFINE_FLOAT(TK_YAW_KD, 0.01f);
 
+/**
+ * Offset rudder position
+ *
+ *
+ * @unit s
+ * @min -10.0
+ * @max 10.0
+ * @decimal 2
+ * @increment 0.01
+ * @group FW Attitude Control
+ */
+PARAM_DEFINE_FLOAT(TK_RUD_OFF, 0.0f);
+
 
 
 
