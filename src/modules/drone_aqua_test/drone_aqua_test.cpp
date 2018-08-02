@@ -945,7 +945,7 @@ DroneAquaTest::task_main() {
     static bool flagidle = false;
 
     static int present_time = 0;
-
+    static int _countPrint =0;
     while (!_task_should_exit) {
 
         static int loop_counter = 0;
@@ -1060,7 +1060,6 @@ DroneAquaTest::task_main() {
             if (mode_seq2) {
                 _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f;
                 _actuators_airframe.control[1] = _parameters.take_off_up_pos;
-
                 if (hrt_absolute_time() - present_time >=
                     1000000) //(int)_parameters.take_off_custom_time_03) // 1 sec
                 {
@@ -1073,13 +1072,16 @@ DroneAquaTest::task_main() {
             // GAB : IDLE DU THRUST A 30% PENDANT UN CERTAIN TEMPS ==> Etienne Edit : Debut du full throttle et du controleur
             if (mode_seq7) {
                 _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
-
 				_qDes.from_euler(0.0f, _parameters.take_off_custom_pitch, 0.0f);
 				_qAtt = q_att;
 				_qAtt2Des = _qAtt.conjugated() * _qDes;
-
 				_EulAtt2Des = _qAtt2Des.to_euler();
-				//warn("Error real : %0.3f , %0.3f , %0.3f", (double)(_EulAtt2Des(0)*R2D), (double)(_EulAtt2Des(1)*R2D), (double)(_EulAtt2Des(2)*R2D));
+//                Boucle pour le print et l'incrementation de l'indice compteur
+                /*if (++_countPrint >= 100)
+                {
+                    warn("Error real : %0.3f , %0.3f , %0.3f", (double)(_EulAtt2Des(0)*R2D), (double)(_EulAtt2Des(1)*R2D), (double)(_EulAtt2Des(2)*R2D));
+                    _countPrint = 0;
+                }*/
 				float r2servo = (_parameters.take_off_up_pos - _parameters.take_off_horizontal_pos) / (3.14159f / 2);
 
 				_actuators_airframe.control[1] = (_parameters.take_off_pitch_kp*_EulAtt2Des(1) - _parameters.take_off_pitch_kd*_ctrl_state.pitch_rate) * r2servo + _parameters.take_off_horizontal_pos;
