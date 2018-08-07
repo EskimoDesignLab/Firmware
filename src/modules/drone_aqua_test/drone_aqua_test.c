@@ -47,177 +47,179 @@
  */
 
 /**
- * Proportionnal gain for aileron
+ * Custom takeoff timing: timing 11
  *
- * @min 0.0
- * @max 100.0
+ *
+ * @unit s
+ * @min -10.0
+ * @max 10.0
  * @decimal 2
- * @increment 0.1
- * @reboot_required true
- * @group PID
+ * @increment 0.01
+ * @group FW Attitude Control
  */
-PARAM_DEFINE_FLOAT(KP_AILERON, 3.701f);
+PARAM_DEFINE_FLOAT(TK_HOR_POS, 0.0f);
 
 /**
- * Proportionnal gain for elevation
+ * Custom takeoff timing: timing 11
  *
- * @min 0.0
- * @max 100.0
+ *
+ * @unit s
+ * @min -10.0
+ * @max 10.0
  * @decimal 2
- * @increment 0.1
- * @reboot_required true
- * @group PID
+ * @increment 0.01
+ * @group FW Attitude Control
  */
-PARAM_DEFINE_FLOAT(KP_ELEVATION, 2.228f);
+PARAM_DEFINE_FLOAT(TK_UP_POS, 1.0f);
 
 /**
- * Proportionnal gain for rudder
+ * Custom takeoff timing: timing 11
  *
- * @min 0.0
- * @max 100.0
+ *
+ * @unit s
+ * @min -10.0
+ * @max 10.0
  * @decimal 2
- * @increment 0.1
- * @reboot_required true
- * @group PID
+ * @increment 0.01
+ * @group FW Attitude Control
  */
-PARAM_DEFINE_FLOAT(KP_RUDDER, 2.5f);
+PARAM_DEFINE_FLOAT(TK_DN_POS, -1.0f);
 
 /**
- * Proportionnal gain for thrust
+ * Custom takeoff timing: timing 01
  *
+ *
+ * @unit us
  * @min 0.0
- * @max 100.0
+ * @max 10000000.0
  * @decimal 2
- * @increment 0.1
- * @reboot_required true
- * @group PID
+ * @increment 0.05
+ * @group FW Attitude Control
  */
-PARAM_DEFINE_FLOAT(KP_VEL_THRUST, 0.1f);
+PARAM_DEFINE_FLOAT(TK_WAIT_TIME, 2000000.0f);
 
 /**
- * Derivate gain for aileron
+ * Custom takeoff timing: timing 08
  *
+ *
+ * @unit us
  * @min 0.0
- * @max 100.0
+ * @max 10000000.0
  * @decimal 2
- * @increment 0.1
- * @reboot_required true
- * @group PID
+ * @increment 0.05
+ * @group FW Attitude Control
  */
-PARAM_DEFINE_FLOAT(KP_POS_THRUST, 0.1f);
+PARAM_DEFINE_FLOAT(TK_IDLE_UP_TIME, 2000000.0f);
 
 /**
- * Derivate gain for aileron
+ * Custom takeoff timing: timing 09
  *
+ *
+ * @unit us
  * @min 0.0
- * @max 100.0
+ * @max 10000000.0
  * @decimal 2
- * @increment 0.1
- * @reboot_required true
- * @group PID
+ * @increment 0.05
+ * @group FW Attitude Control
  */
-PARAM_DEFINE_FLOAT(KD_AILERON, 0.25f);
+PARAM_DEFINE_FLOAT(TK_FULL_UP_TIME, 230000.0f);
 
 /**
- * Derivate gain for elevation
+ * Custom takeoff timing: timing 11
  *
+ *
+ * @unit us
  * @min 0.0
- * @max 100.0
+ * @max 10000000.0
  * @decimal 2
- * @increment 0.1
- * @reboot_required true
- * @group PID
+ * @increment 0.05
+ * @group FW Attitude Control
  */
-PARAM_DEFINE_FLOAT(KD_ELEVATION, 0.19f);
+PARAM_DEFINE_FLOAT(TK_FULL_DN_TIME, 2000000.0f);
 
 /**
- * Derivate gain for rudder
+ * Custom takeoff pitch controler : Gain Kp
+ *
  *
  * @min 0.0
- * @max 100.0
+ * @max 1.0
  * @decimal 2
- * @increment 0.1
- * @reboot_required true
- * @group PID
+ * @increment 0.01
+ * @group FW Attitude Control
  */
-PARAM_DEFINE_FLOAT(KD_RUDDER, 0.2f);
+PARAM_DEFINE_FLOAT(TK_CON_KP, 0.20f);
 
 /**
- * Derivate gain for thrust
+ * Custom takeoff timing: controller timing
  *
+ * @unit us
  * @min 0.0
- * @max 100.0
+ * @max 1000000000.0
  * @decimal 2
- * @increment 0.1
- * @reboot_required true
- * @group PID
+ * @increment 0.05
+ * @group FW Attitude Control
  */
-PARAM_DEFINE_FLOAT(KD_VEL_THRUST, 0.0f);
+PARAM_DEFINE_FLOAT(TK_CON_TIME, 5000000.0f);
 
 /**
- * Integrate gain for aileron
- *
- * @min 0.0
- * @max 100.0
- * @decimal 2
- * @increment 0.1
- * @reboot_required true
- * @group PID
- */
-PARAM_DEFINE_FLOAT(KD_POS_THRUST, 0.0f);
+* Custom takeoff pitch controler : Gain Kd
+*
+*
+* @min 0.0
+* @max 1.0
+* @decimal 3
+* @increment 0.001
+* @group FW Attitude Control
+*/
+PARAM_DEFINE_FLOAT(TK_CON_KD, 0.01f);
 
 /**
- * Integrate gain for aileron
+ * Custom takeoff pitch angle pendant la manoeuvre
  *
+ *
+ * @unit rad
  * @min 0.0
- * @max 100.0
+ * @max 10000000.0
  * @decimal 2
- * @increment 0.1
- * @reboot_required true
- * @group PID
+ * @increment 0.001
+ * @group FW Attitude Control
  */
-PARAM_DEFINE_FLOAT(KI_AILERON, 0.0f);
+PARAM_DEFINE_FLOAT(TK_CUSTM_PITCH, 1.571f);
 
 /**
- * Integrate gain for elevation
+ * Custom takeoff yaw controler : Gain Kp
  *
- * @min 0.0
- * @max 100.0
+ *
+ * @min -10.0
+ * @max 10.0
  * @decimal 2
- * @increment 0.1
- * @reboot_required true
- * @group PID
+ * @increment 0.01
+ * @group FW Attitude Control
  */
-PARAM_DEFINE_FLOAT(KI_ELEVATION, 0.0f);
+PARAM_DEFINE_FLOAT(TK_YAW_KP, 0.20f);
 
 /**
- * Integrate gain for rudder
- *
- * @min 0.0
- * @max 100.0
- * @decimal 2
- * @increment 0.1
- * @reboot_required true
- * @group PID
- */
-PARAM_DEFINE_FLOAT(KI_RUDDER, 0.0f);
+* Custom takeoff yaw controler : Gain Kd
+*
+*
+* @min -10.0
+* @max 10.0
+* @decimal 3
+* @increment 0.001
+* @group FW Attitude Control
+*/
+PARAM_DEFINE_FLOAT(TK_YAW_KD, 0.01f);
 
 /**
- * Integrate gain for thrust
+ * Offset rudder position
  *
- * @min 0.0
- * @max 100.0
+ *
+ * @unit s
+ * @min -10.0
+ * @max 10.0
  * @decimal 2
- * @increment 0.1
- * @reboot_required true
- * @group PID
+ * @increment 0.01
+ * @group FW Attitude Control
  */
-PARAM_DEFINE_FLOAT(KI_VEL_THRUST, 0.0f);
-
-PARAM_DEFINE_FLOAT(KI_POS_THRUST, 0.0f);
-
-
-
-
-
+PARAM_DEFINE_FLOAT(TK_RUD_OFF, 0.0f);
 

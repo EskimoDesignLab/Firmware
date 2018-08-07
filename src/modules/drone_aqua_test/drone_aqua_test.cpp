@@ -314,9 +314,12 @@ private:
 		float take_off_horizontal_pos;
 		float take_off_up_pos;
 		float take_off_down_pos;
-		float take_off_control_kp;
-		float take_off_control_kd;
-		float take_off_custom_pitch;
+		float take_off_pitch_kp;
+		float take_off_pitch_kd;
+		float take_off_yaw_kp;
+		float take_off_yaw_kd;
+        float take_off_rudder_offset;
+        float take_off_custom_pitch;
 
 	}		_parameters;			/**< local copies of interesting parameters */
 
@@ -381,9 +384,12 @@ private:
 		param_t take_off_horizontal_pos;
 		param_t take_off_up_pos;
 		param_t take_off_down_pos;
-		param_t take_off_control_kp;
-		param_t take_off_control_kd;
-		param_t take_off_custom_pitch;
+		param_t take_off_pitch_kp;
+		param_t take_off_pitch_kd;
+		param_t take_off_yaw_kp;
+		param_t take_off_yaw_kd;
+        param_t take_off_rudder_offset;
+        param_t take_off_custom_pitch;
 
 
 
@@ -618,9 +624,12 @@ DroneAquaTest::DroneAquaTest() :
 	_parameter_handles.take_off_horizontal_pos = param_find("TK_HOR_POS");
 	_parameter_handles.take_off_up_pos = param_find("TK_UP_POS");
 	_parameter_handles.take_off_down_pos = param_find("TK_DN_POS");
-	_parameter_handles.take_off_control_kp = param_find("TK_CON_KP");
-	_parameter_handles.take_off_control_kd = param_find("TK_CON_KD");
-	_parameter_handles.take_off_custom_pitch = param_find("TK_CUSTM_PITCH");
+	_parameter_handles.take_off_pitch_kp = param_find("TK_CON_KP");
+	_parameter_handles.take_off_pitch_kd = param_find("TK_CON_KD");
+	_parameter_handles.take_off_yaw_kp = param_find("TK_YAW_KP");
+	_parameter_handles.take_off_rudder_offset = param_find("TK_RUD_OFF");
+    _parameter_handles.take_off_yaw_kd = param_find("TK_YAW_KD");
+    _parameter_handles.take_off_custom_pitch = param_find("TK_CUSTM_PITCH");
 
 
 
@@ -774,12 +783,14 @@ DroneAquaTest::parameters_update()
 	param_get(_parameter_handles.take_off_horizontal_pos, &_parameters.take_off_horizontal_pos);
 	param_get(_parameter_handles.take_off_up_pos, &_parameters.take_off_up_pos);
 	param_get(_parameter_handles.take_off_down_pos, &_parameters.take_off_down_pos);
-	param_get(_parameter_handles.take_off_control_kp, &_parameters.take_off_control_kp);
-	param_get(_parameter_handles.take_off_control_kd, &_parameters.take_off_control_kd);
-	param_get(_parameter_handles.take_off_custom_pitch, &_parameters.take_off_custom_pitch);
+	param_get(_parameter_handles.take_off_pitch_kp, &_parameters.take_off_pitch_kp);
+	param_get(_parameter_handles.take_off_pitch_kd, &_parameters.take_off_pitch_kd);
+	param_get(_parameter_handles.take_off_yaw_kp, &_parameters.take_off_yaw_kp);
+	param_get(_parameter_handles.take_off_yaw_kd, &_parameters.take_off_yaw_kd);
+    param_get(_parameter_handles.take_off_rudder_offset, &_parameters.take_off_rudder_offset);
+    param_get(_parameter_handles.take_off_custom_pitch, &_parameters.take_off_custom_pitch);
 	return OK;
 }
-
 void
 DroneAquaTest::vehicle_control_mode_poll()
 {
@@ -936,9 +947,9 @@ DroneAquaTest::task_main() {
 
 	static bool flagidle = false;
 
-	static int present_time = 0;
-
-	while (!_task_should_exit) {
+    static int present_time = 0;
+    static int _countPrint =0;
+    while (!_task_should_exit) {
 
 		static int loop_counter = 0;
 		//static int time_count = 0;
@@ -1033,10 +1044,11 @@ DroneAquaTest::task_main() {
 			_actuators.control[actuator_controls_s::INDEX_YAW] = _manual.r; // 0.0f + _parameters.trim_yaw
 			_actuators.control[actuator_controls_s::INDEX_THROTTLE] = _manual.z; // pass-through de la commande du trigger
 
-			// WAIT AVANT LA SEQUENCE (FALCULTATIF)
-			if (mode_seq0) {
-				_actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f;
-				_actuators_airframe.control[1] = _parameters.take_off_horizontal_pos; //0.28f;
+            // WAIT AVANT LA SEQUENCE (FALCULTATIF)
+            if (mode_seq0) {
+                _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f;
+                _actuators_airframe.control[1] = _parameters.take_off_horizontal_pos; //0.28f;
+                _actuators_airframe.control[2] = _parameters.take_off_rudder_offset;
 
 				if (hrt_absolute_time() - present_time >=
 					(int) _parameters.take_off_custom_time_01) // 2 sec
@@ -1048,33 +1060,37 @@ DroneAquaTest::task_main() {
 				}
 			}
 
-			// ACTIVE LE SERVO POUR REMONTER LE PIVOT
-			if (mode_seq2) {
-				_actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f;
-				_actuators_airframe.control[1] = _parameters.take_off_up_pos;
+            // ACTIVE LE SERVO POUR REMONTER LE PIVOT
+            if (mode_seq2) {
+                _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f;
+                _actuators_airframe.control[1] = _parameters.take_off_up_pos;
+                _actuators_airframe.control[2] = _parameters.take_off_rudder_offset;
+                if (hrt_absolute_time() - present_time >=
+                    1000000) //(int)_parameters.take_off_custom_time_03) // 1 sec
+                {
+                    present_time = hrt_absolute_time();
+                    mode_seq2 = false;
+                    mode_seq7 = true;
+                }
+            }
 
-				if (hrt_absolute_time() - present_time >=
-					1000000) //(int)_parameters.take_off_custom_time_03) // 1 sec
-				{
-					present_time = hrt_absolute_time();
-					mode_seq2 = false;
-					mode_seq7 = true;
-				}
-			}
-
-			// GAB : IDLE DU THRUST A 30% PENDANT UN CERTAIN TEMPS ==> Etienne Edit : Debut du full throttle et du controleur
-			if (mode_seq7) {
-				_actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
-
+            // GAB : IDLE DU THRUST A 30% PENDANT UN CERTAIN TEMPS ==> Etienne Edit : Debut du full throttle et du controleur
+            if (mode_seq7) {
+                _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
 				_qDes.from_euler(0.0f, _parameters.take_off_custom_pitch, 0.0f);
 				_qAtt = q_att;
 				_qAtt2Des = _qAtt.conjugated() * _qDes;
-
 				_EulAtt2Des = _qAtt2Des.to_euler();
-				//warn("Error real : %0.3f , %0.3f , %0.3f", (double)(_EulAtt2Des(0)*R2D), (double)(_EulAtt2Des(1)*R2D), (double)(_EulAtt2Des(2)*R2D));
+//                Boucle pour le print et l'incrementation de l'indice compteur
+                if (++_countPrint >= 200)
+                {
+                    warn("Error real : %0.3f , %0.3f , %0.3f", (double)(_EulAtt2Des(0)*R2D), (double)(_EulAtt2Des(1)*R2D), (double)(_EulAtt2Des(2)*R2D));
+                    _countPrint = 0;
+                }
 				float r2servo = (_parameters.take_off_up_pos - _parameters.take_off_horizontal_pos) / (3.14159f / 2);
 
-				_actuators_airframe.control[1] = (_parameters.take_off_control_kp*_EulAtt2Des(1) - _parameters.take_off_control_kd*_ctrl_state.pitch_rate) * r2servo + _parameters.take_off_horizontal_pos;
+				_actuators_airframe.control[1] = (_parameters.take_off_pitch_kp*_EulAtt2Des(1) - _parameters.take_off_pitch_kd*_ctrl_state.pitch_rate) * r2servo + _parameters.take_off_horizontal_pos;
+				_actuators_airframe.control[2] = (_parameters.take_off_yaw_kp*_EulAtt2Des(2) - _parameters.take_off_yaw_kd*_ctrl_state.yaw_rate)+_parameters.take_off_rudder_offset;
 
 
 				if (hrt_absolute_time() - present_time >=
@@ -1098,14 +1114,14 @@ DroneAquaTest::task_main() {
 				_euler_error_old = _EulAtt2Des;
 				//warn("Error real : %0.3f , %0.3f , %0.3f", (double)(_EulAtt2Des(0)*R2D), (double)(_EulAtt2Des(1)*R2D), (double)(_EulAtt2Des(2)*R2D));
 				float r2servo = (_parameters.take_off_up_pos - _parameters.take_off_horizontal_pos) / (3.14159f / 2);
-				float throttleFunction = 0.30f + _parameters.take_off_custom_time_10*(hrt_absolute_time() - present_time)/1000000.0f;
-				if (throttleFunction < 1) {
-					_actuators.control[actuator_controls_s::INDEX_THROTTLE] = throttleFunction;
-				}
-				else {
-					_actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
-				}
-				_actuators_airframe.control[1] = (_parameters.take_off_control_kp*_EulAtt2Des(1)+_parameters.take_off_control_kd*_derivate(1)) * r2servo + _parameters.take_off_horizontal_pos;
+                float throttleFunction = 0.30f + _parameters.take_off_custom_time_10*(hrt_absolute_time() - present_time)/1000000.0f;
+                if (throttleFunction < 1) {
+                    _actuators.control[actuator_controls_s::INDEX_THROTTLE] = throttleFunction;
+                }
+                else {
+                    _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
+                }
+                _actuators_airframe.control[1] = (_parameters.take_off_pitch_kp*_EulAtt2Des(1)+_parameters.take_off_pitch_kd*_derivate(1)) * r2servo + _parameters.take_off_horizontal_pos;
 
 				if (hrt_absolute_time() - present_time >=
 					(int) _parameters.take_off_custom_time_09) // 120 ms
@@ -1116,17 +1132,17 @@ DroneAquaTest::task_main() {
 				}
 			}
 
-			// MET LA TETE DU PIVOT À LHORIZONTAL ET GARDE FULL THROTTLE
-			if (mode_seq9) {
-				float err = _parameters.take_off_custom_pitch - _pitch;
-				float r2servo = (_parameters.take_off_up_pos - _parameters.take_off_horizontal_pos) / (3.14159f / 2);
-				float derr = (err - err0) / DT;
-				err0 = err;
-				_actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
-				_actuators_airframe.control[1] =
-						(_parameters.take_off_control_kp * err + _parameters.take_off_control_kd * derr) * r2servo +
-						_parameters.take_off_horizontal_pos;
-				_actuators_airframe.control[1] = _parameters.take_off_down_pos;
+            // MET LA TETE DU PIVOT À LHORIZONTAL ET GARDE FULL THROTTLE
+            if (mode_seq9) {
+                float err = _parameters.take_off_custom_pitch - _pitch;
+                float r2servo = (_parameters.take_off_up_pos - _parameters.take_off_horizontal_pos) / (3.14159f / 2);
+                float derr = (err - err0) / DT;
+                err0 = err;
+                _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
+                _actuators_airframe.control[1] =
+                        (_parameters.take_off_pitch_kp * err + _parameters.take_off_pitch_kd * derr) * r2servo +
+                        _parameters.take_off_horizontal_pos;
+                _actuators_airframe.control[1] = _parameters.take_off_down_pos;
 
 
 				if (hrt_absolute_time() - present_time >=
@@ -1170,9 +1186,10 @@ DroneAquaTest::task_main() {
 					mode_seq0 = true;
 				}
 
-			} else {
-				_actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f; // quant nuttx boot le thrust est a 0
-				_actuators_airframe.control[1] = _parameters.take_off_horizontal_pos; //0.28f; // le servo ne bouge pas
+            } else {
+                _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f; // quant nuttx boot le thrust est a 0
+                _actuators_airframe.control[1] = _parameters.take_off_horizontal_pos; //0.28f; // le servo ne bouge pas
+                _actuators_airframe.control[2] = _parameters.take_off_rudder_offset;
 
 				mode_seq0 = false;
 				mode_seq2 = false;
