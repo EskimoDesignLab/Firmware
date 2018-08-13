@@ -147,7 +147,7 @@ PARAM_DEFINE_FLOAT(TK_FULL_DN_TIME, 2000000.0f);
  * @increment 0.01
  * @group FW Attitude Control
  */
-PARAM_DEFINE_FLOAT(TK_CON_KP, 0.20f);
+PARAM_DEFINE_FLOAT(TK_CON_KP, 1.00f);
 
 /**
  * Custom takeoff timing: controller timing
@@ -171,7 +171,7 @@ PARAM_DEFINE_FLOAT(TK_CON_TIME, 5000000.0f);
 * @increment 0.001
 * @group FW Attitude Control
 */
-PARAM_DEFINE_FLOAT(TK_CON_KD, 0.01f);
+PARAM_DEFINE_FLOAT(TK_CON_KD, 0.10f);
 
 /**
  * Custom takeoff pitch angle pendant la manoeuvre
@@ -196,7 +196,7 @@ PARAM_DEFINE_FLOAT(TK_CUSTM_PITCH, 1.571f);
  * @increment 0.01
  * @group FW Attitude Control
  */
-PARAM_DEFINE_FLOAT(TK_YAW_KP, 0.20f);
+PARAM_DEFINE_FLOAT(TK_YAW_KP, 2.00f);
 
 /**
 * Custom takeoff yaw controler : Gain Kd
@@ -208,7 +208,7 @@ PARAM_DEFINE_FLOAT(TK_YAW_KP, 0.20f);
 * @increment 0.001
 * @group FW Attitude Control
 */
-PARAM_DEFINE_FLOAT(TK_YAW_KD, 0.01f);
+PARAM_DEFINE_FLOAT(TK_YAW_KD, 0.00f);
 
 /**
  * Offset rudder position
