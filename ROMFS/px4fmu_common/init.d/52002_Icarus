@@ -48,5 +48,5 @@ set MAV_TYPE 1
 # Set mixer
 set MIXER icarus
 # Provide ESC a constant 1000 us pulse
-set PWM_OUT 12345
-set PWM_DISARMED 800
+set PWM_OUT 1
+set PWM_DISARMED 1000
