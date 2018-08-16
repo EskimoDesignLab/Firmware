@@ -252,6 +252,9 @@ unset OUTPUT_DEV
 unset OUTPUT_AUX_DEV
 
 # pwm sur le servo de pivot
-pwm min -c 6 -p 500
-
-pwm max -c 6 -p 2150
+pwm min -c 4 -p 800
+pwm max -c 4 -p 2200
+pwm disarmed -c 4 -p 0
+pwm min -c 5 -p 800
+pwm max -c 5 -p 2200
+pwm disarmed -c 5 -p 0

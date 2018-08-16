@@ -13,7 +13,7 @@ Inputs to the mixer come from channel group 0 (vehicle attitude), channels 0
 
 See the README for more information on the scaler format.
 
-Motor speed mixer
+Motor speed mixer - MAIN1
 -----------------
 Two scalers total (output, thrust).
 
@@ -24,7 +24,7 @@ M: 1
 O:      10000  10000      0 -10000  10000
 S: 0 3      0  20000 -10000 -10000  10000
 
-Elevon mixers
+Elevon mixers - MAIN2 & MAIN3
 -------------
 Three scalers total (output, roll, pitch).
 
@@ -44,7 +44,7 @@ O:      10000  10000      0 -10000  10000
 S: 0 0  -6000  -6000      0 -10000  10000
 S: 0 1   6500   6500      0 -10000  10000
 
-Output 3
+Output 3 - MAIN4
 --------
 
 mixer dans actuator_group_2 pour le servo du pivot. onajoute un offset pour le servo modif
@@ -53,7 +53,7 @@ M: 1
 O:      10000  10000      0 -10000  10000
 S: 2 1  10000  10000      0 -10000  10000
 
-Output 4
+Output 4 - MAIN5
 -----------------
 mixer dans actuator_group_2 pour le muscle wire de verouillage position UP.
 
@@ -61,7 +61,7 @@ M: 1
 O:      10000  10000      0 -10000  10000
 S: 2 2  10000  10000      0 -10000  10000
 
-Output 5
+Output 5 - MAIN6
 -----------------
 mixer dans actuator_group_2 pour le muscle wire de verouillage position DOWN.
 
@@ -69,13 +69,11 @@ M: 1
 O:      10000  10000      0 -10000  10000
 S: 2 3  10000  10000      0 -10000  10000
 
-Output 6
+Output 6 - MAIN7
 -----------------
 
 Z:
 
-Output 7
------------------
 
 
 

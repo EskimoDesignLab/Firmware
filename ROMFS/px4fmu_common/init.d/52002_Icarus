@@ -11,6 +11,7 @@
 # @output MAIN4 servo de pivot
 # @output MAIN5 muscle wire verouillage UP
 # @output MAIN6 muscle wire verouillage DOWN
+# @output MAIN7 empty?
 #
 # @output AUX1 feed-through of RC AUX1 channel
 # @output AUX2 feed-through of RC AUX2 channel
@@ -48,5 +49,5 @@ set MAV_TYPE 1
 # Set mixer
 set MIXER icarus
 # Provide ESC a constant 1000 us pulse
-set PWM_OUT 4
+set PWM_OUT 1
 set PWM_DISARMED 1000
