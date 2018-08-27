@@ -535,15 +535,8 @@ FixedwingAttitudeControl::FixedwingAttitudeControl() :
 
 	// timing for each step of aqua drone take off
 	_parameter_handles.take_off_custom_time_00 = param_find("TK_WAIT_TIME");
-	//_parameter_handles.take_off_custom_time_02 = param_find("TK_CUSTM_T2");
-	//_parameter_handles.take_off_custom_time_01 = param_find("TK_UP_TIME");
-	//_parameter_handles.take_off_custom_time_04 = param_find("TK_CUSTM_T4");
-	//_parameter_handles.take_off_custom_time_05 = param_find("TK_CUSTM_T5");
-	//_parameter_handles.take_off_custom_time_06 = param_find("TK_CUSTM_T6");
-	//_parameter_handles.take_off_custom_time_07 = param_find("TK_CUSTM_T7");
-	_parameter_handles.take_off_custom_time_02 = param_find("TK_IDLE_UP_TIME");
-	_parameter_handles.take_off_custom_time_03 = param_find("TK_FULL_UP_TIME");
-	//_parameter_handles.take_off_custom_time_04 = param_find("TK_FULL_DN_TIME");
+	_parameter_handles.take_off_custom_time_02 = param_find("TK_RISE_TIME");
+	_parameter_handles.take_off_custom_time_03 = param_find("TK_STAB_TIME");
 	_parameter_handles.take_off_custom_time_05 = param_find("TK_FULL_DN_TIME");
 	_parameter_handles.take_off_horizontal_pos = param_find("TK_HOR_POS");
 	_parameter_handles.take_off_up_pos = param_find("TK_UP_POS");
@@ -668,15 +661,8 @@ FixedwingAttitudeControl::parameters_update()
 
 	// timing for each step of aqua drone take off
 	param_get(_parameter_handles.take_off_custom_time_00, &_parameters.take_off_custom_time_00);
-	//param_get(_parameter_handles.take_off_custom_time_02, &_parameters.take_off_custom_time_02);
-	//param_get(_parameter_handles.take_off_custom_time_01, &_parameters.take_off_custom_time_01);
-	//param_get(_parameter_handles.take_off_custom_time_04, &_parameters.take_off_custom_time_04);
-	//param_get(_parameter_handles.take_off_custom_time_05, &_parameters.take_off_custom_time_05);
-	//param_get(_parameter_handles.take_off_custom_time_06, &_parameters.take_off_custom_time_06);
-	//param_get(_parameter_handles.take_off_custom_time_07, &_parameters.take_off_custom_time_07);
 	param_get(_parameter_handles.take_off_custom_time_02, &_parameters.take_off_custom_time_02);
 	param_get(_parameter_handles.take_off_custom_time_03, &_parameters.take_off_custom_time_03);
-	//param_get(_parameter_handles.take_off_custom_time_04, &_parameters.take_off_custom_time_04);
 	param_get(_parameter_handles.take_off_custom_time_05, &_parameters.take_off_custom_time_05);
 	param_get(_parameter_handles.take_off_horizontal_pos, &_parameters.take_off_horizontal_pos);
 	param_get(_parameter_handles.take_off_up_pos, &_parameters.take_off_up_pos);
