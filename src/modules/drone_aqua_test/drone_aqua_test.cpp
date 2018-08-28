@@ -1087,12 +1087,6 @@ DroneAquaTest::task_main() {
 				_qDes.from_euler(0.0f, _parameters.take_off_custom_pitch, 0.0f);
 				_qAtt2Des = q_att.conjugated() * _qDes;
 				_eAtt2Des = _qAtt2Des.to_euler();
-				//Boucle pour le print et l'incrementation de l'indice compteur
-				if (++_countPrint >= 200)
-				{
-					warn("Error real : %0.3f , %0.3f , %0.3f", (double)(_eAtt2Des(0)*R2D), (double)(_eAtt2Des(1)*R2D), (double)(_eAtt2Des(2)*R2D));
-					_countPrint = 0;
-				}
 
 				_actuators_airframe.control[1] = (_parameters.take_off_pitch_kp*_eAtt2Des(1) - _parameters.take_off_pitch_kd*_ctrl_state.pitch_rate) * r2servo + _parameters.take_off_horizontal_pos;
 				_actuators_airframe.control[2] = (_parameters.take_off_yaw_kp*_eAtt2Des(2) - _parameters.take_off_yaw_kd*_ctrl_state.yaw_rate)+_parameters.take_off_rudder_offset;
@@ -1129,8 +1123,16 @@ DroneAquaTest::task_main() {
 				_qDes.from_euler(0.0f, _eElev(1), _eElev(2));
 				_qAtt2Des = q_att.conjugated() * _qDes;
 				// Euler angle error from Quaternion error - Rotation YXZ to exclude yaw movement as required by the error calculation and allow pitch movement >90°
-				float _pitchErr = atan2f(-2.0f * (_qAtt2Des(1) * _qAtt2Des(2) - _qAtt2Des(0) * _qAtt2Des(3)), 1.0f - 2.0f * (_qAtt2Des(1) * _qAtt2Des(1) + _qAtt2Des(3) * _qAtt2Des(3)));
-				float _rollErr = asinf(2.0f * (_qAtt2Des(2) * _qAtt2Des(3) + _qAtt2Des(0) * _qAtt2Des(1)));
+				float _pitchErr = atan2f(2.0f * (_qAtt2Des(1) * _qAtt2Des(3) + _qAtt2Des(0) * _qAtt2Des(2)), 1.0f - 2.0f * (_qAtt2Des(1) * _qAtt2Des(1) + _qAtt2Des(2) * _qAtt2Des(2)));
+				float  _rollErr = asinf(-2.0f * (_qAtt2Des(2) * _qAtt2Des(3) - _qAtt2Des(0) * _qAtt2Des(1)));
+				float   _yawErr = atan2f(2.0f * (_qAtt2Des(1) * _qAtt2Des(2) + _qAtt2Des(0) * _qAtt2Des(3)), 1.0f - 2.0f * (_qAtt2Des(1) * _qAtt2Des(1) + _qAtt2Des(3) * _qAtt2Des(3)));
+
+				//Boucle pour le print et l'incrementation de l'indice compteur
+				if (++_countPrint >= 200)
+				{
+					warn("Error Calc YXZ : %0.3f , %0.3f , %0.3f", (float)(_pitchErr*R2D), (float)(_rollErr*R2D), (float)(_yawErr*R2D));
+					_countPrint = 0;
+				}
 
 				_actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
 				_actuators_airframe.control[1] = (_parameters.take_off_nose_kp*_pitchErr - _parameters.take_off_nose_kd*_ctrl_state.pitch_rate) * r2servo + _parameters.take_off_horizontal_pos;
