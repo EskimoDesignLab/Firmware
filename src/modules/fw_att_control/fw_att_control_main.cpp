@@ -1370,7 +1370,7 @@ FixedwingAttitudeControl::task_main()
 								_qAtt2Des = q_att.conjugated() * _qDes;
 								// Euler angle error from Quaternion error - Rotation YXZ to exclude yaw movement as required by the error calculation and allow pitch movement >90°
 								float _pitchErr = atan2f(-2.0f * (_qAtt2Des(1) * _qAtt2Des(2) - _qAtt2Des(0) * _qAtt2Des(3)), 1.0f - 2.0f * (_qAtt2Des(1) * _qAtt2Des(1) + _qAtt2Des(3) * _qAtt2Des(3)));
-								float _rollErr = asinf(2.0f * (_qAtt2Des(2) * _qAtt2Des(3) + _qAtt2Des(0) * _qAtt2Des(1)));
+//								float _rollErr = asinf(2.0f * (_qAtt2Des(2) * _qAtt2Des(3) + _qAtt2Des(0) * _qAtt2Des(1)));
 
 								_actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
 								_actuators_airframe.control[1] = (_parameters.take_off_nose_kp*_pitchErr - _parameters.take_off_nose_kd*_ctrl_state.pitch_rate) * r2servo + _parameters.take_off_horizontal_pos;
