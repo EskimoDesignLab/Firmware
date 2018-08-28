@@ -1320,7 +1320,7 @@ FixedwingAttitudeControl::task_main()
 								}
 							}
 
-							// Full throttle + asservissement du pivot et du rudder pour le maintenir l'hélice à la vertical
+							// Full throttle + asservissement du pivot et du rudder pour le maintenir l'hélice à la vertical - Rise Up Sequence
 
 							if (mode_seq2) {
 								_actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
@@ -1349,7 +1349,7 @@ FixedwingAttitudeControl::task_main()
 							}
 
 
-							// FULL THROTTLE PENDANT UN CERTAIN TEMPS
+							// Full throttle avec abaissement du nez par le pivot hélice et correction du bank angle avec les ailerons
 							if(mode_seq3)
 							{
 								float _elevDes = 20.0f*D2R;
