@@ -1144,7 +1144,7 @@ DroneAquaTest::task_main() {
                 }
 
                 _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
-                _actuators_airframe.control[1] = (_pitchErr - _ctrl_state.pitch_rate) * r2servo + _parameters.take_off_horizontal_pos;
+                _actuators_airframe.control[1] = (_pitchErr*_parameters.take_off_nose_kp - _ctrl_state.pitch_rate*_parameters.take_off_nose_kd) * r2servo + _parameters.take_off_horizontal_pos;
                 _actuators_airframe.control[2] = _parameters.take_off_rudder_offset;
                 _actuators.control[actuator_controls_s::INDEX_ROLL] =  _parameters.trim_roll;
                 _actuators.control[actuator_controls_s::INDEX_PITCH] = _parameters.trim_pitch;
