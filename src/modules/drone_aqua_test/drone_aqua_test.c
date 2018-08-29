@@ -223,27 +223,3 @@ PARAM_DEFINE_FLOAT(TK_YAW_KD, 0.00f);
  */
 PARAM_DEFINE_FLOAT(TK_RUD_OFF, 0.0f);
 
-/**
- * Custom stabilized pitch controler : Gain Kp
- *
- *
- * @min -3.0
- * @max  3.0
- * @decimal 2
- * @increment 0.01
- * @group FW Attitude Control
- */
-PARAM_DEFINE_FLOAT(TK_NOSE_KP, 0.20f);
-
-/**
-* Custom stabilized pitch controler : Gain Kd
-*
-*
-* @min -3.0
-* @max  3.0
-* @decimal 3
-* @increment 0.001
-* @group FW Attitude Control
-*/
-PARAM_DEFINE_FLOAT(TK_NOSE_KD, 0.02f);
-
