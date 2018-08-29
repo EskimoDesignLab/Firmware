@@ -243,9 +243,6 @@ private:
         float take_off_yaw_kd;
         float take_off_rudder_offset;
         float take_off_custom_pitch;
-		float take_off_nose_kp;
-		float take_off_nose_kd;
-
 
 		float test_take_off_manual;
 
@@ -331,8 +328,6 @@ private:
         param_t take_off_yaw_kd;
         param_t take_off_rudder_offset;
         param_t take_off_custom_pitch;
-		param_t take_off_nose_kp;
-		param_t take_off_nose_kd;
 
 		param_t test_take_off_manual;
 
@@ -555,8 +550,6 @@ FixedwingAttitudeControl::FixedwingAttitudeControl() :
     _parameter_handles.take_off_rudder_offset = param_find("TK_RUD_OFF");
     _parameter_handles.take_off_yaw_kd = param_find("TK_YAW_KD");
     _parameter_handles.take_off_custom_pitch = param_find("TK_CUSTM_PITCH");
-	_parameter_handles.take_off_nose_kp = param_find("TK_NOSE_KP");
-	_parameter_handles.take_off_nose_kd = param_find("TK_NOSE_KD");
 
 	/* fetch initial parameter values */
 	parameters_update();
@@ -688,8 +681,6 @@ FixedwingAttitudeControl::parameters_update()
     param_get(_parameter_handles.take_off_yaw_kd, &_parameters.take_off_yaw_kd);
     param_get(_parameter_handles.take_off_rudder_offset, &_parameters.take_off_rudder_offset);
     param_get(_parameter_handles.take_off_custom_pitch, &_parameters.take_off_custom_pitch);
-	param_get(_parameter_handles.take_off_nose_kp, &_parameters.take_off_nose_kp);
-	param_get(_parameter_handles.take_off_nose_kd, &_parameters.take_off_nose_kd);
 
 	/* pitch control parameters */
 	_pitch_ctrl.set_time_constant(_parameters.p_tc);
@@ -1387,7 +1378,7 @@ FixedwingAttitudeControl::task_main()
 								float _rollErr = asinf(2.0f * (_qAtt2Des(2) * _qAtt2Des(3) + _qAtt2Des(0) * _qAtt2Des(1)));
 
 								_actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
-								_actuators_airframe.control[1] = (_parameters.take_off_nose_kp*_pitchErr - _parameters.take_off_nose_kd*_ctrl_state.pitch_rate) * r2servo + _parameters.take_off_horizontal_pos;
+								_actuators_airframe.control[1] = (_parameters.take_off_pitch_kp*_pitchErr - _parameters.take_off_pitch_kd*_ctrl_state.pitch_rate) * r2servo + _parameters.take_off_horizontal_pos;
 								_actuators_airframe.control[2] = _parameters.take_off_rudder_offset;
 								_actuators.control[actuator_controls_s::INDEX_ROLL] =  _parameters.trim_roll;
 								_actuators.control[actuator_controls_s::INDEX_PITCH] = _parameters.trim_pitch;
