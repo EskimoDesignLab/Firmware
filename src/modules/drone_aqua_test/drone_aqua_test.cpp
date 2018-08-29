@@ -320,6 +320,8 @@ private:
 		float take_off_yaw_kd;
         float take_off_rudder_offset;
         float take_off_custom_pitch;
+		float take_off_nose_kp;
+		float take_off_nose_kd;
 
 	}		_parameters;			/**< local copies of interesting parameters */
 
@@ -390,6 +392,8 @@ private:
 		param_t take_off_yaw_kd;
         param_t take_off_rudder_offset;
         param_t take_off_custom_pitch;
+		param_t take_off_nose_kp;
+		param_t take_off_nose_kd;
 
 
 
@@ -630,6 +634,8 @@ DroneAquaTest::DroneAquaTest() :
 	_parameter_handles.take_off_rudder_offset = param_find("TK_RUD_OFF");
     _parameter_handles.take_off_yaw_kd = param_find("TK_YAW_KD");
     _parameter_handles.take_off_custom_pitch = param_find("TK_CUSTM_PITCH");
+	_parameter_handles.take_off_nose_kp = param_find("TK_NOSE_KP");
+	_parameter_handles.take_off_nose_kd = param_find("TK_NOSE_KD");
 
 
 
@@ -789,6 +795,8 @@ DroneAquaTest::parameters_update()
 	param_get(_parameter_handles.take_off_yaw_kd, &_parameters.take_off_yaw_kd);
     param_get(_parameter_handles.take_off_rudder_offset, &_parameters.take_off_rudder_offset);
     param_get(_parameter_handles.take_off_custom_pitch, &_parameters.take_off_custom_pitch);
+	param_get(_parameter_handles.take_off_nose_kp, &_parameters.take_off_nose_kp);
+	param_get(_parameter_handles.take_off_nose_kd, &_parameters.take_off_nose_kd);
 	return OK;
 }
 void
@@ -1044,6 +1052,9 @@ DroneAquaTest::task_main() {
 			_actuators.control[actuator_controls_s::INDEX_YAW] = _manual.r; // 0.0f + _parameters.trim_yaw
 			_actuators.control[actuator_controls_s::INDEX_THROTTLE] = _manual.z; // pass-through de la commande du trigger
 
+            float r2servo = (_parameters.take_off_up_pos - _parameters.take_off_horizontal_pos) / (3.14159f / 2);
+
+
             // WAIT AVANT LA SEQUENCE (FALCULTATIF)
             if (mode_seq0) {
                 _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f;
@@ -1087,7 +1098,6 @@ DroneAquaTest::task_main() {
                     warn("Error real : %0.3f , %0.3f , %0.3f", (double)(_EulAtt2Des(0)*R2D), (double)(_EulAtt2Des(1)*R2D), (double)(_EulAtt2Des(2)*R2D));
                     _countPrint = 0;
                 }
-				float r2servo = (_parameters.take_off_up_pos - _parameters.take_off_horizontal_pos) / (3.14159f / 2);
 
 				_actuators_airframe.control[1] = (_parameters.take_off_pitch_kp*_EulAtt2Des(1) - _parameters.take_off_pitch_kd*_ctrl_state.pitch_rate) * r2servo + _parameters.take_off_horizontal_pos;
 				_actuators_airframe.control[2] = (_parameters.take_off_yaw_kp*_EulAtt2Des(2) - _parameters.take_off_yaw_kd*_ctrl_state.yaw_rate)+_parameters.take_off_rudder_offset;
@@ -1105,24 +1115,39 @@ DroneAquaTest::task_main() {
 			// FULL THROTTLE PENDANT UN CERTAIN TEMPS
 			if (mode_seq8) {
 
-				_qDes.from_euler(0.0f, _parameters.take_off_custom_pitch, _yaw);
-				_qAtt = q_att;
-				_qAtt2Des = _qAtt.conjugated() * _qDes;
+                float _elevDes = 20.0f*D2R;
+                // Present attitude from Quaternion to Euler ZXY
+                float _headingNow = atan2f(-2.0f * (_ctrl_state.q[1] * _ctrl_state.q[2] - _ctrl_state.q[0] * _ctrl_state.q[3]), 1.0f - 2.0f * (_ctrl_state.q[1] * _ctrl_state.q[1] + _ctrl_state.q[3] * _ctrl_state.q[3]));
+                float _bankNow = asinf(2.0f * (_ctrl_state.q[2] * _ctrl_state.q[3] + _ctrl_state.q[0] * _ctrl_state.q[1]));
+                // Quaternion with the right heading and elevation from nose down movement of present attitude - From Euler Rotation ZXY to Quaternion
+                float cang[3] = {cosf(_headingNow/2.0f) , cosf(_bankNow/2.0f) , cosf(_elevDes/cosf(_bankNow)/2.0f)};
+                float sang[3] = {sinf(_headingNow/2.0f) , sinf(_bankNow/2.0f) , sinf(_elevDes/cosf(_bankNow)/2.0f)};
+                math::Quaternion _qElev;
+                _qElev(0) = cang[0]*cang[1]*cang[2]-sang[0]*sang[1]*sang[2];
+                _qElev(1) = cang[0]*sang[1]*cang[2]-sang[0]*cang[1]*sang[2];
+                _qElev(2) = cang[0]*cang[1]*sang[2]+sang[0]*sang[1]*cang[2];
+                _qElev(3) = cang[0]*sang[1]*sang[2]+sang[0]*cang[1]*cang[2];
+                math::Vector<3> _eElev = _qElev.to_euler();
+                // Quaternion desired from forcing Bank=0 to Quaternion with the right heading and elevation
+                _qDes.from_euler(0.0f, _eElev(1), _eElev(2));
+                _qAtt2Des = q_att.conjugated() * _qDes;
+                // Euler angle error from Quaternion error - Rotation YXZ to exclude yaw movement as required by the error calculation and allow pitch movement >90°
+                float _pitchErr = atan2f(2.0f * (_qAtt2Des(1) * _qAtt2Des(3) + _qAtt2Des(0) * _qAtt2Des(2)), 1.0f - 2.0f * (_qAtt2Des(1) * _qAtt2Des(1) + _qAtt2Des(2) * _qAtt2Des(2)));
+                float  _rollErr = asinf(-2.0f * (_qAtt2Des(2) * _qAtt2Des(3) - _qAtt2Des(0) * _qAtt2Des(1)));
+                float   _yawErr = atan2f(2.0f * (_qAtt2Des(1) * _qAtt2Des(2) + _qAtt2Des(0) * _qAtt2Des(3)), 1.0f - 2.0f * (_qAtt2Des(1) * _qAtt2Des(1) + _qAtt2Des(3) * _qAtt2Des(3)));
 
-				_EulAtt2Des = _qAtt2Des.to_euler();
-				_derivate = (_EulAtt2Des - _euler_error_old) / DT;
-				_euler_error_old = _EulAtt2Des;
-				//warn("Error real : %0.3f , %0.3f , %0.3f", (double)(_EulAtt2Des(0)*R2D), (double)(_EulAtt2Des(1)*R2D), (double)(_EulAtt2Des(2)*R2D));
-				float r2servo = (_parameters.take_off_up_pos - _parameters.take_off_horizontal_pos) / (3.14159f / 2);
-                float throttleFunction = 0.30f + _parameters.take_off_custom_time_10*(hrt_absolute_time() - present_time)/1000000.0f;
-                if (throttleFunction < 1) {
-                    _actuators.control[actuator_controls_s::INDEX_THROTTLE] = throttleFunction;
+                //Boucle pour le print et l'incrementation de l'indice compteur
+                if (++_countPrint >= 200)
+                {
+                    warn("Error Calc YXZ : %0.3f , %0.3f , %0.3f", (double)(_pitchErr*R2D), (double)(_rollErr*R2D), (double)(_yawErr*R2D));
+                    _countPrint = 0;
                 }
-                else {
-                    _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
-                }
-                _actuators_airframe.control[1] = (_parameters.take_off_pitch_kp*_EulAtt2Des(1)+_parameters.take_off_pitch_kd*_derivate(1)) * r2servo + _parameters.take_off_horizontal_pos;
 
+                _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
+                _actuators_airframe.control[1] = (_pitchErr - _ctrl_state.pitch_rate) * r2servo + _parameters.take_off_horizontal_pos;
+                _actuators_airframe.control[2] = _parameters.take_off_rudder_offset;
+                _actuators.control[actuator_controls_s::INDEX_ROLL] =  _parameters.trim_roll;
+                _actuators.control[actuator_controls_s::INDEX_PITCH] = _parameters.trim_pitch;
 				if (hrt_absolute_time() - present_time >=
 					(int) _parameters.take_off_custom_time_09) // 120 ms
 				{
@@ -1135,7 +1160,6 @@ DroneAquaTest::task_main() {
             // MET LA TETE DU PIVOT À LHORIZONTAL ET GARDE FULL THROTTLE
             if (mode_seq9) {
                 float err = _parameters.take_off_custom_pitch - _pitch;
-                float r2servo = (_parameters.take_off_up_pos - _parameters.take_off_horizontal_pos) / (3.14159f / 2);
                 float derr = (err - err0) / DT;
                 err0 = err;
                 _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
