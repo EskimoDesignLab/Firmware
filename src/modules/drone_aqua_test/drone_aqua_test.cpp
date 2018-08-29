@@ -941,7 +941,6 @@ DroneAquaTest::task_main() {
 	static bool mode_seq4 = false;
 	static bool mode_seq5 = false;
 	static bool mode_seq6 = false;
-	float err0 = 0.0;
 
 	static bool flagidle = false;
 
@@ -1130,7 +1129,7 @@ DroneAquaTest::task_main() {
 				//Boucle pour le print et l'incrementation de l'indice compteur
 				if (++_countPrint >= 200)
 				{
-					warn("Error Calc YXZ : %0.3f , %0.3f , %0.3f", (float)(_pitchErr*R2D), (float)(_rollErr*R2D), (float)(_yawErr*R2D));
+					warn("Error Calc YXZ : %0.3f , %0.3f , %0.3f", (double)(_pitchErr*R2D), (double)(_rollErr*R2D), (double)(_yawErr*R2D));
 					_countPrint = 0;
 				}
 
