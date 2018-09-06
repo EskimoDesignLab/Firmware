@@ -1272,15 +1272,15 @@ FixedwingAttitudeControl::task_main()
 						// il ny a pas de decollage custom -> on reset les parametres
 						if(!_att_sp.decollage_custom && !mode_take_off_custom)
 						{
-                					_actuators_airframe.control[1] = _parameters.take_off_horizontal_pos;
+							_actuators_airframe.control[1] = _parameters.take_off_horizontal_pos;
 
 							present_time = hrt_absolute_time();
 
-						        mode_seq0 = false;
-						        mode_seq2 = false;
-						        mode_seq7 = false;
-						        mode_seq8 = false;
-						        mode_seq9 = false;
+							mode_seq0 = false;
+							mode_seq2 = false;
+							mode_seq7 = false;
+							mode_seq8 = false;
+							mode_seq9 = false;
 							mode_seq10 = false;
 
 						}
@@ -1300,35 +1300,36 @@ FixedwingAttitudeControl::task_main()
 
 							// WAIT AVANT LA SEQUENCE (FALCULTATIF)
 							if(mode_seq0)
-                            {
-                                _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f;
-                                _actuators_airframe.control[1] = _parameters.take_off_horizontal_pos; //0.28f;
-                                _actuators_airframe.control[2] = _parameters.take_off_rudder_offset;
+							{
+								_actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f;
+								_actuators_airframe.control[1] = _parameters.take_off_horizontal_pos; //0.28f;
+								_actuators_airframe.control[2] = _parameters.take_off_rudder_offset;
 
-                                if(hrt_absolute_time() - present_time >= (int)_parameters.take_off_custom_time_01) // 2 sec
-                                    {
-                                       present_time = hrt_absolute_time();
-                                       mode_seq0 = false;
-                                       mode_seq2 = true;
-                                    }
-                            }
+								if(hrt_absolute_time() - present_time >= (int)_parameters.take_off_custom_time_01) // 2 sec
+								{
+									present_time = hrt_absolute_time();
+									mode_seq0 = false;
+									mode_seq2 = true;
+								}
+							}
 
-                            // ACTIVE LE SERVO POUR REMONTER LE PIVOT
-                            if(mode_seq2)
-                            {
-                                _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f;
-                                _actuators_airframe.control[1] = _parameters.take_off_up_pos;
-                                _actuators_airframe.control[2] = _parameters.take_off_rudder_offset;
+							// ACTIVE LE SERVO POUR REMONTER LE PIVOT
+							if(mode_seq2)
+							{
+								_actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f;
+								_actuators_airframe.control[1] = _parameters.take_off_up_pos;
+								_actuators_airframe.control[2] = _parameters.take_off_rudder_offset;
 
-                                if(hrt_absolute_time() - present_time >= 1000000) //(int)_parameters.take_off_custom_time_03) // 1 sec
-                                    {
-                                       present_time = hrt_absolute_time();
-                                       mode_seq2 = false;
-                                       mode_seq7 = true;
-                                    }
-                            }
+								if(hrt_absolute_time() - present_time >= 1000000) //(int)_parameters.take_off_custom_time_03) // 1 sec
+								{
+									warn("Transit to TakeOff Control");
+									present_time = hrt_absolute_time();
+									mode_seq2 = false;
+									mode_seq7 = true;
+								}
+							}
 
-                            // GAB : IDLE DU THRUST A 30% PENDANT UN CERTAIN TEMPS ==> Etienne Edit : Debut du full throttle et du controleur
+							// GAB : IDLE DU THRUST A 30% PENDANT UN CERTAIN TEMPS ==> Etienne Edit : Debut du full throttle et du controleur
 
 							if (mode_seq7) {
 								_actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
@@ -1337,7 +1338,7 @@ FixedwingAttitudeControl::task_main()
 								_qAtt = q_att;
 								_qAtt2Des = _qAtt.conjugated() * _qDes;
 								_EulAtt2Des = _qAtt2Des.to_euler();
-                                //Boucle pour le print et l'incrementation de l'indice compteur
+								//Boucle pour le print et l'incrementation de l'indice compteur
 //                                if (++_countPrint >= 200)
 //                                {
 //                                    warn("Error real : %0.3f , %0.3f , %0.3f", (double)(_EulAtt2Des(0)*R2D), (double)(_EulAtt2Des(1)*R2D), (double)(_EulAtt2Des(2)*R2D));
@@ -1345,12 +1346,12 @@ FixedwingAttitudeControl::task_main()
 //                                }
 
 								_actuators_airframe.control[1] = (_parameters.take_off_pitch_kp*_EulAtt2Des(1) - _parameters.take_off_pitch_kd*_ctrl_state.pitch_rate) * r2servo + _parameters.take_off_horizontal_pos;
-                                _actuators_airframe.control[2] = (_parameters.take_off_yaw_kp*_EulAtt2Des(2) - _parameters.take_off_yaw_kd*_ctrl_state.yaw_rate)+_parameters.take_off_rudder_offset;
+								_actuators_airframe.control[2] = (_parameters.take_off_yaw_kp*_EulAtt2Des(2) - _parameters.take_off_yaw_kd*_ctrl_state.yaw_rate)+_parameters.take_off_rudder_offset;
 
 
-								if (hrt_absolute_time() - present_time >=
-									(int) _parameters.take_off_custom_time_08) // 2 sec
+								if (hrt_absolute_time() - present_time >=	(int) _parameters.take_off_custom_time_08) // 2 sec
 								{
+									warn("Transit to NoseDown Control");
 									present_time = hrt_absolute_time();
 									mode_seq7 = false;
 									mode_seq8 = true;
@@ -1379,15 +1380,15 @@ FixedwingAttitudeControl::task_main()
 								_qAtt2Des = q_att.conjugated() * _qDes;
 								// Euler angle error from Quaternion error - Rotation YXZ to exclude yaw movement as required by the error calculation and allow pitch movement >90°
 								float _pitchErr = atan2f(2.0f * (_qAtt2Des(1) * _qAtt2Des(3) + _qAtt2Des(0) * _qAtt2Des(2)), 1.0f - 2.0f * (_qAtt2Des(1) * _qAtt2Des(1) + _qAtt2Des(2) * _qAtt2Des(2)));
-								float  _rollErr = asinf(-2.0f * (_qAtt2Des(2) * _qAtt2Des(3) - _qAtt2Des(0) * _qAtt2Des(1)));
-								float   _yawErr = atan2f(2.0f * (_qAtt2Des(1) * _qAtt2Des(2) + _qAtt2Des(0) * _qAtt2Des(3)), 1.0f - 2.0f * (_qAtt2Des(1) * _qAtt2Des(1) + _qAtt2Des(3) * _qAtt2Des(3)));
+//								float  _rollErr = asinf(-2.0f * (_qAtt2Des(2) * _qAtt2Des(3) - _qAtt2Des(0) * _qAtt2Des(1)));
+//								float   _yawErr = atan2f(2.0f * (_qAtt2Des(1) * _qAtt2Des(2) + _qAtt2Des(0) * _qAtt2Des(3)), 1.0f - 2.0f * (_qAtt2Des(1) * _qAtt2Des(1) + _qAtt2Des(3) * _qAtt2Des(3)));
 
 								//Boucle pour le print et l'incrementation de l'indice compteur
-								if (++_countPrint >= 200)
+								/*if (++_countPrint >= 200)
 								{
 									warn("Error Calc YXZ : %0.3f , %0.3f , %0.3f", (double)(_pitchErr*R2D), (double)(_rollErr*R2D), (double)(_yawErr*R2D));
 									_countPrint = 0;
-								}
+								}*/
 
 								_actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
 								_actuators_airframe.control[1] = (_pitchErr*_parameters.take_off_nose_kp - _ctrl_state.pitch_rate*_parameters.take_off_nose_kd) * r2servo + _parameters.take_off_horizontal_pos;
@@ -1408,35 +1409,32 @@ FixedwingAttitudeControl::task_main()
 								_actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
 								_actuators_airframe.control[1] = _parameters.take_off_horizontal_pos; //0.28f;
 
-						                if(hrt_absolute_time() - present_time >= (int)_parameters.take_off_custom_time_11) // 2 sec	                	
-						                {
-						                   present_time = hrt_absolute_time();
-						                   mode_seq10 = false;
-						                   mode_take_off_custom = false;
-						                  
-						                }                
-						        }
+								if(hrt_absolute_time() - present_time >= (int)_parameters.take_off_custom_time_11) // 2 sec
+								{
+									present_time = hrt_absolute_time();
+									mode_seq10 = false;
+									mode_take_off_custom = false;
+
+								}
+							}
 						}
 						else // si pas de decollage custom -> le throttle vient du pos controller
 						{
-							
+
 							/////////////////////////////////////////////////////////////////////////////////////////
 							// test offset throttle en att control enabled (mission et stabilized je crois)
 							//throttle passed through if it is finite and if no engine failure was detected
 							_actuators.control[actuator_controls_s::INDEX_THROTTLE] = (PX4_ISFINITE(throttle_sp) &&
-									!(_vehicle_status.engine_failure ||
-									  _vehicle_status.engine_failure_cmd)) ?
-									throttle_sp : 0.0f;
+																					   !(_vehicle_status.engine_failure ||
+																						 _vehicle_status.engine_failure_cmd)) ?
+																					  throttle_sp : 0.0f;
 							/////////////////////////////////////////////////////////////////////////////////////////
-
-							
-
-													// scale effort by battery status
+							// scale effort by battery status
 							if (_parameters.bat_scale_en && _battery_status.scale > 0.0f &&
-							    _actuators.control[actuator_controls_s::INDEX_THROTTLE] > 0.1f) {
+								_actuators.control[actuator_controls_s::INDEX_THROTTLE] > 0.1f) {
 								_actuators.control[actuator_controls_s::INDEX_THROTTLE] *= _battery_status.scale;
 							}
-							
+
 						}
 
 						///////////////////////////////////////////////////////////////////////////////////////////////////////////////
