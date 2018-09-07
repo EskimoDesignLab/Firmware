@@ -7,16 +7,23 @@ set(config_module_list
 	#
 	# Board support modules
 	#
-	drivers/barometer
-	drivers/differential_pressure
-	drivers/distance_sensor
-	drivers/magnetometer
+	#drivers/barometer
+	#drivers/differential_pressure
+	#drivers/distance_sensor
+	#drivers/magnetometer
 	drivers/telemetry
-	drivers/imu
+	#drivers/imu
 
+	drivers/imu/mpu9250
+	drivers/imu/mpu6000
+	drivers/run_cam
+	drivers/barometer/lps33
+	drivers/icarus/charging_i2c
+	drivers/icarus/wake_up_i2c_slave
+	
 	drivers/batt_smbus
 	drivers/blinkm
-	drivers/camera_trigger
+	#drivers/camera_trigger
 	drivers/gps
 	drivers/irlock
 	drivers/mkblctrl

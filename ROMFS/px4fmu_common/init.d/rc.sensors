@@ -25,17 +25,11 @@ else
 		# schematic and BOM, leading to sensor brownouts
 		# on boot. Original Pixracers following the
 		# open hardware design do not require this.
-		fmu sensor_reset 50
+		#fmu sensor_reset 50
 	fi
 
-	# External SPI
-	ms5611 -S start
-
-	# Internal SPI (auto detect ms5611 or ms5607)
-	ms5611 -T 0 -s start
-
 	# Blacksheep telemetry
-	bst start
+	#bst start
 
 	adc start
 fi
@@ -180,55 +174,61 @@ fi
 
 if ver hwcmp PX4FMU_V4
 then
+	mpu6000 -R 2 -T 20602 start
+	mpu9250 -R 2 start
+	lps33 start
+	#charging_i2c start
+	#wake_up_i2c_slave start
+
 	# External I2C bus
 	hmc5883 -C -T -X start
-	lis3mdl -X start
-	bmp280 -I start
+	#lis3mdl -X start
+	#bmp280 -I start
 
 	# expansion i2c used for BMM150 rotated by 90deg
-	bmm150 -R 2 start
+	#bmm150 -R 2 start
 
-	if hmc5883 -C -T -S -R 2 start
-	then
-		# hmc5883 internal SPI bus is rotated 90 deg yaw
-	else
-		if lis3mdl start
-		then
-			# lis3mdl internal SPI bus is rotated 90 deg yaw
-		else
-			# BMI055 gyro internal SPI bus
-			bmi055 -G start
-		fi
-	fi
+	#if hmc5883 -C -T -S -R 2 start
+	#then
+	#	# hmc5883 internal SPI bus is rotated 90 deg yaw
+	#else
+	#	if lis3mdl start
+	#	then
+	#		# lis3mdl internal SPI bus is rotated 90 deg yaw
+	#	else
+	#		# BMI055 gyro internal SPI bus
+	#		bmi055 -G start
+	#	fi
+	#fi
 
 	# Start either ICM2060X or BMI055. They are both connected to the same SPI bus and use the same
 	# chip select pin. There are different boards with either one of them and the WHO_AM_I register
 	# will prevent the incorrect driver from a successful initialization.
 
-	if mpu6000 -R 2 -T 20602 start
-	then
-		# ICM20602 internal SPI bus ICM-20608-G is rotated 90 deg yaw
-	else
-		if mpu6000 -R 2 -T 20608 start
-		then
-			# ICM20608 internal SPI bus ICM-20602-G is rotated 90 deg yaw
-		else
-			# BMI055 accel internal SPI bus
-			bmi055 -A start
-		fi
-	fi
+	#if mpu6000 -R 2 -T 20602 start
+	#then
+	#	# ICM20602 internal SPI bus ICM-20608-G is rotated 90 deg yaw
+	#else
+	#	if mpu6000 -R 2 -T 20608 start
+	#	then
+	#		# ICM20608 internal SPI bus ICM-20602-G is rotated 90 deg yaw
+	#	else
+	#		# BMI055 accel internal SPI bus
+	#		bmi055 -A start
+	#	fi
+	#fi
 
 	# Start either MPU9250 or BMI160. They are both connected to the same SPI bus and use the same
 	# chip select pin. There are different boards with either one of them and the WHO_AM_I register
 	# will prevent the incorrect driver from a successful initialization.
 
-	if mpu9250 -R 2 start
-	then
-		# mpu9250 internal SPI bus mpu9250 is rotated 90 deg yaw
-	else
-		# BMI160 internal SPI bus
-		bmi160 start
-	fi
+	#if mpu9250 -R 2 start
+	#then
+	#	# mpu9250 internal SPI bus mpu9250 is rotated 90 deg yaw
+	#else
+	#	# BMI160 internal SPI bus
+	#	bmi160 start
+	#fi
 fi
 
 if ver hwcmp MINDPX_V2

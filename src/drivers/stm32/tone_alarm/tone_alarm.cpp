@@ -395,7 +395,7 @@ int ToneAlarm::init()
 	}
 
 	/* configure the GPIO to the idle state */
-	px4_arch_configgpio(GPIO_TONE_ALARM_IDLE);
+	// px4_arch_configgpio(GPIO_TONE_ALARM_IDLE);
 
 #ifdef GPIO_TONE_ALARM_NEG
 
@@ -481,7 +481,7 @@ void ToneAlarm::start_note(unsigned frequency)
 	rCCER |= TONE_CCER;	// enable the output
 
 	// configure the GPIO to enable timer output
-	px4_arch_configgpio(GPIO_TONE_ALARM);
+	// px4_arch_configgpio(GPIO_TONE_ALARM);
 }
 
 void ToneAlarm::stop_note()
@@ -492,7 +492,7 @@ void ToneAlarm::stop_note()
 	/*
 	 * Make sure the GPIO is not driving the speaker.
 	 */
-	px4_arch_configgpio(GPIO_TONE_ALARM_IDLE);
+	// px4_arch_configgpio(GPIO_TONE_ALARM_IDLE);
 }
 
 void ToneAlarm::next_note()
@@ -580,7 +580,7 @@ void ToneAlarm::next_trampoline(void *arg)
 namespace
 {
 
-ToneAlarm	*g_dev;
+// ToneAlarm	*g_dev;
 
 } // namespace
 
@@ -594,47 +594,47 @@ void tone_alarm_usage()
 int tone_alarm_main(int argc, char *argv[])
 {
 
-	if (argc > 1) {
-		const char *argv1 = argv[1];
+	// if (argc > 1) {
+	// 	const char *argv1 = argv[1];
 
-		if (!strcmp(argv1, "start")) {
-			if (g_dev != nullptr) {
-				PX4_ERR("already started");
-				exit(1);
-			}
+	// 	if (!strcmp(argv1, "start")) {
+	// 		if (g_dev != nullptr) {
+	// 			PX4_ERR("already started");
+	// 			exit(1);
+	// 		}
 
-			if (g_dev == nullptr) {
-				g_dev = new ToneAlarm();
+	// 		if (g_dev == nullptr) {
+	// 			g_dev = new ToneAlarm();
 
-				if (g_dev == nullptr) {
-					PX4_ERR("couldn't allocate the ToneAlarm driver");
-					exit(1);
-				}
+	// 			if (g_dev == nullptr) {
+	// 				PX4_ERR("couldn't allocate the ToneAlarm driver");
+	// 				exit(1);
+	// 			}
 
-				if (OK != g_dev->init()) {
-					delete g_dev;
-					g_dev = nullptr;
-					PX4_ERR("ToneAlarm init failed");
-					exit(1);
-				}
-			}
+	// 			if (OK != g_dev->init()) {
+	// 				delete g_dev;
+	// 				g_dev = nullptr;
+	// 				PX4_ERR("ToneAlarm init failed");
+	// 				exit(1);
+	// 			}
+	// 		}
 
-			exit(0);
-		}
+	// 		exit(0);
+	// 	}
 
-		if (!strcmp(argv1, "stop")) {
-			delete g_dev;
-			g_dev = nullptr;
-			exit(0);
-		}
+	// 	if (!strcmp(argv1, "stop")) {
+	// 		delete g_dev;
+	// 		g_dev = nullptr;
+	// 		exit(0);
+	// 	}
 
-		if (!strcmp(argv1, "status")) {
-			g_dev->status();
-			exit(0);
-		}
+	// 	if (!strcmp(argv1, "status")) {
+	// 		g_dev->status();
+	// 		exit(0);
+	// 	}
 
-	}
+	// }
 
-	tone_alarm_usage();
+	// tone_alarm_usage();
 	exit(0);
 }

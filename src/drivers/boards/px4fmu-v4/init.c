@@ -131,13 +131,13 @@ __END_DECLS
 __EXPORT void board_peripheral_reset(int ms)
 {
 	/* set the peripheral rails off */
-	stm32_configgpio(GPIO_PERIPH_3V3_EN);
+	// stm32_configgpio(GPIO_PERIPH_3V3_EN);
 
-	stm32_gpiowrite(GPIO_PERIPH_3V3_EN, 0);
+	// stm32_gpiowrite(GPIO_PERIPH_3V3_EN, 0);
 
-	bool last = stm32_gpioread(GPIO_SPEKTRUM_PWR_EN);
+	// bool last = stm32_gpioread(GPIO_SPEKTRUM_PWR_EN);
 	/* Keep Spektum on to discharge rail*/
-	stm32_gpiowrite(GPIO_SPEKTRUM_PWR_EN, 1);
+	// stm32_gpiowrite(GPIO_SPEKTRUM_PWR_EN, 1);
 
 	/* wait for the peripheral rail to reach GND */
 	usleep(ms * 1000);
@@ -146,8 +146,8 @@ __EXPORT void board_peripheral_reset(int ms)
 	/* re-enable power */
 
 	/* switch the peripheral rail back on */
-	stm32_gpiowrite(GPIO_SPEKTRUM_PWR_EN, last);
-	stm32_gpiowrite(GPIO_PERIPH_3V3_EN, 1);
+	// stm32_gpiowrite(GPIO_SPEKTRUM_PWR_EN, last);
+	// stm32_gpiowrite(GPIO_PERIPH_3V3_EN, 1);
 
 }
 
@@ -204,13 +204,13 @@ stm32_boardinitialize(void)
 
 
 	/* configure ADC pins */
-	stm32_configgpio(GPIO_ADC1_IN2);	/* BATT_VOLTAGE_SENS */
-	stm32_configgpio(GPIO_ADC1_IN3);	/* BATT_CURRENT_SENS */
+	// stm32_configgpio(GPIO_ADC1_IN2);	/* BATT_VOLTAGE_SENS */
+	// stm32_configgpio(GPIO_ADC1_IN3);	/* BATT_CURRENT_SENS */
 	stm32_configgpio(GPIO_ADC1_IN4);	/* VDD_5V_SENS */
-	stm32_configgpio(GPIO_ADC1_IN11);	/* RSSI analog in */
+	// stm32_configgpio(GPIO_ADC1_IN11);	/* RSSI analog in */
 
 	/* configure power supply control/sense pins */
-	stm32_configgpio(GPIO_PERIPH_3V3_EN);
+	// stm32_configgpio(GPIO_PERIPH_3V3_EN);
 	stm32_configgpio(GPIO_VDD_BRICK_VALID);
 	stm32_configgpio(GPIO_VDD_USB_VALID);
 
@@ -220,16 +220,16 @@ stm32_boardinitialize(void)
 	stm32_configgpio(GPIO_VDD_3V3_SENSORS_EN);
 
 	stm32_configgpio(GPIO_SBUS_INV);
-	stm32_configgpio(GPIO_SPEKTRUM_PWR_EN);
+	// stm32_configgpio(GPIO_SPEKTRUM_PWR_EN);
 
-	stm32_configgpio(GPIO_8266_GPIO0);
-	stm32_configgpio(GPIO_8266_PD);
-	stm32_configgpio(GPIO_8266_RST);
+	// stm32_configgpio(GPIO_8266_GPIO0);
+	// stm32_configgpio(GPIO_8266_PD);
+	// stm32_configgpio(GPIO_8266_RST);
 
 	/* Safety - led don in led driver */
 
-	stm32_configgpio(GPIO_BTN_SAFETY);
-	stm32_configgpio(GPIO_RSSI_IN);
+	// stm32_configgpio(GPIO_BTN_SAFETY);
+	// stm32_configgpio(GPIO_RSSI_IN);
 	stm32_configgpio(GPIO_PPM_IN);
 
 	/* configure SPI all interfaces GPIO */

@@ -439,8 +439,8 @@ Sensors::adc_poll()
 		/* The ADC channels that  are associated with each brick, in power controller
 		 * priority order highest to lowest, as defined by the board config.
 		 */
-		int   bat_voltage_v_chan[BOARD_NUMBER_BRICKS] = BOARD_BATT_V_LIST;
-		int   bat_voltage_i_chan[BOARD_NUMBER_BRICKS] = BOARD_BATT_I_LIST;
+		// int   bat_voltage_v_chan[BOARD_NUMBER_BRICKS] = BOARD_BATT_V_LIST;
+		// int   bat_voltage_i_chan[BOARD_NUMBER_BRICKS] = BOARD_BATT_I_LIST;
 
 		/* The valid signals (HW dependent) are associated with each brick */
 		bool  valid_chan[BOARD_NUMBER_BRICKS] = BOARD_BRICK_VALID_LIST;
@@ -522,14 +522,14 @@ Sensors::adc_poll()
 
 						// todo:per brick scaling
 						/* look for specific channels and process the raw voltage to measurement data */
-						if (bat_voltage_v_chan[b] == buf_adc[i].am_channel) {
-							/* Voltage in volts */
-							bat_voltage_v[b] = (buf_adc[i].am_data * _parameters.battery_voltage_scaling) * _parameters.battery_v_div;
+						// if (bat_voltage_v_chan[b] == buf_adc[i].am_channel) {
+						// 	/* Voltage in volts */
+						// 	bat_voltage_v[b] = (buf_adc[i].am_data * _parameters.battery_voltage_scaling) * _parameters.battery_v_div;
 
-						} else if (bat_voltage_i_chan[b] == buf_adc[i].am_channel) {
-							bat_current_a[b] = ((buf_adc[i].am_data * _parameters.battery_current_scaling)
-									    - _parameters.battery_current_offset) * _parameters.battery_a_per_v;
-						}
+						// } else if (bat_voltage_i_chan[b] == buf_adc[i].am_channel) {
+						// 	bat_current_a[b] = ((buf_adc[i].am_data * _parameters.battery_current_scaling)
+						// 			    - _parameters.battery_current_offset) * _parameters.battery_a_per_v;
+						// }
 					}
 
 #endif /* BOARD_NUMBER_BRICKS > 0 */
