@@ -260,7 +260,7 @@ PARAM_DEFINE_FLOAT(TK_NOSEPITCH_KD, 0.02f);
  * @increment 0.01
  * @group FW Attitude Control
  */
-PARAM_DEFINE_FLOAT(TK_NOSEYAWRATE_KP, 0.20f);
+PARAM_DEFINE_FLOAT(TK_NOSEYAWRATE, 0.20f);
 
 /**
  * Custom stabilized roll controler : Gain Kp
