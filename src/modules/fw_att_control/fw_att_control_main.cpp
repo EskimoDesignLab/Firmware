@@ -880,11 +880,10 @@ FixedwingAttitudeControl::task_main()
     static bool mode_seq7 = false;
     static bool mode_seq8 = false;
     static bool mode_seq9 = false;
-    static bool mode_seq10 = false;
     static bool mode_take_off_custom = false;
 
 	static int present_time = hrt_absolute_time(); // timer pour les etapes du decollage
-	static int _countPrint = 0;
+//	static int _countPrint = 0;
     //////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////
 
@@ -1281,7 +1280,6 @@ FixedwingAttitudeControl::task_main()
 							mode_seq7 = false;
 							mode_seq8 = false;
 							mode_seq9 = false;
-							mode_seq10 = false;
 
 						}
 						else if(_att_sp.decollage_custom && !mode_take_off_custom) // il y a un decolage custom -> on active le flag qui permet d'effectuer la séquence
@@ -1404,7 +1402,7 @@ FixedwingAttitudeControl::task_main()
 								}
 							}
 							//MAINTIENT FULL THROTTLE POUR UN CERTAIN TEMPS
-							if(mode_seq10)
+							if(mode_seq9)
 							{
 								_actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
 								_actuators_airframe.control[1] = _parameters.take_off_horizontal_pos; //0.28f;
@@ -1412,7 +1410,7 @@ FixedwingAttitudeControl::task_main()
 								if(hrt_absolute_time() - present_time >= (int)_parameters.take_off_custom_time_11) // 2 sec
 								{
 									present_time = hrt_absolute_time();
-									mode_seq10 = false;
+									mode_seq9 = false;
 									mode_take_off_custom = false;
 
 								}
@@ -1526,7 +1524,6 @@ FixedwingAttitudeControl::task_main()
 			        mode_seq7 = false;
 			        mode_seq8 = false;
 			        mode_seq9 = false;
-			        mode_seq10 = false;
 
 			        mode_take_off_custom = false;
 			}
