@@ -244,8 +244,11 @@ private:
         float take_off_yaw_kd;
         float take_off_rudder_offset;
         float take_off_custom_pitch;
-		float take_off_nose_kp;
-		float take_off_nose_kd;
+        float take_off_nosePitch_kp;
+        float take_off_nosePitch_kd;
+        float take_off_noseRoll_kp;
+        float take_off_noseRoll_kd;
+        float take_off_noseYawRate_kp;
 		float test_take_off_manual;
 
 	}		_parameters{};			/**< local copies of interesting parameters */
@@ -330,9 +333,11 @@ private:
         param_t take_off_yaw_kd;
         param_t take_off_rudder_offset;
         param_t take_off_custom_pitch;
-		param_t take_off_nose_kp;
-		param_t take_off_nose_kd;
-
+        param_t take_off_nosePitch_kp;
+        param_t take_off_nosePitch_kd;
+        param_t take_off_noseRoll_kp;
+        param_t take_off_noseRoll_kd;
+        param_t take_off_noseYawRate_kp;
 		param_t test_take_off_manual;
 
 	}		_parameter_handles{};		/**< handles for interesting parameters */
@@ -554,8 +559,11 @@ FixedwingAttitudeControl::FixedwingAttitudeControl() :
     _parameter_handles.take_off_rudder_offset = param_find("TK_RUD_OFF");
     _parameter_handles.take_off_yaw_kd = param_find("TK_YAW_KD");
     _parameter_handles.take_off_custom_pitch = param_find("TK_CUSTM_PITCH");
-	_parameter_handles.take_off_nose_kp = param_find("TK_NOSE_KP");
-	_parameter_handles.take_off_nose_kd = param_find("TK_NOSE_KD");
+    _parameter_handles.take_off_nosePitch_kp = param_find("TK_NOSEPITCH_KP");
+    _parameter_handles.take_off_nosePitch_kd = param_find("TK_NOSEPITCH_KD");
+    _parameter_handles.take_off_noseRoll_kp = param_find("TK_NOSEROLL_KP");
+    _parameter_handles.take_off_noseRoll_kd = param_find("TK_NOSEROLL_KD");
+    _parameter_handles.take_off_noseYawRate_kp = param_find("TK_NOSEYAWRATE");
 
 	/* fetch initial parameter values */
 	parameters_update();
@@ -687,8 +695,11 @@ FixedwingAttitudeControl::parameters_update()
     param_get(_parameter_handles.take_off_yaw_kd, &_parameters.take_off_yaw_kd);
     param_get(_parameter_handles.take_off_rudder_offset, &_parameters.take_off_rudder_offset);
     param_get(_parameter_handles.take_off_custom_pitch, &_parameters.take_off_custom_pitch);
-	param_get(_parameter_handles.take_off_nose_kp, &_parameters.take_off_nose_kp);
-	param_get(_parameter_handles.take_off_nose_kd, &_parameters.take_off_nose_kd);
+    param_get(_parameter_handles.take_off_nosePitch_kp, &_parameters.take_off_nosePitch_kp);
+    param_get(_parameter_handles.take_off_nosePitch_kd, &_parameters.take_off_nosePitch_kd);
+    param_get(_parameter_handles.take_off_noseRoll_kp, &_parameters.take_off_noseRoll_kp);
+    param_get(_parameter_handles.take_off_noseRoll_kd, &_parameters.take_off_noseRoll_kd);
+    param_get(_parameter_handles.take_off_noseYawRate_kp, &_parameters.take_off_noseYawRate_kp);
 
 	/* pitch control parameters */
 	_pitch_ctrl.set_time_constant(_parameters.p_tc);
@@ -1303,7 +1314,7 @@ FixedwingAttitudeControl::task_main()
 								_actuators_airframe.control[1] = _parameters.take_off_horizontal_pos; //0.28f;
 								_actuators_airframe.control[2] = _parameters.take_off_rudder_offset;
 
-								if(hrt_absolute_time() - present_time >= (int)_parameters.take_off_custom_time_01) // 2 sec
+								if(hrt_absolute_time() - present_time >= (int)_parameters.take_off_custom_time_01) //
 								{
 									present_time = hrt_absolute_time();
 									mode_seq0 = false;
@@ -1378,7 +1389,7 @@ FixedwingAttitudeControl::task_main()
 								_qAtt2Des = q_att.conjugated() * _qDes;
 								// Euler angle error from Quaternion error - Rotation YXZ to exclude yaw movement as required by the error calculation and allow pitch movement >90°
 								float _pitchErr = atan2f(2.0f * (_qAtt2Des(1) * _qAtt2Des(3) + _qAtt2Des(0) * _qAtt2Des(2)), 1.0f - 2.0f * (_qAtt2Des(1) * _qAtt2Des(1) + _qAtt2Des(2) * _qAtt2Des(2)));
-//								float  _rollErr = asinf(-2.0f * (_qAtt2Des(2) * _qAtt2Des(3) - _qAtt2Des(0) * _qAtt2Des(1)));
+								float  _rollErr = asinf(-2.0f * (_qAtt2Des(2) * _qAtt2Des(3) - _qAtt2Des(0) * _qAtt2Des(1)));
 //								float   _yawErr = atan2f(2.0f * (_qAtt2Des(1) * _qAtt2Des(2) + _qAtt2Des(0) * _qAtt2Des(3)), 1.0f - 2.0f * (_qAtt2Des(1) * _qAtt2Des(1) + _qAtt2Des(3) * _qAtt2Des(3)));
 
 								//Boucle pour le print et l'incrementation de l'indice compteur
@@ -1388,15 +1399,16 @@ FixedwingAttitudeControl::task_main()
 									_countPrint = 0;
 								}*/
 
-								_actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
-								_actuators_airframe.control[1] = (_pitchErr*_parameters.take_off_nose_kp - _ctrl_state.pitch_rate*_parameters.take_off_nose_kd) * r2servo + _parameters.take_off_horizontal_pos;
-								_actuators_airframe.control[2] = _parameters.take_off_rudder_offset;
-								_actuators.control[actuator_controls_s::INDEX_ROLL] =  _parameters.trim_roll;
-								_actuators.control[actuator_controls_s::INDEX_PITCH] = _parameters.trim_pitch;
+                                _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
+                                _actuators_airframe.control[1] = (_pitchErr*_parameters.take_off_nosePitch_kp - _ctrl_state.pitch_rate*_parameters.take_off_nosePitch_kd) * r2servo + _parameters.take_off_horizontal_pos;
+                                _actuators_airframe.control[2] = ( - _ctrl_state.yaw_rate*_parameters.take_off_noseYawRate_kp) * r2servo + _parameters.take_off_rudder_offset;
+                                _actuators.control[actuator_controls_s::INDEX_ROLL] = (_rollErr*_parameters.take_off_noseRoll_kp - _ctrl_state.roll_rate*_parameters.take_off_noseRoll_kd) + _parameters.trim_roll;
+                                _actuators.control[actuator_controls_s::INDEX_PITCH] = _parameters.trim_pitch;
 								if (hrt_absolute_time() - present_time >=
 									(int) _parameters.take_off_custom_time_09) // 120 ms
 								{
-									present_time = hrt_absolute_time();
+                                    warn("Transit to Px4 Control");
+                                    present_time = hrt_absolute_time();
 									mode_seq8 = false;
 									mode_seq9 = true;
 								}
