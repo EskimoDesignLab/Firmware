@@ -97,7 +97,8 @@ void RunwayTakeoff::update(float airspeed, float alt_agl,
 	switch (_state) {
 	case RunwayTakeoffState::THROTTLE_RAMP:
 		if (hrt_elapsed_time(&_initialized_time) > _throttle_ramp_time) {
-			_state = RunwayTakeoffState::CLAMPED_TO_RUNWAY;
+			_state = RunwayTakeoffState::TAKEOFF; // We don't have airspeed sensor, skip CLAMPED_TO_RUNWAY
+			mavlink_log_info(mavlink_log_pub, "Takeoff");
 		}
 
 		break;
@@ -123,7 +124,7 @@ void RunwayTakeoff::update(float airspeed, float alt_agl,
 				_start_wp(1) = (float)current_lon;
 			}
 
-			mavlink_log_info(mavlink_log_pub, "#Climbout");
+			mavlink_log_info(mavlink_log_pub, "Climbout");
 		}
 
 		break;
@@ -132,7 +133,7 @@ void RunwayTakeoff::update(float airspeed, float alt_agl,
 		if (alt_agl > _climbout_diff.get()) {
 			_climbout = false;
 			_state = RunwayTakeoffState::FLY;
-			mavlink_log_info(mavlink_log_pub, "#Navigating to waypoint");
+			mavlink_log_info(mavlink_log_pub, "Navigating to waypoint");
 		}
 
 		break;
