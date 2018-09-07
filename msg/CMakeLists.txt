@@ -42,6 +42,8 @@ set(msg_files
 	battery_status.msg
 	camera_capture.msg
 	camera_trigger.msg
+	charging_info.msg
+	charging_info_2.msg
 	collision_report.msg
 	commander_state.msg
 	cpuload.msg
@@ -131,6 +133,8 @@ set(msg_files
 	vehicle_status.msg
 	vehicle_status_flags.msg
 	vtol_vehicle_status.msg
+	wake_up_slave_info.msg
+	wake_up_slave_info_2.msg
 	wind_estimate.msg
 	)
 
