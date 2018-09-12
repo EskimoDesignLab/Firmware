@@ -1318,6 +1318,7 @@ FixedwingAttitudeControl::task_main()
 
 								if(hrt_absolute_time() - present_time >= (int)_parameters.take_off_custom_time_01) //
 								{
+									warn("Etienne Start");
 									present_time = hrt_absolute_time();
 									mode_seq0 = false;
 									mode_seq2 = true;
@@ -1335,7 +1336,7 @@ FixedwingAttitudeControl::task_main()
 
 								if(hrt_absolute_time() - present_time >= 1000000) //(int)_parameters.take_off_custom_time_03) // 1 sec
 								{
-									warn("Transit to TakeOff Control");
+									warnx("Transit to TakeOff Control");
 									present_time = hrt_absolute_time();
 									mode_seq2 = false;
 									mode_seq7 = true;
@@ -1365,7 +1366,7 @@ FixedwingAttitudeControl::task_main()
 
 								if (hrt_absolute_time() - present_time >=	(int) _parameters.take_off_custom_time_08) // 2 sec
 								{
-									warn("Transit to NoseDown Control");
+									warnx("Transit to NoseDown Control");
 									present_time = hrt_absolute_time();
 									mode_seq7 = false;
 									mode_seq8 = true;
@@ -1412,7 +1413,7 @@ FixedwingAttitudeControl::task_main()
 								if (hrt_absolute_time() - present_time >=
 									(int) _parameters.take_off_custom_time_09) // 120 ms
 								{
-                                    warn("Transit to Px4 Control");
+                                    warnx("Transit to Px4 Control");
                                     present_time = hrt_absolute_time();
 									mode_seq8 = false;
 									mode_seq9 = true;
