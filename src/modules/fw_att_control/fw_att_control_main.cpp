@@ -1313,6 +1313,8 @@ FixedwingAttitudeControl::task_main()
 								_actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f;
 								_actuators_airframe.control[1] = _parameters.take_off_horizontal_pos; //0.28f;
 								_actuators_airframe.control[2] = _parameters.take_off_rudder_offset;
+								_actuators.control[actuator_controls_s::INDEX_ROLL]  = _parameters.trim_roll;
+								_actuators.control[actuator_controls_s::INDEX_PITCH] = _parameters.trim_pitch;
 
 								if(hrt_absolute_time() - present_time >= (int)_parameters.take_off_custom_time_01) //
 								{
@@ -1328,6 +1330,8 @@ FixedwingAttitudeControl::task_main()
 								_actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f;
 								_actuators_airframe.control[1] = _parameters.take_off_up_pos;
 								_actuators_airframe.control[2] = _parameters.take_off_rudder_offset;
+								_actuators.control[actuator_controls_s::INDEX_ROLL]  = _parameters.trim_roll;
+								_actuators.control[actuator_controls_s::INDEX_PITCH] = _parameters.trim_pitch;
 
 								if(hrt_absolute_time() - present_time >= 1000000) //(int)_parameters.take_off_custom_time_03) // 1 sec
 								{
@@ -1356,7 +1360,8 @@ FixedwingAttitudeControl::task_main()
 
 								_actuators_airframe.control[1] = (_parameters.take_off_pitch_kp*_EulAtt2Des(1) - _parameters.take_off_pitch_kd*_ctrl_state.pitch_rate) * r2servo + _parameters.take_off_horizontal_pos;
 								_actuators_airframe.control[2] = (_parameters.take_off_yaw_kp*_EulAtt2Des(2) - _parameters.take_off_yaw_kd*_ctrl_state.yaw_rate)+_parameters.take_off_rudder_offset;
-
+								_actuators.control[actuator_controls_s::INDEX_ROLL]  = _parameters.trim_roll;
+								_actuators.control[actuator_controls_s::INDEX_PITCH] = _parameters.trim_pitch;
 
 								if (hrt_absolute_time() - present_time >=	(int) _parameters.take_off_custom_time_08) // 2 sec
 								{
@@ -1514,8 +1519,7 @@ FixedwingAttitudeControl::task_main()
 			} else {
 				/* manual/direct control */
 				_actuators.control[actuator_controls_s::INDEX_ROLL] = _manual.y * _parameters.man_roll_scale + _parameters.trim_roll;
-				_actuators.control[actuator_controls_s::INDEX_PITCH] = -_manual.x * _parameters.man_pitch_scale +
-						_parameters.trim_pitch;
+				_actuators.control[actuator_controls_s::INDEX_PITCH] = -_manual.x * _parameters.man_pitch_scale + _parameters.trim_pitch;
 				_actuators.control[actuator_controls_s::INDEX_YAW] = _manual.r * _parameters.man_yaw_scale + _parameters.trim_yaw;
 				_actuators.control[actuator_controls_s::INDEX_THROTTLE] = _manual.z;
 				_actuators_airframe.control[1] = _parameters.take_off_horizontal_pos;
