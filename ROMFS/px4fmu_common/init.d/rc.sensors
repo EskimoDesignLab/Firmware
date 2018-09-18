@@ -25,7 +25,7 @@ else
 		# schematic and BOM, leading to sensor brownouts
 		# on boot. Original Pixracers following the
 		# open hardware design do not require this.
-		#fmu sensor_reset 50
+		fmu sensor_reset 50
 	fi
 
 	# Blacksheep telemetry
@@ -74,8 +74,17 @@ then
 	# Internal I2C bus
 	hmc5883 -C -T -I -R 4 start
 
-	# Internal SPI bus ICM-20608-G
-	mpu6000 -T 20608 start
+	# Internal SPI bus ICM-20602-G
+	mpu6000 -T 20602 start
+
+	# Icarus added drivers
+	mpu9250 -R 2 start
+	lps33 start
+	charging_i2c start
+	wake_up_i2c_slave start
+
+	# External I2C bus
+	hmc5883 -C -T -X start
 
 	# V3 build hwtypecmp supports V2|V2M|V30
 	if ver hwtypecmp V30

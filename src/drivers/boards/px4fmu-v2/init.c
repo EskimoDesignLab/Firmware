@@ -131,8 +131,8 @@ static char hw_type[4] = HW_VER_TYPE_INIT;
 __EXPORT void board_peripheral_reset(int ms)
 {
 	/* set the peripheral rails off */
-	stm32_configgpio(GPIO_VDD_5V_PERIPH_EN);
-	stm32_gpiowrite(GPIO_VDD_5V_PERIPH_EN, 1);
+	// stm32_configgpio(GPIO_VDD_5V_PERIPH_EN);
+	// stm32_gpiowrite(GPIO_VDD_5V_PERIPH_EN, 1);
 
 	/* wait for the peripheral rail to reach GND */
 	usleep(ms * 1000);
@@ -141,7 +141,7 @@ __EXPORT void board_peripheral_reset(int ms)
 	/* re-enable power */
 
 	/* switch the peripheral rail back on */
-	stm32_gpiowrite(GPIO_VDD_5V_PERIPH_EN, 0);
+	// stm32_gpiowrite(GPIO_VDD_5V_PERIPH_EN, 0);
 }
 
 /************************************************************************************
@@ -225,41 +225,41 @@ __EXPORT void board_on_reset(int status)
 static int determin_hw_version(int *version, int *revision)
 {
 	*revision = 0; /* default revision */
-	int rv = 0;
-	int pos = 0;
-	stm32_configgpio(GPIO_PULLDOWN | (HW_VER_PB4 & ~GPIO_PUPD_MASK));
-	up_udelay(10);
-	rv |= stm32_gpioread(HW_VER_PB4) << pos++;
-	stm32_configgpio(HW_VER_PB4);
-	up_udelay(10);
-	rv |= stm32_gpioread(HW_VER_PB4) << pos++;
+	// int rv = 0;
+	// int pos = 0;
+	// stm32_configgpio(GPIO_PULLDOWN | (HW_VER_PB4 & ~GPIO_PUPD_MASK));
+	// up_udelay(10);
+	// rv |= stm32_gpioread(HW_VER_PB4) << pos++;
+	// stm32_configgpio(HW_VER_PB4);
+	// up_udelay(10);
+	// rv |= stm32_gpioread(HW_VER_PB4) << pos++;
 
-	int votes = 16;
-	int ones[2] = {0, 0};
-	int zeros[2] = {0, 0};
+	// int votes = 16;
+	// int ones[2] = {0, 0};
+	// int zeros[2] = {0, 0};
 
-	while (votes--) {
-		stm32_configgpio(GPIO_PULLDOWN | (HW_VER_PB12 & ~GPIO_PUPD_MASK));
-		up_udelay(10);
-		stm32_gpioread(HW_VER_PB12) ? ones[0]++ : zeros[0]++;
-		stm32_configgpio(HW_VER_PB12);
-		up_udelay(10);
-		stm32_gpioread(HW_VER_PB12) ? ones[1]++ : zeros[1]++;
-	}
+	// while (votes--) {
+	// 	stm32_configgpio(GPIO_PULLDOWN | (HW_VER_PB12 & ~GPIO_PUPD_MASK));
+	// 	up_udelay(10);
+	// 	stm32_gpioread(HW_VER_PB12) ? ones[0]++ : zeros[0]++;
+	// 	stm32_configgpio(HW_VER_PB12);
+	// 	up_udelay(10);
+	// 	stm32_gpioread(HW_VER_PB12) ? ones[1]++ : zeros[1]++;
+	// }
 
-	if (ones[0] > zeros[0]) {
-		rv |= 1 << pos;
-	}
+	// if (ones[0] > zeros[0]) {
+	// 	rv |= 1 << pos;
+	// }
 
-	pos++;
+	// pos++;
 
-	if (ones[1] > zeros[1]) {
-		rv |= 1 << pos;
-	}
+	// if (ones[1] > zeros[1]) {
+	// 	rv |= 1 << pos;
+	// }
 
-	stm32_configgpio(HW_VER_PB4_INIT);
-	stm32_configgpio(HW_VER_PB12_INIT);
-	*version = rv;
+	// stm32_configgpio(HW_VER_PB4_INIT);
+	// stm32_configgpio(HW_VER_PB12_INIT);
+	*version = 0x8;
 	return OK;
 }
 
@@ -325,21 +325,21 @@ stm32_boardinitialize(void)
 
 	/* configure ADC pins */
 
-	stm32_configgpio(GPIO_ADC1_IN2);	/* BATT_VOLTAGE_SENS */
-	stm32_configgpio(GPIO_ADC1_IN3);	/* BATT_CURRENT_SENS */
-	stm32_configgpio(GPIO_ADC1_IN4);	/* VDD_5V_SENS */
-	stm32_configgpio(GPIO_ADC1_IN13);	/* FMU_AUX_ADC_1 */
-	stm32_configgpio(GPIO_ADC1_IN14);	/* FMU_AUX_ADC_2 */
-	stm32_configgpio(GPIO_ADC1_IN15);	/* PRESSURE_SENS */
+	// stm32_configgpio(GPIO_ADC1_IN2);	/* BATT_VOLTAGE_SENS */
+	// stm32_configgpio(GPIO_ADC1_IN3);	/* BATT_CURRENT_SENS */
+	// stm32_configgpio(GPIO_ADC1_IN4);	/* VDD_5V_SENS */
+	// stm32_configgpio(GPIO_ADC1_IN13);	/* FMU_AUX_ADC_1 */
+	// stm32_configgpio(GPIO_ADC1_IN14);	/* FMU_AUX_ADC_2 */
+	// stm32_configgpio(GPIO_ADC1_IN15);	/* PRESSURE_SENS */
 
 	/* configure power supply control/sense pins */
-	stm32_configgpio(GPIO_VDD_5V_PERIPH_EN);
-	stm32_configgpio(GPIO_VDD_3V3_SENSORS_EN);
-	stm32_configgpio(GPIO_VDD_BRICK_VALID);
-	stm32_configgpio(GPIO_VDD_SERVO_VALID);
-	stm32_configgpio(GPIO_VDD_USB_VALID);
-	stm32_configgpio(GPIO_VDD_5V_HIPOWER_OC);
-	stm32_configgpio(GPIO_VDD_5V_PERIPH_OC);
+	// stm32_configgpio(GPIO_VDD_5V_PERIPH_EN);
+	// stm32_configgpio(GPIO_VDD_3V3_SENSORS_EN);
+	// stm32_configgpio(GPIO_VDD_BRICK_VALID);
+	// stm32_configgpio(GPIO_VDD_SERVO_VALID);
+	// stm32_configgpio(GPIO_VDD_USB_VALID);
+	// stm32_configgpio(GPIO_VDD_5V_HIPOWER_OC);
+	// stm32_configgpio(GPIO_VDD_5V_PERIPH_OC);
 }
 
 /****************************************************************************

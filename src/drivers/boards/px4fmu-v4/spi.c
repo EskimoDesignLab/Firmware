@@ -162,7 +162,7 @@ __EXPORT void stm32_spi2select(FAR struct spi_dev_s *dev, uint32_t devid, bool s
 		stm32_gpiowrite(GPIO_SPI2_CS_FRAM, !selected);
 		break;
 
-	case PX4_SPIDEV_BARO:
+	case PX4_SPIDEV_EXT_BARO:
 		/* Making sure the other peripherals are not selected */
 		stm32_gpiowrite(GPIO_SPI2_CS_FRAM, 1);
 		stm32_gpiowrite(GPIO_SPI2_CS_LPS33, !selected);

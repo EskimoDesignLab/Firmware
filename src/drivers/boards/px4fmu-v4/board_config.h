@@ -153,7 +153,7 @@
  * spi_dev_e:SPIDEV_FLASH has the value 2 and is used in the NuttX ramtron driver
  * PX4_MK_SPI_SEL  differentiate by adding in PX4_SPI_DEVICE_ID
  */
-#define PX4_SPIDEV_BARO             PX4_MK_SPI_SEL(PX4_SPI_BUS_BARO, 3)
+#define PX4_SPIDEV_EXT_BARO             PX4_MK_SPI_SEL(PX4_SPI_BUS_BARO, 3)
 
 /* I2C busses */
 #define PX4_I2C_BUS_EXPANSION        1

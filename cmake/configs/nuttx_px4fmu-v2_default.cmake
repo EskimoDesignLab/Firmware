@@ -13,19 +13,20 @@ set(config_module_list
 	#drivers/telemetry
 
 	#drivers/barometer/bmp280
-	drivers/barometer/ms5611
+	#drivers/barometer/ms5611
+	drivers/barometer/lps33
 	#drivers/blinkm
 	#drivers/bst
-	drivers/camera_trigger
+	#drivers/camera_trigger
 	#drivers/differential_pressure/ets
-	drivers/differential_pressure/ms4525
-	drivers/differential_pressure/ms5525
-	drivers/differential_pressure/sdp3x
-	drivers/distance_sensor/ll40ls
+	#drivers/differential_pressure/ms4525
+	#drivers/differential_pressure/ms5525
+	#drivers/differential_pressure/sdp3x
+	#drivers/distance_sensor/ll40ls
 	#drivers/distance_sensor/mb12xx
-	drivers/distance_sensor/sf0x
-	drivers/distance_sensor/sf1xx
-	drivers/distance_sensor/srf02
+	#drivers/distance_sensor/sf0x
+	#drivers/distance_sensor/sf1xx
+	#drivers/distance_sensor/srf02
 	#drivers/distance_sensor/teraranger
 	#drivers/distance_sensor/tfmini
 	#drivers/distance_sensor/ulanding
@@ -34,30 +35,33 @@ set(config_module_list
 	#drivers/hott
 	#drivers/imu/adis16448
 	#drivers/imu/bmi160
-	drivers/imu/l3gd20
-	drivers/imu/lsm303d
+	#drivers/imu/l3gd20
+	#drivers/imu/lsm303d
 	drivers/imu/mpu6000
 	drivers/imu/mpu9250
-	#drivers/iridiumsbd
+	drivers/telemetry/iridiumsbd
 	#drivers/irlock
 	drivers/magnetometer/hmc5883
-	drivers/magnetometer/lis3mdl
+	#drivers/magnetometer/lis3mdl
 	#drivers/mb12xx
 	#drivers/mkblctrl
 	#drivers/oreoled
 	#drivers/protocol_splitter
 	drivers/pwm_input
 	#drivers/pwm_out_sim
-	drivers/px4flow
+	#drivers/px4flow
 	drivers/px4fmu
 	drivers/px4io
-	drivers/rgbled
+	#drivers/rgbled
 	drivers/stm32
-	drivers/stm32/adc
-	drivers/stm32/tone_alarm
+	#drivers/stm32/adc
+	#drivers/stm32/tone_alarm
 	#drivers/tap_esc
 	drivers/vmount
 	modules/sensors
+	drivers/run_cam
+	drivers/icarus/charging_i2c
+	drivers/icarus/wake_up_i2c_slave
 
 	#
 	# System commands

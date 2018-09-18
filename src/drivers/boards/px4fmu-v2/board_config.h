@@ -49,10 +49,10 @@
 
 /* Run time Hardware detection */
 #define BOARD_HAS_SIMPLE_HW_VERSIONING 1
-#define HW_VER_PB4             (GPIO_INPUT|GPIO_PULLUP|GPIO_PORTB|GPIO_PIN4)
-#define HW_VER_PB12            (GPIO_INPUT|GPIO_PULLUP|GPIO_PORTB|GPIO_PIN12)
-#define HW_VER_PB4_INIT        (GPIO_SPI1_EXTI_DRDY_PB4)
-#define HW_VER_PB12_INIT       (GPIO_INPUT|GPIO_FLOAT|GPIO_PORTB|GPIO_PIN12)
+// #define HW_VER_PB4             (GPIO_INPUT|GPIO_PULLUP|GPIO_PORTB|GPIO_PIN4)
+// #define HW_VER_PB12            (GPIO_INPUT|GPIO_PULLUP|GPIO_PORTB|GPIO_PIN12)
+// #define HW_VER_PB4_INIT        (GPIO_SPI1_EXTI_DRDY_PB4)
+// #define HW_VER_PB12_INIT       (GPIO_INPUT|GPIO_FLOAT|GPIO_PORTB|GPIO_PIN12)
 #define HW_VER_FMUV2_STATE     0x8 /* PB12:PU:1 PB12:PD:0 PB4:PU:0 PB4PD:0 */
 #define HW_VER_FMUV3_STATE     0xE /* PB12:PU:1 PB12:PD:1 PB4:PU:1 PB4PD:0 */
 #define HW_VER_FMUV2MINI_STATE 0xA /* PB12:PU:1 PB12:PD:0 PB4:PU:1 PB4PD:0 */
@@ -151,24 +151,25 @@
 
 /* FMUv2 SPI1 chip selects */
 /*                   PC1 Spare ADC IN10                     */
+#define GPIO_SPI1_CS_PC1                 (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|GPIO_OUTPUT_SET|GPIO_PORTC|GPIO_PIN1)
 #define GPIO_SPI1_CS_PC2                 (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|GPIO_OUTPUT_SET|GPIO_PORTC|GPIO_PIN2)
-#define GPIO_SPI1_CS_PC13                (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|GPIO_OUTPUT_SET|GPIO_PORTC|GPIO_PIN13)
-#define GPIO_SPI1_CS_PC15                (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|GPIO_OUTPUT_SET|GPIO_PORTC|GPIO_PIN15)
-#define GPIO_SPI1_CS_PD7                 (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|GPIO_OUTPUT_SET|GPIO_PORTD|GPIO_PIN7)
+// #define GPIO_SPI1_CS_PC13                (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|GPIO_OUTPUT_SET|GPIO_PORTC|GPIO_PIN13)
+// #define GPIO_SPI1_CS_PC15                (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|GPIO_OUTPUT_SET|GPIO_PORTC|GPIO_PIN15)
+// #define GPIO_SPI1_CS_PD7                 (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|GPIO_OUTPUT_SET|GPIO_PORTD|GPIO_PIN7)
 
 /* FMUv2 SPI2 chip selects */
 #define GPIO_SPI2_CS_PD10                (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|GPIO_OUTPUT_SET|GPIO_PORTD|GPIO_PIN10)
 
 /* FMUv2 SPI4 chip selects */
 #define GPIO_SPI4_GPIO_PC14  /* !V2M */  (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|GPIO_OUTPUT_SET|GPIO_PORTC|GPIO_PIN14)
-#define GPIO_SPI4_NSS_PE4                (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|GPIO_OUTPUT_SET|GPIO_PORTE|GPIO_PIN4)
+// #define GPIO_SPI4_NSS_PE4                (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|GPIO_OUTPUT_SET|GPIO_PORTE|GPIO_PIN4)
 
 /* FMUv2 SPI1 chip selects Assignments */
 
 #define GPIO_SPI1_CS_MPU                 GPIO_SPI1_CS_PC2
-#define GPIO_SPI1_CS_GYRO                GPIO_SPI1_CS_PC13
-#define GPIO_SPI1_CS_ACCEL_MAG           GPIO_SPI1_CS_PC15
-#define GPIO_SPI1_CS_BARO                GPIO_SPI1_CS_PD7
+#define GPIO_SPI1_CS_GYRO                GPIO_SPI1_CS_PC1
+// #define GPIO_SPI1_CS_ACCEL_MAG           GPIO_SPI1_CS_PC15
+#define GPIO_SPI4_CS_BARO                GPIO_SPI4_GPIO_PC14
 
 /* FMUv2 SPI2 chip selects Assignments */
 
@@ -177,20 +178,20 @@
 /* FMUv2 SPI4 chip selects Assignments */
 
 #define GPIO_SPI4_GPIO_EXT               GPIO_SPI4_GPIO_PC14
-#define GPIO_SPI4_EXT_NSS                GPIO_SPI4_NSS_PE4
+// #define GPIO_SPI4_EXT_NSS                GPIO_SPI4_NSS_PE4
 
 /* FMUv2 DRDY */
 
 #define GPIO_SPI1_EXTI_DRDY_PB0          (GPIO_INPUT|GPIO_FLOAT|GPIO_EXTI|GPIO_PORTB|GPIO_PIN0)
 #define GPIO_SPI1_EXTI_DRDY_PB1 /*!V3 */ (GPIO_INPUT|GPIO_FLOAT|GPIO_EXTI|GPIO_PORTB|GPIO_PIN1)
-#define GPIO_SPI1_EXTI_DRDY_PB4          (GPIO_INPUT|GPIO_FLOAT|GPIO_EXTI|GPIO_PORTB|GPIO_PIN4)
+// #define GPIO_SPI1_EXTI_DRDY_PB4          (GPIO_INPUT|GPIO_FLOAT|GPIO_EXTI|GPIO_PORTB|GPIO_PIN4)
 #define GPIO_SPI1_EXTI_DRDY_PD15         (GPIO_INPUT|GPIO_FLOAT|GPIO_EXTI|GPIO_PORTD|GPIO_PIN15)
 
 /* FMUv2 DRDY Assignments */
 
-#define GPIO_SPI1_EXTI_GYRO_DRDY         GPIO_SPI1_EXTI_DRDY_PB0
-#define GPIO_SPI1_EXTI_MAG_DRDY          GPIO_SPI1_EXTI_DRDY_PB1
-#define GPIO_SPI1_EXTI_ACCEL_DRDY        GPIO_SPI1_EXTI_DRDY_PB4
+#define GPIO_SPI1_EXTI_GYRO_DRDY         GPIO_SPI1_EXTI_DRDY_PB1
+// #define GPIO_SPI1_EXTI_MAG_DRDY          GPIO_SPI1_EXTI_DRDY_PB1
+// #define GPIO_SPI1_EXTI_ACCEL_DRDY        GPIO_SPI1_EXTI_DRDY_PB4
 #define GPIO_SPI1_EXTI_MPU_DRDY          GPIO_SPI1_EXTI_DRDY_PD15
 
 /*----------------------------------------------------------*/
@@ -200,13 +201,13 @@
 #define PX4_SPI_BUS_SENSORS      1
 #define PX4_SPI_BUS_RAMTRON      2
 #define PX4_SPI_BUS_EXT          4
-#define PX4_SPI_BUS_BARO         PX4_SPI_BUS_SENSORS
+#define PX4_SPI_BUS_BARO         PX4_SPI_BUS_RAMTRON
 
 /* Use these to select a specific SPI device on SPI1 */
 
 #define PX4_SPIDEV_GYRO       PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS, 1)
 #define PX4_SPIDEV_ACCEL_MAG  PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS, 2)
-#define PX4_SPIDEV_BARO       PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS, 3)
+// #define PX4_SPIDEV_BARO       PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS, 3)
 #define PX4_SPIDEV_MPU        PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS, 4)
 
 /* FMUv3 SPI on external bus */
@@ -220,7 +221,7 @@
 /* I2C busses */
 #define PX4_I2C_BUS_EXPANSION	1
 #define PX4_I2C_BUS_ONBOARD	2
-#define PX4_I2C_BUS_LED		PX4_I2C_BUS_ONBOARD
+// #define PX4_I2C_BUS_LED		PX4_I2C_BUS_ONBOARD
 
 /*----------------------------------------------------------*/
 /*           FMUv3 Cube SPI chip selects and DRDY           */
@@ -262,33 +263,33 @@
 
 /* FMUv3 Cube SPI1 chip selects */
 /*      Was a spare ACD IN10 on V2 */
-#define GPIO_SPI1_CS_PC1                 (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|GPIO_OUTPUT_SET|GPIO_PORTC|GPIO_PIN1)
-#define GPIO_SPI4_CS_PB1                 (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|GPIO_OUTPUT_SET|GPIO_PORTB|GPIO_PIN1)
-#define GPIO_SPI4_CS_PC13                GPIO_SPI1_CS_PC13
-#define GPIO_SPI4_CS_PC14                GPIO_SPI4_GPIO_PC14
-#define GPIO_SPI4_CS_PC15                GPIO_SPI1_CS_PC15
+// #define GPIO_SPI1_CS_PC1                 (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|GPIO_OUTPUT_SET|GPIO_PORTC|GPIO_PIN1)
+// #define GPIO_SPI4_CS_PB1                 (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|GPIO_OUTPUT_SET|GPIO_PORTB|GPIO_PIN1)
+// #define GPIO_SPI4_CS_PC13                GPIO_SPI1_CS_PC13
+// #define GPIO_SPI4_CS_PC14                GPIO_SPI4_GPIO_PC14
+// #define GPIO_SPI4_CS_PC15                GPIO_SPI1_CS_PC15
 
-/* FMUv3 Cube chip selects Assignments */
-/*                                                        Cube 2.0   V2.1    */
-#define GPIO_SPI1_CS_MPU                 GPIO_SPI1_CS_PC2  /* MPU600    MPU9250 */
-#define GPIO_SPI1_CS_BARO                GPIO_SPI1_CS_PD7  /* MS5611    MS5611  */
-#define GPIO_SPI1_CS_HMC                 GPIO_SPI1_CS_PC1  /* HMC5983   Removed */
+// /* FMUv3 Cube chip selects Assignments */
+// /*                                                        Cube 2.0   V2.1    */
+// #define GPIO_SPI1_CS_MPU                 GPIO_SPI1_CS_PC2  /* MPU600    MPU9250 */
+// #define GPIO_SPI1_CS_BARO                GPIO_SPI1_CS_PD7  /* MS5611    MS5611  */
+// #define GPIO_SPI1_CS_HMC                 GPIO_SPI1_CS_PC1  /* HMC5983   Removed */
 
-/* N.B. bus moves from SPI1 to SPI4 */
-#define GPIO_SPI4_GYRO_EXT_CS            GPIO_SPI4_CS_PC13
-#define GPIO_SPI4_BARO_EXT_CS            GPIO_SPI4_CS_PC14
-#define GPIO_SPI4_ACCEL_MAG_EXT_CS       GPIO_SPI4_CS_PC15
+// /* N.B. bus moves from SPI1 to SPI4 */
+// #define GPIO_SPI4_GYRO_EXT_CS            GPIO_SPI4_CS_PC13
+// #define GPIO_SPI4_BARO_EXT_CS            GPIO_SPI4_CS_PC14
+// #define GPIO_SPI4_ACCEL_MAG_EXT_CS       GPIO_SPI4_CS_PC15
 
-/* No move */
-#define GPIO_SPI4_MPU_EXT_CS             GPIO_SPI4_NSS_PE4
+// /* No move */
+// #define GPIO_SPI4_MPU_EXT_CS             GPIO_SPI4_NSS_PE4
 
-/* FMUv3 DRDY Assignments */
-#define GPIO_SPI4_EXTI_DRDY_PB0          GPIO_SPI1_EXTI_DRDY_PB0
-#define GPIO_SPI4_EXTI_EXTERN_DRDY       GPIO_SPI4_EXTI_DRDY_PB0
-#define GPIO_SPI4_EXTERN_CS              GPIO_SPI4_CS_PB1
-/* PB1 is an External CS on V3 */
+// /* FMUv3 DRDY Assignments */
+// #define GPIO_SPI4_EXTI_DRDY_PB0          GPIO_SPI1_EXTI_DRDY_PB0
+// #define GPIO_SPI4_EXTI_EXTERN_DRDY       GPIO_SPI4_EXTI_DRDY_PB0
+// #define GPIO_SPI4_EXTERN_CS              GPIO_SPI4_CS_PB1
+// /* PB1 is an External CS on V3 */
 
-#define PX4_SPIDEV_HMC            5
+// #define PX4_SPIDEV_HMC            5
 
 /*----------------------------------------------------------*/
 /*       End FMUv3 Cube SPI chip selects and DRDY           */
@@ -336,16 +337,16 @@
 
 /* FMUv3 Cube chip selects Assignments */
 
-#define GPIO_SPI1_CS_MPU                 GPIO_SPI1_CS_PC2  /* MPU9250  */
-#define GPIO_SPI1_CS_BARO                GPIO_SPI1_CS_PD7  /* MS5611   */
-#define GPIO_SPI1_CS_20608               GPIO_SPI1_CS_PC15 /* ICM20608 */
+// #define GPIO_SPI1_CS_MPU                 GPIO_SPI1_CS_PC2  /* MPU9250  */
+// #define GPIO_SPI1_CS_BARO                GPIO_SPI1_CS_PD7  /* MS5611   */
+// #define GPIO_SPI1_CS_20608               GPIO_SPI1_CS_PC15 /* ICM20608 */
 
 /* FMUv3 DRDY Assignments */
 
 /* Pixhawk mini has reused the PC14 GPIO_SPI_CS_EXT1 signal that was associated
  * with SPI4.
  */
-#define GPIO_SPI1_EXTI_20608_DRDY_PC14   (GPIO_INPUT|GPIO_FLOAT|GPIO_EXTI|GPIO_PORTC|GPIO_PIN14)
+// #define GPIO_SPI1_EXTI_20608_DRDY_PC14   (GPIO_INPUT|GPIO_FLOAT|GPIO_EXTI|GPIO_PORTC|GPIO_PIN14)
 
 #define PX4_SPIDEV_ICM_20608         6   /* ICM_20608 on PC15 */
 
@@ -359,10 +360,10 @@
 #define ADC_CHANNELS (1 << 2) | (1 << 3) | (1 << 4) | (1 << 10) | (1 << 11) | (1 << 12) | (1 << 13) | (1 << 14) | (1 << 15)
 
 // ADC defines to be used in sensors.cpp to read from a particular channel
-#define ADC_BATTERY_VOLTAGE_CHANNEL	2
-#define ADC_BATTERY_CURRENT_CHANNEL	3
-#define ADC_5V_RAIL_SENSE		4
-#define ADC_AIRSPEED_VOLTAGE_CHANNEL	15
+// #define ADC_BATTERY_VOLTAGE_CHANNEL	2
+// #define ADC_BATTERY_CURRENT_CHANNEL	3
+// #define ADC_5V_RAIL_SENSE		4
+// #define ADC_AIRSPEED_VOLTAGE_CHANNEL	15
 
 /* Define Battery 1 Voltage Divider and A per V
  */
@@ -388,19 +389,19 @@
 #define GPIO_GPIO5_OUTPUT	(GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTD|GPIO_PIN14)
 
 /* Power supply control and monitoring GPIOs */
-#define GPIO_VDD_5V_PERIPH_EN	(GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTA|GPIO_PIN8)
-#define GPIO_VDD_BRICK_VALID	(GPIO_INPUT|GPIO_PULLUP|GPIO_PORTB|GPIO_PIN5)
-#define GPIO_VDD_SERVO_VALID	(GPIO_INPUT|GPIO_PULLUP|GPIO_PORTB|GPIO_PIN7)
-#define GPIO_VDD_USB_VALID		(GPIO_INPUT|GPIO_PULLUP|GPIO_PORTC|GPIO_PIN0)
-#define GPIO_VDD_3V3_SENSORS_EN	(GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_SET|GPIO_PORTE|GPIO_PIN3)
-#define GPIO_VDD_5V_HIPOWER_OC	(GPIO_INPUT|GPIO_PULLUP|GPIO_PORTE|GPIO_PIN10)
-#define GPIO_VDD_5V_PERIPH_OC	(GPIO_INPUT|GPIO_PULLUP|GPIO_PORTE|GPIO_PIN15)
+// #define GPIO_VDD_5V_PERIPH_EN	(GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTA|GPIO_PIN8)
+// #define GPIO_VDD_BRICK_VALID	(GPIO_INPUT|GPIO_PULLUP|GPIO_PORTB|GPIO_PIN5)
+// #define GPIO_VDD_SERVO_VALID	(GPIO_INPUT|GPIO_PULLUP|GPIO_PORTB|GPIO_PIN7)
+// #define GPIO_VDD_USB_VALID		(GPIO_INPUT|GPIO_PULLUP|GPIO_PORTC|GPIO_PIN0)
+// #define GPIO_VDD_3V3_SENSORS_EN	(GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_SET|GPIO_PORTE|GPIO_PIN3)
+// #define GPIO_VDD_5V_HIPOWER_OC	(GPIO_INPUT|GPIO_PULLUP|GPIO_PORTE|GPIO_PIN10)
+// #define GPIO_VDD_5V_PERIPH_OC	(GPIO_INPUT|GPIO_PULLUP|GPIO_PORTE|GPIO_PIN15)
 
 /* Tone alarm output */
-#define TONE_ALARM_TIMER	2	/* timer 2 */
-#define TONE_ALARM_CHANNEL	1	/* channel 1 */
-#define GPIO_TONE_ALARM_IDLE	(GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTA|GPIO_PIN15)
-#define GPIO_TONE_ALARM		(GPIO_ALT|GPIO_AF1|GPIO_SPEED_2MHz|GPIO_PUSHPULL|GPIO_PORTA|GPIO_PIN15)
+// #define TONE_ALARM_TIMER	2	/* timer 2 */
+// #define TONE_ALARM_CHANNEL	1	/* channel 1 */
+// #define GPIO_TONE_ALARM_IDLE	(GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTA|GPIO_PIN15)
+// #define GPIO_TONE_ALARM		(GPIO_ALT|GPIO_AF1|GPIO_SPEED_2MHz|GPIO_PUSHPULL|GPIO_PORTA|GPIO_PIN15)
 
 /* PWM
  *
@@ -453,11 +454,11 @@
  * provides the true logic GPIO BOARD_ADC_xxxx macros.
  */
 #define BOARD_ADC_USB_CONNECTED (px4_arch_gpioread(GPIO_OTGFS_VBUS))
-#define BOARD_ADC_BRICK_VALID   (!px4_arch_gpioread(GPIO_VDD_BRICK_VALID))
-#define BOARD_ADC_SERVO_VALID   (!px4_arch_gpioread(GPIO_VDD_SERVO_VALID))
-#define BOARD_ADC_USB_VALID     (!px4_arch_gpioread(GPIO_VDD_USB_VALID))
-#define BOARD_ADC_PERIPH_5V_OC  (!px4_arch_gpioread(GPIO_VDD_5V_PERIPH_OC))
-#define BOARD_ADC_HIPOWER_5V_OC (!px4_arch_gpioread(GPIO_VDD_5V_HIPOWER_OC))
+// #define BOARD_ADC_BRICK_VALID   (!px4_arch_gpioread(GPIO_VDD_BRICK_VALID))
+// #define BOARD_ADC_SERVO_VALID   (!px4_arch_gpioread(GPIO_VDD_SERVO_VALID))
+// #define BOARD_ADC_USB_VALID     (!px4_arch_gpioread(GPIO_VDD_USB_VALID))
+// #define BOARD_ADC_PERIPH_5V_OC  (!px4_arch_gpioread(GPIO_VDD_5V_PERIPH_OC))
+// #define BOARD_ADC_HIPOWER_5V_OC (!px4_arch_gpioread(GPIO_VDD_5V_HIPOWER_OC))
 
 #define BOARD_HAS_PWM	DIRECT_PWM_OUTPUT_CHANNELS
 
@@ -468,13 +469,13 @@
 		{GPIO_GPIO3_INPUT,       GPIO_GPIO3_OUTPUT,       0}, \
 		{GPIO_GPIO4_INPUT,       GPIO_GPIO4_OUTPUT,       0}, \
 		{GPIO_GPIO5_INPUT,       GPIO_GPIO5_OUTPUT,       0}, \
-		{0,                      GPIO_VDD_5V_PERIPH_EN,   0}, \
-		{0,                      GPIO_VDD_3V3_SENSORS_EN, 0}, \
-		{GPIO_VDD_BRICK_VALID,   0,                       0}, \
-		{GPIO_VDD_SERVO_VALID,   0,                       0}, \
-		{GPIO_VDD_USB_VALID,     0,                       0}, \
-		{GPIO_VDD_5V_HIPOWER_OC, 0,                       0}, \
-		{GPIO_VDD_5V_PERIPH_OC,  0,                       0}, }
+		{0,                      0,   0}, \
+		{0,                      0, 0}, \
+		{0,   0,                       0}, \
+		{0,   0,                       0}, \
+		{0,     0,                       0}, \
+		{0, 0,                       0}, \
+		{0,  0,                       0}, }
 
 /*
  * GPIO numbers.
@@ -488,13 +489,13 @@
 #define GPIO_SERVO_5          (1<<4)  /**< servo 5 output */
 #define GPIO_SERVO_6          (1<<5)  /**< servo 6 output */
 
-#define GPIO_5V_PERIPH_EN     (1<<6)  /**< PA8 - !VDD_5V_PERIPH_EN */
-#define GPIO_3V3_SENSORS_EN   (1<<7)  /**< PE3 - VDD_3V3_SENSORS_EN */
-#define GPIO_BRICK_VALID      (1<<8)  /**< PB5 - !VDD_BRICK_VALID */
-#define GPIO_SERVO_VALID      (1<<9)  /**< PB7 - !VDD_SERVO_VALID */
-#define GPIO_USB_VALID        (1<<10) /**< PC0 - !GPIO_VDD_USB_VALID */
-#define GPIO_5V_HIPOWER_OC    (1<<11) /**< PE10 - !VDD_5V_HIPOWER_OC */
-#define GPIO_5V_PERIPH_OC     (1<<12) /**< PE10 - !VDD_5V_PERIPH_OC */
+// #define GPIO_5V_PERIPH_EN     (1<<6)  /**< PA8 - !VDD_5V_PERIPH_EN */
+// #define GPIO_3V3_SENSORS_EN   (1<<7)  /**< PE3 - VDD_3V3_SENSORS_EN */
+// #define GPIO_BRICK_VALID      (1<<8)  /**< PB5 - !VDD_BRICK_VALID */
+// #define GPIO_SERVO_VALID      (1<<9)  /**< PB7 - !VDD_SERVO_VALID */
+// #define GPIO_USB_VALID        (1<<10) /**< PC0 - !GPIO_VDD_USB_VALID */
+// #define GPIO_5V_HIPOWER_OC    (1<<11) /**< PE10 - !VDD_5V_HIPOWER_OC */
+// #define GPIO_5V_PERIPH_OC     (1<<12) /**< PE10 - !VDD_5V_PERIPH_OC */
 
 /* This board provides a DMA pool and APIs */
 #define BOARD_DMA_ALLOC_POOL_SIZE 5120

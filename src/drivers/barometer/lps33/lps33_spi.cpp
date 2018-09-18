@@ -58,7 +58,7 @@
 #include "lps33.h"
 #include <board_config.h>
 
-#if PX4_SPIDEV_BARO
+#if PX4_SPIDEV_EXT_BARO
 #ifdef PX4_SPI_BUS_EXT
 #define EXTERNAL_BUS PX4_SPI_BUS_EXT
 #else
@@ -114,7 +114,7 @@ LPS33_SPI_interface(int bus) //bool external bus
     return interface;
     */
 
-        return new LPS33_SPI(bus, PX4_SPIDEV_BARO);
+        return new LPS33_SPI(bus, PX4_SPIDEV_EXT_BARO);
 
 }
 

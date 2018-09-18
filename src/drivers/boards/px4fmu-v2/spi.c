@@ -77,24 +77,25 @@
  */
 static void stm32_spi1_initialize(void)
 {
+	stm32_configgpio(GPIO_SPI1_CS_PC1);
 	stm32_configgpio(GPIO_SPI1_CS_PC2);
-	stm32_configgpio(GPIO_SPI1_CS_PD7);
+	// stm32_configgpio(GPIO_SPI1_CS_PD7);
 
 	stm32_configgpio(GPIO_SPI1_EXTI_DRDY_PD15);
 
 	if (HW_VER_FMUV2MINI == board_get_hw_version()) {
-		stm32_configgpio(GPIO_SPI1_EXTI_20608_DRDY_PC14);
-		stm32_configgpio(GPIO_SPI1_CS_PC15);
+		// stm32_configgpio(GPIO_SPI1_EXTI_20608_DRDY_PC14);
+		// stm32_configgpio(GPIO_SPI1_CS_PC15);
 
 	} else if (HW_VER_FMUV3 == board_get_hw_version()) {
 		stm32_configgpio(GPIO_SPI1_CS_PC1);
 
 	} else {
-		stm32_configgpio(GPIO_SPI1_EXTI_DRDY_PB0);
+		// stm32_configgpio(GPIO_SPI1_EXTI_DRDY_PB0);
 		stm32_configgpio(GPIO_SPI1_EXTI_DRDY_PB1);
-		stm32_configgpio(GPIO_SPI1_EXTI_DRDY_PB4);
-		stm32_configgpio(GPIO_SPI1_CS_PC13);
-		stm32_configgpio(GPIO_SPI1_CS_PC15);
+		// stm32_configgpio(GPIO_SPI1_EXTI_DRDY_PB4);
+		// stm32_configgpio(GPIO_SPI1_CS_PC13);
+		// stm32_configgpio(GPIO_SPI1_CS_PC15);
 	}
 }
 #endif // CONFIG_STM32_SPI1
@@ -107,13 +108,13 @@ static void stm32_spi1_initialize(void)
  */
 static void stm32_spi4_initialize(void)
 {
-	stm32_configgpio(GPIO_SPI4_NSS_PE4);
+	stm32_configgpio(GPIO_SPI4_GPIO_PC14);
 
 	if (HW_VER_FMUV3 == board_get_hw_version()) {
-		stm32_configgpio(GPIO_SPI4_EXTI_DRDY_PB0);
-		stm32_configgpio(GPIO_SPI4_CS_PB1);
-		stm32_configgpio(GPIO_SPI4_CS_PC13);
-		stm32_configgpio(GPIO_SPI4_CS_PC15);
+		// stm32_configgpio(GPIO_SPI4_EXTI_DRDY_PB0);
+		// stm32_configgpio(GPIO_SPI4_CS_PB1);
+		// stm32_configgpio(GPIO_SPI4_CS_PC13);
+		// stm32_configgpio(GPIO_SPI4_CS_PC15);
 	}
 
 	if (HW_VER_FMUV2MINI != board_get_hw_version()) {
@@ -148,104 +149,98 @@ __EXPORT void stm32_spi1select(FAR struct spi_dev_s *dev, uint32_t devid, bool s
 	 */
 
 	switch (devid) {
-	case PX4_SPIDEV_GYRO:
+	// case PX4_SPIDEV_GYRO:
 
-		/* Making sure the other peripherals are not selected */
-		if (HW_VER_FMUV2 == board_get_hw_version()) {
-			stm32_gpiowrite(GPIO_SPI1_CS_PC13, !selected);
-		}
+	// 	/* Making sure the other peripherals are not selected */
+	// 	if (HW_VER_FMUV2 == board_get_hw_version()) {
+	// 		// stm32_gpiowrite(GPIO_SPI1_CS_PC13, !selected);
+	// 	}
 
-		if (HW_VER_FMUV3 != board_get_hw_version()) {
-			stm32_gpiowrite(GPIO_SPI1_CS_PC15, 1);
-		}
+	// 	if (HW_VER_FMUV3 != board_get_hw_version()) {
+	// 		// stm32_gpiowrite(GPIO_SPI1_CS_PC15, 1);
+	// 	}
 
-		stm32_gpiowrite(GPIO_SPI1_CS_PD7, 1);
-		stm32_gpiowrite(GPIO_SPI1_CS_PC2, 1);
+	// 	// stm32_gpiowrite(GPIO_SPI1_CS_PD7, 1);
+	// 	stm32_gpiowrite(GPIO_SPI1_CS_PC2, 1);
+	// 	stm32_gpiowrite(GPIO_SPI1_CS_PC1, 1);
 
-		if (HW_VER_FMUV3 == board_get_hw_version()) {
-			stm32_gpiowrite(GPIO_SPI1_CS_PC1, 1);
-		}
 
-		break;
+	// 	break;
 
 	case PX4_SPIDEV_ICM_20608:
 	case PX4_SPIDEV_ACCEL_MAG:
 
 		/* Making sure the other peripherals are not selected */
 		if (HW_VER_FMUV2 == board_get_hw_version()) {
-			stm32_gpiowrite(GPIO_SPI1_CS_PC13, 1);
+			// stm32_gpiowrite(GPIO_SPI1_CS_PC13, 1);
 		}
 
 		if (HW_VER_FMUV3 != board_get_hw_version()) {
-			stm32_gpiowrite(GPIO_SPI1_CS_PC15, !selected);
+			// stm32_gpiowrite(GPIO_SPI1_CS_PC15, !selected);
 		}
 
-		stm32_gpiowrite(GPIO_SPI1_CS_PD7, 1);
+		stm32_gpiowrite(GPIO_SPI1_CS_PC2, !selected);
 		stm32_gpiowrite(GPIO_SPI1_CS_PC2, 1);
-
-		if (HW_VER_FMUV3 == board_get_hw_version()) {
-			stm32_gpiowrite(GPIO_SPI1_CS_PC1, 1);
-		}
 
 		break;
 
-	case PX4_SPIDEV_BARO:
+	// case PX4_SPIDEV_BARO:
 
-		/* Making sure the other peripherals are not selected */
-		if (HW_VER_FMUV2 == board_get_hw_version()) {
-			stm32_gpiowrite(GPIO_SPI1_CS_PC13, 1);
-		}
+	// 	/* Making sure the other peripherals are not selected */
+	// 	if (HW_VER_FMUV2 == board_get_hw_version()) {
+	// 		stm32_gpiowrite(GPIO_SPI1_CS_PC13, 1);
+	// 	}
 
-		if (HW_VER_FMUV3 != board_get_hw_version()) {
-			stm32_gpiowrite(GPIO_SPI1_CS_PC15, 1);
-		}
+	// 	if (HW_VER_FMUV3 != board_get_hw_version()) {
+	// 		stm32_gpiowrite(GPIO_SPI1_CS_PC15, 1);
+	// 	}
 
-		stm32_gpiowrite(GPIO_SPI1_CS_PD7, !selected);
-		stm32_gpiowrite(GPIO_SPI1_CS_PC2, 1);
+	// 	stm32_gpiowrite(GPIO_SPI1_CS_PC1, 1);
+	// 	stm32_gpiowrite(GPIO_SPI1_CS_PC2, 1);
 
-		if (HW_VER_FMUV3 == board_get_hw_version()) {
-			stm32_gpiowrite(GPIO_SPI1_CS_PC1, 1);
-		}
+	// 	if (HW_VER_FMUV3 == board_get_hw_version()) {
+	// 		stm32_gpiowrite(GPIO_SPI1_CS_PC1, 1);
+	// 	}
 
-		break;
+	// 	break;
 
 	case PX4_SPIDEV_MPU:
 
 		/* Making sure the other peripherals are not selected */
 		if (HW_VER_FMUV2 == board_get_hw_version()) {
-			stm32_gpiowrite(GPIO_SPI1_CS_PC13, 1);
+			// stm32_gpiowrite(GPIO_SPI1_CS_PC13, 1);
 		}
 
 		if (HW_VER_FMUV3 != board_get_hw_version()) {
-			stm32_gpiowrite(GPIO_SPI1_CS_PC15, 1);
+			// stm32_gpiowrite(GPIO_SPI1_CS_PC15, 1);
 		}
 
-		stm32_gpiowrite(GPIO_SPI1_CS_PD7, 1);
+		stm32_gpiowrite(GPIO_SPI1_CS_PC1, 1);
 		stm32_gpiowrite(GPIO_SPI1_CS_PC2, !selected);
 
 		if (HW_VER_FMUV3 == board_get_hw_version()) {
-			stm32_gpiowrite(GPIO_SPI1_CS_PC1, 1);
+			// stm32_gpiowrite(GPIO_SPI1_CS_PC1, 1);
 		}
 
 		break;
 
-	case PX4_SPIDEV_HMC:
-		if (HW_VER_FMUV2 == board_get_hw_version()) {
-			stm32_gpiowrite(GPIO_SPI1_CS_PC13, 1);
-		}
+	// case PX4_SPIDEV_HMC:
+	// 	if (HW_VER_FMUV2 == board_get_hw_version()) {
+	// 		stm32_gpiowrite(GPIO_SPI1_CS_PC13, 1);
+	// 	}
 
-		if (HW_VER_FMUV3 != board_get_hw_version()) {
-			stm32_gpiowrite(GPIO_SPI1_CS_PC15, 1);
-		}
+	// 	if (HW_VER_FMUV3 != board_get_hw_version()) {
+	// 		stm32_gpiowrite(GPIO_SPI1_CS_PC15, 1);
+	// 	}
 
-		stm32_gpiowrite(GPIO_SPI1_CS_PD7, 1);
-		stm32_gpiowrite(GPIO_SPI1_CS_PC2, 1);
+	// 	stm32_gpiowrite(GPIO_SPI1_CS_PD7, 1);
+	// 	stm32_gpiowrite(GPIO_SPI1_CS_PC2, 1);
 
-		if (HW_VER_FMUV3 == board_get_hw_version()) {
-			stm32_gpiowrite(GPIO_SPI1_CS_PC1, !selected);
-		}
+	// 	if (HW_VER_FMUV3 == board_get_hw_version()) {
+	// 		stm32_gpiowrite(GPIO_SPI1_CS_PC1, !selected);
+	// 	}
 
-		break;
+	// 	break;
 
 	default:
 		break;
@@ -284,67 +279,67 @@ __EXPORT void stm32_spi4select(FAR struct spi_dev_s *dev, uint32_t devid, bool s
 	 */
 
 	switch (devid) {
-	case PX4_SPIDEV_EXT_MPU:
-		/* Making sure the other peripherals are not selected */
-		stm32_gpiowrite(GPIO_SPI4_NSS_PE4, !selected);
+	// case PX4_SPIDEV_EXT_MPU:
+	// 	/* Making sure the other peripherals are not selected */
+	// 	stm32_gpiowrite(GPIO_SPI4_NSS_PE4, !selected);
 
-		if (HW_VER_FMUV2MINI != board_get_hw_version()) {
-			stm32_gpiowrite(GPIO_SPI4_GPIO_PC14, 1);
-		}
+	// 	if (HW_VER_FMUV2MINI != board_get_hw_version()) {
+	// 		stm32_gpiowrite(GPIO_SPI4_GPIO_PC14, 1);
+	// 	}
 
-		if (HW_VER_FMUV3 == board_get_hw_version()) {
-			stm32_gpiowrite(GPIO_SPI4_CS_PC15, 1);
-			stm32_gpiowrite(GPIO_SPI4_CS_PC13, 1);
-		}
+	// 	if (HW_VER_FMUV3 == board_get_hw_version()) {
+	// 		stm32_gpiowrite(GPIO_SPI4_CS_PC15, 1);
+	// 		stm32_gpiowrite(GPIO_SPI4_CS_PC13, 1);
+	// 	}
 
-		break;
+	// 	break;
 
 	case PX4_SPIDEV_EXT_BARO:
 		/* Making sure the other peripherals are not selected */
-		stm32_gpiowrite(GPIO_SPI4_NSS_PE4, 1);
+		stm32_gpiowrite(GPIO_SPI4_GPIO_PC14, !selected);
 
 		if (HW_VER_FMUV2MINI != board_get_hw_version()) {
-			stm32_gpiowrite(GPIO_SPI4_GPIO_PC14, !selected);
+			// stm32_gpiowrite(GPIO_SPI4_GPIO_PC14, !selected);
 		}
 
 		if (HW_VER_FMUV3 == board_get_hw_version()) {
-			stm32_gpiowrite(GPIO_SPI4_CS_PC15, 1);
-			stm32_gpiowrite(GPIO_SPI4_CS_PC13, 1);
+			// stm32_gpiowrite(GPIO_SPI4_CS_PC15, 1);
+			// stm32_gpiowrite(GPIO_SPI4_CS_PC13, 1);
 		}
 
 		break;
 
-	case PX4_SPIDEV_ICM_20608:
-	case PX4_SPIDEV_EXT_ACCEL_MAG:
-		/* Making sure the other peripherals are not selected */
-		stm32_gpiowrite(GPIO_SPI4_NSS_PE4, 1);
+	// case PX4_SPIDEV_ICM_20608:
+	// case PX4_SPIDEV_EXT_ACCEL_MAG:
+	// 	/* Making sure the other peripherals are not selected */
+	// 	stm32_gpiowrite(GPIO_SPI4_NSS_PE4, 1);
 
-		if (HW_VER_FMUV2MINI != board_get_hw_version()) {
-			stm32_gpiowrite(GPIO_SPI4_GPIO_PC14, 1);
-		}
+	// 	if (HW_VER_FMUV2MINI != board_get_hw_version()) {
+	// 		stm32_gpiowrite(GPIO_SPI4_GPIO_PC14, 1);
+	// 	}
 
-		if (HW_VER_FMUV3 == board_get_hw_version()) {
-			stm32_gpiowrite(GPIO_SPI4_CS_PC15, !selected);
-			stm32_gpiowrite(GPIO_SPI4_CS_PC13, 1);
-		}
+	// 	if (HW_VER_FMUV3 == board_get_hw_version()) {
+	// 		stm32_gpiowrite(GPIO_SPI4_CS_PC15, !selected);
+	// 		stm32_gpiowrite(GPIO_SPI4_CS_PC13, 1);
+	// 	}
 
-		break;
+	// 	break;
 
-	case PX4_SPIDEV_EXT_BMI:
-	case PX4_SPIDEV_EXT_GYRO:
-		/* Making sure the other peripherals are not selected */
-		stm32_gpiowrite(GPIO_SPI4_NSS_PE4, 1);
+	// case PX4_SPIDEV_EXT_BMI:
+	// case PX4_SPIDEV_EXT_GYRO:
+	// 	/* Making sure the other peripherals are not selected */
+	// 	stm32_gpiowrite(GPIO_SPI4_NSS_PE4, 1);
 
-		if (HW_VER_FMUV2MINI != board_get_hw_version()) {
-			stm32_gpiowrite(GPIO_SPI4_GPIO_PC14, 1);
-		}
+	// 	if (HW_VER_FMUV2MINI != board_get_hw_version()) {
+	// 		stm32_gpiowrite(GPIO_SPI4_GPIO_PC14, 1);
+	// 	}
 
-		if (HW_VER_FMUV3 == board_get_hw_version()) {
-			stm32_gpiowrite(GPIO_SPI4_CS_PC15, 1);
-			stm32_gpiowrite(GPIO_SPI4_CS_PC13, !selected);
-		}
+	// 	if (HW_VER_FMUV3 == board_get_hw_version()) {
+	// 		stm32_gpiowrite(GPIO_SPI4_CS_PC15, 1);
+	// 		stm32_gpiowrite(GPIO_SPI4_CS_PC13, !selected);
+	// 	}
 
-		break;
+	// 	break;
 
 	default:
 		break;
@@ -367,14 +362,13 @@ __EXPORT void board_spi_reset(int ms)
 {
 	/* disable SPI bus */
 	stm32_configgpio(_PIN_OFF(GPIO_SPI1_CS_PC2));
-	stm32_configgpio(_PIN_OFF(GPIO_SPI1_CS_PC13));
-	stm32_configgpio(_PIN_OFF(GPIO_SPI1_CS_PC15));
-	stm32_configgpio(_PIN_OFF(GPIO_SPI1_CS_PD7));
+	stm32_configgpio(_PIN_OFF(GPIO_SPI1_CS_PC1));
+	stm32_configgpio(_PIN_OFF(GPIO_SPI4_GPIO_PC14));
 
 	stm32_gpiowrite(_PIN_OFF(GPIO_SPI1_CS_PC2), 0);
-	stm32_gpiowrite(_PIN_OFF(GPIO_SPI1_CS_PC13), 0);
-	stm32_gpiowrite(_PIN_OFF(GPIO_SPI1_CS_PC15), 0);
-	stm32_gpiowrite(_PIN_OFF(GPIO_SPI1_CS_PD7), 0);
+	stm32_gpiowrite(_PIN_OFF(GPIO_SPI1_CS_PC1), 0);
+	stm32_gpiowrite(_PIN_OFF(GPIO_SPI4_GPIO_PC14), 0);
+	// stm32_gpiowrite(_PIN_OFF(GPIO_SPI1_CS_PD7), 0);
 
 	stm32_configgpio(_PIN_OFF(GPIO_SPI1_SCK));
 	stm32_configgpio(_PIN_OFF(GPIO_SPI1_MISO));
@@ -386,25 +380,25 @@ __EXPORT void board_spi_reset(int ms)
 
 	stm32_configgpio(_PIN_OFF(GPIO_SPI1_EXTI_DRDY_PB0));
 	stm32_configgpio(_PIN_OFF(GPIO_SPI1_EXTI_DRDY_PB1));
-	stm32_configgpio(_PIN_OFF(GPIO_SPI1_EXTI_DRDY_PB4));
+	// stm32_configgpio(_PIN_OFF(GPIO_SPI1_EXTI_DRDY_PB4));
 	stm32_configgpio(_PIN_OFF(GPIO_SPI1_EXTI_DRDY_PD15));
 
 	stm32_gpiowrite(_PIN_OFF(GPIO_SPI1_EXTI_DRDY_PB0), 0);
 	stm32_gpiowrite(_PIN_OFF(GPIO_SPI1_EXTI_DRDY_PB1), 0);
-	stm32_gpiowrite(_PIN_OFF(GPIO_SPI1_EXTI_DRDY_PB4), 0);
+	// stm32_gpiowrite(_PIN_OFF(GPIO_SPI1_EXTI_DRDY_PB4), 0);
 	stm32_gpiowrite(_PIN_OFF(GPIO_SPI1_EXTI_DRDY_PD15), 0);
 
 	if (HW_VER_FMUV2 != board_get_hw_version()) {
-		stm32_configgpio(_PIN_OFF(GPIO_SPI4_CS_PC14));
-		stm32_gpiowrite(_PIN_OFF(GPIO_SPI4_CS_PC14), 0);
+		// stm32_configgpio(_PIN_OFF(GPIO_SPI4_CS_PC14));
+		// stm32_gpiowrite(_PIN_OFF(GPIO_SPI4_CS_PC14), 0);
 	}
 
 	if (HW_VER_FMUV3 == board_get_hw_version()) {
 		stm32_configgpio(_PIN_OFF(GPIO_SPI1_CS_PC1));
 		stm32_gpiowrite(_PIN_OFF(GPIO_SPI1_CS_PC1), 0);
 
-		stm32_configgpio(_PIN_OFF(GPIO_SPI4_NSS_PE4));
-		stm32_gpiowrite(_PIN_OFF(GPIO_SPI4_NSS_PE4), 0);
+		// stm32_configgpio(_PIN_OFF(GPIO_SPI4_NSS_PE4));
+		// stm32_gpiowrite(_PIN_OFF(GPIO_SPI4_NSS_PE4), 0);
 
 		stm32_configgpio(_PIN_OFF(GPIO_SPI4_SCK));
 		stm32_configgpio(_PIN_OFF(GPIO_SPI4_MISO));
@@ -416,8 +410,8 @@ __EXPORT void board_spi_reset(int ms)
 	}
 
 	/* set the sensor rail off */
-	stm32_configgpio(GPIO_VDD_3V3_SENSORS_EN);
-	stm32_gpiowrite(GPIO_VDD_3V3_SENSORS_EN, 0);
+	// stm32_configgpio(GPIO_VDD_3V3_SENSORS_EN);
+	// stm32_gpiowrite(GPIO_VDD_3V3_SENSORS_EN, 0);
 
 	/* wait for the sensor rail to reach GND */
 	usleep(ms * 1000);
@@ -426,7 +420,7 @@ __EXPORT void board_spi_reset(int ms)
 	/* re-enable power */
 
 	/* switch the sensor rail back on */
-	stm32_gpiowrite(GPIO_VDD_3V3_SENSORS_EN, 1);
+	// stm32_gpiowrite(GPIO_VDD_3V3_SENSORS_EN, 1);
 
 	/* wait a bit before starting SPI, different times didn't influence results */
 	usleep(100);
