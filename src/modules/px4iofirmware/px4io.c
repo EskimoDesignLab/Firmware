@@ -313,7 +313,7 @@ user_start(int argc, char *argv[])
 #endif
 
 	/* start the safety switch handler */
-	safety_init();
+	// safety_init();
 
 	/* initialise the control inputs */
 	controls_init();
