@@ -154,8 +154,8 @@ update_mem_usage(void)
 static void
 heartbeat_blink(void)
 {
-	static bool heartbeat = false;
-	LED_BLUE(heartbeat = !heartbeat);
+	// static bool heartbeat = false;
+	// LED_BLUE(heartbeat = !heartbeat);
 }
 
 static void
@@ -296,8 +296,8 @@ user_start(int argc, char *argv[])
 
 	/* default all the LEDs to off while we start */
 	LED_AMBER(false);
-	LED_BLUE(false);
-	LED_SAFETY(false);
+	// LED_BLUE(false);
+	// LED_SAFETY(false);
 #ifdef GPIO_LED4
 	LED_RING(false);
 #endif
@@ -362,11 +362,11 @@ user_start(int argc, char *argv[])
 
 			if (phase) {
 				LED_AMBER(true);
-				LED_BLUE(false);
+				// LED_BLUE(false);
 
 			} else {
 				LED_AMBER(false);
-				LED_BLUE(true);
+				// LED_BLUE(true);
 			}
 
 			up_udelay(250000);
@@ -435,11 +435,11 @@ user_start(int argc, char *argv[])
 
 		} else if (r_page_setup[PX4IO_P_SETUP_THERMAL] < PX4IO_THERMAL_FULL) {
 			/* switch resistive heater off */
-			LED_BLUE(false);
+			// LED_BLUE(false);
 
 		} else {
 			/* switch resistive heater hard on */
-			LED_BLUE(true);
+			// LED_BLUE(true);
 		}
 
 		update_mem_usage();

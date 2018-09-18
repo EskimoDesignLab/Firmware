@@ -101,7 +101,7 @@ safety_check_button(void *arg)
 	 * Debounce the safety button, change state if it has been held for long enough.
 	 *
 	 */
-	safety_button_pressed = BUTTON_SAFETY;
+	// safety_button_pressed = BUTTON_SAFETY;
 
 	/*
 	 * Keep pressed for a while to arm.
@@ -139,26 +139,26 @@ safety_check_button(void *arg)
 	}
 
 	/* Select the appropriate LED flash pattern depending on the current IO/FMU arm state */
-	uint16_t pattern = LED_PATTERN_FMU_REFUSE_TO_ARM;
+	// uint16_t pattern = LED_PATTERN_FMU_REFUSE_TO_ARM;
 
-	if (r_status_flags & PX4IO_P_STATUS_FLAGS_SAFETY_OFF) {
-		if (r_setup_arming & PX4IO_P_SETUP_ARMING_FMU_ARMED) {
-			pattern = LED_PATTERN_IO_FMU_ARMED;
+	// if (r_status_flags & PX4IO_P_STATUS_FLAGS_SAFETY_OFF) {
+	// 	if (r_setup_arming & PX4IO_P_SETUP_ARMING_FMU_ARMED) {
+	// 		pattern = LED_PATTERN_IO_FMU_ARMED;
 
-		} else {
-			pattern = LED_PATTERN_IO_ARMED;
-		}
+	// 	} else {
+	// 		pattern = LED_PATTERN_IO_ARMED;
+	// 	}
 
-	} else if (r_setup_arming & PX4IO_P_SETUP_ARMING_FMU_ARMED) {
-		pattern = LED_PATTERN_FMU_ARMED;
+	// } else if (r_setup_arming & PX4IO_P_SETUP_ARMING_FMU_ARMED) {
+	// 	pattern = LED_PATTERN_FMU_ARMED;
 
-	} else if (r_setup_arming & PX4IO_P_SETUP_ARMING_IO_ARM_OK) {
-		pattern = LED_PATTERN_FMU_OK_TO_ARM;
+	// } else if (r_setup_arming & PX4IO_P_SETUP_ARMING_IO_ARM_OK) {
+	// 	pattern = LED_PATTERN_FMU_OK_TO_ARM;
 
-	}
+	// }
 
-	/* Turn the LED on if we have a 1 at the current bit position */
-	LED_SAFETY(pattern & (1 << blink_counter++));
+	// /* Turn the LED on if we have a 1 at the current bit position */
+	// LED_SAFETY(pattern & (1 << blink_counter++));
 
 	if (blink_counter > 15) {
 		blink_counter = 0;
