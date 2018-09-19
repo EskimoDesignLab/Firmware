@@ -1283,6 +1283,7 @@ FixedwingAttitudeControl::task_main()
 						if(!_att_sp.decollage_custom && !mode_take_off_custom)
 						{
 							_actuators_airframe.control[1] = _parameters.take_off_horizontal_pos;
+                            _actuators_airframe.control[2] = _parameters.take_off_rudder_offset;
 
 							present_time = hrt_absolute_time();
 
@@ -1424,6 +1425,7 @@ FixedwingAttitudeControl::task_main()
 							{
 								_actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
 								_actuators_airframe.control[1] = _parameters.take_off_horizontal_pos; //0.28f;
+								_actuators_airframe.control[2] = _parameters.take_off_rudder_offset;
 
 								if(hrt_absolute_time() - present_time >= (int)_parameters.take_off_custom_time_11) // 2 sec
 								{
@@ -1496,6 +1498,7 @@ FixedwingAttitudeControl::task_main()
 							throttle_sp : 0.0f;
 
 					_actuators_airframe.control[1] = _parameters.take_off_horizontal_pos;
+					_actuators_airframe.control[2] = _parameters.take_off_rudder_offset;
 				}
 
 				/*
@@ -1524,6 +1527,7 @@ FixedwingAttitudeControl::task_main()
 				_actuators.control[actuator_controls_s::INDEX_YAW] = _manual.r * _parameters.man_yaw_scale + _parameters.trim_yaw;
 				_actuators.control[actuator_controls_s::INDEX_THROTTLE] = _manual.z;
 				_actuators_airframe.control[1] = _parameters.take_off_horizontal_pos;
+				_actuators_airframe.control[2] = _parameters.take_off_rudder_offset;
 			}
 
 			/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1533,6 +1537,7 @@ FixedwingAttitudeControl::task_main()
 			if(!_vcontrol_mode.flag_control_attitude_enabled || !_vcontrol_mode.flag_control_rates_enabled || (!_vcontrol_mode.flag_control_climb_rate_enabled && !_vcontrol_mode.flag_control_offboard_enabled))
 			{
 				_actuators_airframe.control[1] = _parameters.take_off_horizontal_pos;
+				_actuators_airframe.control[2] = _parameters.take_off_rudder_offset;
 
 				present_time = hrt_absolute_time();
 
