@@ -69,16 +69,16 @@ then
 
 	# External I2C bus
 	hmc5883 -C -T -X start
-	lis3mdl -X start
+	#lis3mdl -X start
 
 	# Internal I2C bus
 	hmc5883 -C -T -I -R 4 start
 
 	# Internal SPI bus ICM-20602-G
-	mpu6000 -T 20602 start
+	mpu6000 -T 20602 -s -R 6 start
 
 	# Icarus added drivers
-	mpu9250 -R 2 start
+	mpu9250 -s -R 0 start
 	lps33 start
 	charging_i2c start
 	wake_up_i2c_slave start
