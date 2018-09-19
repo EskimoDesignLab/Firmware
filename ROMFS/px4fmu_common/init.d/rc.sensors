@@ -83,9 +83,6 @@ then
 	charging_i2c start
 	wake_up_i2c_slave start
 
-	# External I2C bus
-	hmc5883 -C -T -X start
-
 	# V3 build hwtypecmp supports V2|V2M|V30
 	if ver hwtypecmp V30
 	then
@@ -183,16 +180,18 @@ fi
 
 if ver hwcmp PX4FMU_V4
 then
-	mpu6000 -R 2 -T 20602 start
-	mpu9250 -R 2 start
+
+
+	mpu6000 -R 2 -s -T 20602 start
+	mpu9250 -R 2 -s start
 	lps33 start
 	charging_i2c start
 	wake_up_i2c_slave start
 
 	# External I2C bus
 	hmc5883 -C -T -X start
-	lis3mdl -X start
-	bmp280 -I start
+	#lis3mdl -X start
+	#bmp280 -I start
 
 	# expansion i2c used for BMM150 rotated by 90deg
 	#bmm150 -R 2 start

@@ -757,6 +757,8 @@ struct lps33_bus_option {
 } bus_options[] = {
 #ifdef PX4_SPI_BUS_EXT
     { LPS33_BUS_SPI, "/dev/lps33_spi", &LPS33_SPI_interface, PX4_SPI_BUS_EXT, NULL },
+#elif PX4_SPI_BUS_BARO
+    { LPS33_BUS_SPI, "/dev/lps33_spi", &LPS33_SPI_interface, PX4_SPI_BUS_BARO, NULL },
 #endif
 };
 
