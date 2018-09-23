@@ -40,16 +40,11 @@
 #include <px4_defines.h>
 #include <stdio.h>
 #include "systemlib/err.h"
-#include "systemlib/param/param.h"
+#include <parameters/param.h>
 #include "tests_main.h"
 
 #define PARAM_MAGIC1 12345678
 #define PARAM_MAGIC2 0xa5a5a5a5
-
-/**
- * @group Testing
- */
-PARAM_DEFINE_INT32(TEST_PARAMS, 12345678);
 
 int
 test_param(int argc, char *argv[])

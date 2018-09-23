@@ -57,6 +57,7 @@ import sys
 import argparse
 import binascii
 import serial
+import socket
 import struct
 import json
 import zlib
@@ -124,7 +125,7 @@ class firmware(object):
 
         # pad image to 4-byte length
         while ((len(self.image) % 4) != 0):
-            self.image.append('\xff')
+            self.image.extend(b'\xff')
 
     def property(self, propname):
         return self.desc[propname]
@@ -203,9 +204,10 @@ class uploader(object):
             self.port.close()
 
     def open(self):
+        # upload timeout
         timeout = time.time() + 0.2
 
-        # Attempt to open the port while it exists and until timeout occurs
+        # attempt to open the port while it exists and until timeout occurs
         while self.port is not None:
             portopen = True
             try:
@@ -341,13 +343,13 @@ class uploader(object):
                     uploader.EOC)
 
         # erase is very slow, give it 20s
-        deadline = time.time() + 20.0
+        deadline = time.time() + 30.0
         while time.time() < deadline:
 
             # Draw progress bar (erase usually takes about 9 seconds to complete)
             estimatedTimeRemaining = deadline-time.time()
             if estimatedTimeRemaining >= 9.0:
-                self.__drawProgressBar(label, 20.0-estimatedTimeRemaining, 9.0)
+                self.__drawProgressBar(label, 30.0-estimatedTimeRemaining, 9.0)
             else:
                 self.__drawProgressBar(label, 10.0, 10.0)
                 sys.stdout.write(" (timeout: %d seconds) " % int(deadline-time.time()))
@@ -486,11 +488,13 @@ class uploader(object):
                 print("FORCED WRITE, FLASHING ANYWAY!")
             else:
                 raise IOError(msg)
+
+        # Prevent uploads where the image would overflow the flash
         if self.fw_maxsize < fw.property('image_size'):
             raise RuntimeError("Firmware image is too large for this board")
 
         # OTP added in v4:
-        if self.bl_rev > 3:
+        if self.bl_rev >= 4:
             for byte in range(0, 32*6, 4):
                 x = self.__getOTP(byte)
                 self.otp = self.otp + x
@@ -516,15 +520,42 @@ class uploader(object):
                     print(binascii.hexlify(x).decode('Latin-1'), end='')  # show user
                 print('')
                 print("chip: %08x" % self.__getCHIP())
-                if (self.bl_rev >= 5):
-                    des = self.__getCHIPDes()
-                    if (len(des) == 2):
-                        print("family: %s" % des[0])
-                        print("revision: %s" % des[1])
-                        print("flash %d" % self.fw_maxsize)
             except Exception:
                 # ignore bad character encodings
                 pass
+
+        # Silicon errata check was added in v5
+        if (self.bl_rev >= 5):
+            des = self.__getCHIPDes()
+            if (len(des) == 2):
+                print("family: %s" % des[0])
+                print("revision: %s" % des[1])
+                print("flash %d" % self.fw_maxsize)
+
+                # Prevent uploads where the maximum image size of the board config is smaller than the flash
+                # of the board. This is a hint the user chose the wrong config and will lack features
+                # for this particular board.
+
+                # This check should also check if the revision is an unaffected revision
+                # and thus can support the full flash, see
+                # https://github.com/PX4/Firmware/blob/master/src/drivers/boards/common/stm32/board_mcu_version.c#L125-L144
+
+                if self.fw_maxsize > fw.property('image_maxsize') and not force:
+                    raise RuntimeError("Board can accept larger flash images (%u bytes) than board config (%u bytes). Please use the correct board configuration to avoid lacking critical functionality."
+                        % (self.fw_maxsize, fw.property('image_maxsize')))
+        else:
+            # If we're still on bootloader v4 on a Pixhawk, we don't know if we
+            # have the silicon errata and therefore need to flash px4fmu-v2
+            # with 1MB flash or if it supports px4fmu-v3 with 2MB flash.
+            if fw.property('board_id') == 9 \
+                    and fw.property('image_size') > 1032192 \
+                    and not force:
+                raise RuntimeError("\nThe Board uses bootloader revision 4 and can therefore not determine\n"
+                                   "if flashing more than 1 MB (px4fmu-v3_default) is safe, chances are\n"
+                                   "high that it is not safe! If unsure, use px4fmu-v2_default.\n"
+                                   "\n"
+                                   "If you know you that the board does not have the silicon errata, use\n"
+                                   "this script with --force, or update the bootloader.\n")
 
         self.__erase("Erase  ")
         self.__program("Program", fw)
@@ -558,7 +589,10 @@ class uploader(object):
             return False
 
         print("Attempting reboot on %s with baudrate=%d..." % (self.port.port, self.port.baudrate), file=sys.stderr)
-        print("If the board does not respond, unplug and re-plug the USB connector.", file=sys.stderr)
+        if "ttyS" in self.port.port:
+            print("If the board does not respond, check the connection to the Flight Controller")
+        else:
+            print("If the board does not respond, unplug and re-plug the USB connector.", file=sys.stderr)
 
         try:
             # try MAVLINK command first
@@ -589,7 +623,7 @@ def main():
     parser.add_argument('--port', action="store", required=True, help="Comma-separated list of serial port(s) to which the FMU may be attached")
     parser.add_argument('--baud-bootloader', action="store", type=int, default=115200, help="Baud rate of the serial port (default is 115200) when communicating with bootloader, only required for true serial ports.")
     parser.add_argument('--baud-flightstack', action="store", default="57600", help="Comma-separated list of baud rate of the serial port (default is 57600) when communicating with flight stack (Mavlink or NSH), only required for true serial ports.")
-    parser.add_argument('--force', action='store_true', default=False, help='Override board type check and continue loading')
+    parser.add_argument('--force', action='store_true', default=False, help='Override board type check, or silicon errata checks and continue loading')
     parser.add_argument('--boot-delay', type=int, default=None, help='minimum boot delay to store in flash')
     parser.add_argument('firmware', action="store", help="Firmware file to be uploaded")
     args = parser.parse_args()
@@ -603,7 +637,27 @@ def main():
     # Load the firmware file
     fw = firmware(args.firmware)
     print("Loaded firmware for %x,%x, size: %d bytes, waiting for the bootloader..." % (fw.property('board_id'), fw.property('board_revision'), fw.property('image_size')))
-    print("If the board does not respond within 1-2 seconds, unplug and re-plug the USB connector.")
+
+    # tell any GCS that might be connected to the autopilot to give up
+    # control of the serial port
+
+    # send to localhost and default GCS port
+    ipaddr = '127.0.0.1'
+    portnum = 14550
+
+    # COMMAND_LONG in MAVLink 1
+    heartbeatpacket = bytearray.fromhex('fe097001010000000100020c5103033c8a')
+    commandpacket = bytearray.fromhex('fe210101014c00000000000000000000000000000000000000000000803f00000000f6000000008459')
+
+    # initialize an UDP socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    # send heartbeat to initialize connection and command to free the link
+    s.sendto(heartbeatpacket, (ipaddr, portnum))
+    s.sendto(commandpacket, (ipaddr, portnum))
+
+    # close the socket
+    s.close()
 
     # Spin waiting for a device to show up
     try:
@@ -613,7 +667,7 @@ def main():
             # on unix-like platforms use glob to support wildcard ports. This allows
             # the use of /dev/serial/by-id/usb-3D_Robotics on Linux, which prevents the upload from
             # causing modem hangups etc
-            if "linux" in _platform or "darwin" in _platform:
+            if "linux" in _platform or "darwin" in _platform or "cygwin" in _platform:
                 import glob
                 for pattern in patterns:
                     portlist += glob.glob(pattern)
@@ -634,6 +688,10 @@ def main():
                             up = uploader(port, args.baud_bootloader, baud_flightstack)
                     elif "darwin" in _platform:
                         # OS X, don't open Windows and Linux ports
+                        if "COM" not in port and "ACM" not in port:
+                            up = uploader(port, args.baud_bootloader, baud_flightstack)
+                    elif "cygwin" in _platform:
+                        # Cygwin, don't open native Windows COM and Linux ports
                         if "COM" not in port and "ACM" not in port:
                             up = uploader(port, args.baud_bootloader, baud_flightstack)
                     elif "win" in _platform:

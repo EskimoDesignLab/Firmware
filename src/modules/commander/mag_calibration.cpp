@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2013-2016 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2013-2017 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -55,11 +55,12 @@
 #include <drivers/drv_hrt.h>
 #include <drivers/drv_accel.h>
 #include <drivers/drv_gyro.h>
-#include <uORB/topics/sensor_combined.h>
 #include <drivers/drv_mag.h>
+#include <drivers/drv_tone_alarm.h>
 #include <systemlib/mavlink_log.h>
-#include <systemlib/param/param.h>
+#include <parameters/param.h>
 #include <systemlib/err.h>
+#include <uORB/topics/sensor_combined.h>
 
 static const char *sensor_name = "mag";
 static constexpr unsigned max_mags = 4;
@@ -116,17 +117,17 @@ int do_mag_calibration(orb_advert_t *mavlink_log_pub)
 	// reset the learned EKF mag in-flight bias offsets which have been learned for the previous
 	//  sensor calibration and will be invalidated by a new sensor calibration
 	(void)sprintf(str, "EKF2_MAGBIAS_X");
-	result = param_set(param_find(str), &mscale_null.x_offset);
+	result = param_set_no_notification(param_find(str), &mscale_null.x_offset);
 	if (result != PX4_OK) {
 		PX4_ERR("unable to reset %s", str);
 	}
 	(void)sprintf(str, "EKF2_MAGBIAS_Y");
-	result = param_set(param_find(str), &mscale_null.y_offset);
+	result = param_set_no_notification(param_find(str), &mscale_null.y_offset);
 	if (result != PX4_OK) {
 		PX4_ERR("unable to reset %s", str);
 	}
 	(void)sprintf(str, "EKF2_MAGBIAS_Z");
-	result = param_set(param_find(str), &mscale_null.z_offset);
+	result = param_set_no_notification(param_find(str), &mscale_null.z_offset);
 	if (result != PX4_OK) {
 		PX4_ERR("unable to reset %s", str);
 	}
@@ -150,48 +151,50 @@ int do_mag_calibration(orb_advert_t *mavlink_log_pub)
 
 #else
 		(void)sprintf(str, "CAL_MAG%u_XOFF", cur_mag);
-		result = param_set(param_find(str), &mscale_null.x_offset);
+		result = param_set_no_notification(param_find(str), &mscale_null.x_offset);
 
 		if (result != PX4_OK) {
 			PX4_ERR("unable to reset %s", str);
 		}
 
 		(void)sprintf(str, "CAL_MAG%u_YOFF", cur_mag);
-		result = param_set(param_find(str), &mscale_null.y_offset);
+		result = param_set_no_notification(param_find(str), &mscale_null.y_offset);
 
 		if (result != PX4_OK) {
 			PX4_ERR("unable to reset %s", str);
 		}
 
 		(void)sprintf(str, "CAL_MAG%u_ZOFF", cur_mag);
-		result = param_set(param_find(str), &mscale_null.z_offset);
+		result = param_set_no_notification(param_find(str), &mscale_null.z_offset);
 
 		if (result != PX4_OK) {
 			PX4_ERR("unable to reset %s", str);
 		}
 
 		(void)sprintf(str, "CAL_MAG%u_XSCALE", cur_mag);
-		result = param_set(param_find(str), &mscale_null.x_scale);
+		result = param_set_no_notification(param_find(str), &mscale_null.x_scale);
 
 		if (result != PX4_OK) {
 			PX4_ERR("unable to reset %s", str);
 		}
 
 		(void)sprintf(str, "CAL_MAG%u_YSCALE", cur_mag);
-		result = param_set(param_find(str), &mscale_null.y_scale);
+		result = param_set_no_notification(param_find(str), &mscale_null.y_scale);
 
 		if (result != PX4_OK) {
 			PX4_ERR("unable to reset %s", str);
 		}
 
 		(void)sprintf(str, "CAL_MAG%u_ZSCALE", cur_mag);
-		result = param_set(param_find(str), &mscale_null.z_scale);
+		result = param_set_no_notification(param_find(str), &mscale_null.z_scale);
 
 		if (result != PX4_OK) {
 			PX4_ERR("unable to reset %s", str);
 		}
 
 #endif
+
+		param_notify_changes();
 
 #ifdef __PX4_NUTTX
 		// Attempt to open mag
@@ -339,6 +342,9 @@ static calibrate_return mag_calibration_worker(detect_orientation_return orienta
 	unsigned int calibration_counter_side;
 
 	mag_worker_data_t *worker_data = (mag_worker_data_t *)(data);
+
+	// notify user to start rotating
+	set_tune(TONE_SINGLE_BEEP_TUNE);
 
 	calibration_log_info(worker_data->mavlink_log_pub, "[cal] Rotate vehicle around the detected orientation");
 	calibration_log_info(worker_data->mavlink_log_pub, "[cal] Continue rotation for %s %u s",
@@ -525,13 +531,12 @@ calibrate_return mag_calibrate_all(orb_advert_t *mavlink_log_pub)
 
 	// Collect: As defined by configuration
 	// start with a full mask, all six bits set
-	uint32_t cal_mask = (1 << 6) - 1;
+	int32_t cal_mask = (1 << 6) - 1;
 	param_get(param_find("CAL_MAG_SIDES"), &cal_mask);
 
 	calibration_sides = 0;
 
-	for (unsigned i = 0; i < (sizeof(worker_data.side_data_collected) /
-				  sizeof(worker_data.side_data_collected[0])); i++) {
+	for (unsigned i = 0; i < (sizeof(worker_data.side_data_collected) / sizeof(worker_data.side_data_collected[0])); i++) {
 
 		if ((cal_mask & (1 << i)) > 0) {
 			// mark as missing
@@ -564,13 +569,21 @@ calibrate_return mag_calibrate_all(orb_advert_t *mavlink_log_pub)
 
 	char str[30];
 
-	for (size_t cur_mag = 0; cur_mag < max_mags; cur_mag++) {
+	// Get actual mag count and alloate only as much memory as needed
+	const unsigned orb_mag_count = orb_group_count(ORB_ID(sensor_mag));
+
+	// Warn that we will not calibrate more than max_mags magnetometers
+	if (orb_mag_count > max_mags) {
+		calibration_log_critical(mavlink_log_pub, "Detected %u mags, but will calibrate only %u", orb_mag_count, max_mags);
+	}
+
+	for (size_t cur_mag = 0; cur_mag < orb_mag_count && cur_mag < max_mags; cur_mag++) {
 		worker_data.x[cur_mag] = reinterpret_cast<float *>(malloc(sizeof(float) * calibration_points_maxcount));
 		worker_data.y[cur_mag] = reinterpret_cast<float *>(malloc(sizeof(float) * calibration_points_maxcount));
 		worker_data.z[cur_mag] = reinterpret_cast<float *>(malloc(sizeof(float) * calibration_points_maxcount));
 
 		if (worker_data.x[cur_mag] == nullptr || worker_data.y[cur_mag] == nullptr || worker_data.z[cur_mag] == nullptr) {
-			calibration_log_critical(mavlink_log_pub, "[cal] ERROR: out of memory");
+			calibration_log_critical(mavlink_log_pub, "ERROR: out of memory");
 			result = calibrate_return_error;
 		}
 	}
@@ -580,13 +593,6 @@ calibrate_return mag_calibrate_all(orb_advert_t *mavlink_log_pub)
 	if (result == calibrate_return_ok) {
 
 		// We should not try to subscribe if the topic doesn't actually exist and can be counted.
-		const unsigned orb_mag_count = orb_group_count(ORB_ID(sensor_mag));
-
-		// Warn that we will not calibrate more than max_mags magnetometers
-		if (orb_mag_count > max_mags) {
-			calibration_log_critical(mavlink_log_pub, "[cal] Detected %u mags, but will calibrate only %u", orb_mag_count, max_mags);
-		}
-
 		for (unsigned cur_mag = 0; cur_mag < orb_mag_count && cur_mag < max_mags; cur_mag++) {
 
 			// Lock in to correct ORB instance
@@ -620,7 +626,7 @@ calibrate_return mag_calibrate_all(orb_advert_t *mavlink_log_pub)
 			}
 
 			if(!found_cur_mag) {
-				calibration_log_critical(mavlink_log_pub, "[cal] Mag #%u (ID %u) no matching uORB devid", cur_mag, device_ids[cur_mag]);
+				calibration_log_critical(mavlink_log_pub, "Mag #%u (ID %u) no matching uORB devid", cur_mag, device_ids[cur_mag]);
 				result = calibrate_return_error;
 				break;
 			}
@@ -636,7 +642,7 @@ calibrate_return mag_calibrate_all(orb_advert_t *mavlink_log_pub)
 				}
 
 			} else {
-				calibration_log_critical(mavlink_log_pub, "[cal] Mag #%u no device id, abort", cur_mag);
+				calibration_log_critical(mavlink_log_pub, "Mag #%u no device id, abort", cur_mag);
 				result = calibrate_return_error;
 				break;
 			}
@@ -799,13 +805,13 @@ calibrate_return mag_calibrate_all(orb_advert_t *mavlink_log_pub)
 				fd_mag = px4_open(str, 0);
 
 				if (fd_mag < 0) {
-					calibration_log_critical(mavlink_log_pub, "[cal] ERROR: unable to open mag device #%u", cur_mag);
+					calibration_log_critical(mavlink_log_pub, "ERROR: unable to open mag device #%u", cur_mag);
 					result = calibrate_return_error;
 				}
 
 				if (result == calibrate_return_ok) {
 					if (px4_ioctl(fd_mag, MAGIOCGSCALE, (long unsigned int)&mscale) != PX4_OK) {
-						calibration_log_critical(mavlink_log_pub, "[cal] ERROR: failed to get current calibration #%u", cur_mag);
+						calibration_log_critical(mavlink_log_pub, "ERROR: failed to get current calibration #%u", cur_mag);
 						result = calibrate_return_error;
 					}
 				}
@@ -869,12 +875,10 @@ calibrate_return mag_calibrate_all(orb_advert_t *mavlink_log_pub)
 
 					} else {
 						calibration_log_info(mavlink_log_pub, "[cal] mag #%u off: x:%.2f y:%.2f z:%.2f Ga",
-								     cur_mag,
-								     (double)mscale.x_offset, (double)mscale.y_offset, (double)mscale.z_offset);
+								     cur_mag, (double)mscale.x_offset, (double)mscale.y_offset, (double)mscale.z_offset);
 #ifndef __PX4_QURT
 						calibration_log_info(mavlink_log_pub, "[cal] mag #%u scale: x:%.2f y:%.2f z:%.2f",
-								     cur_mag,
-								     (double)mscale.x_scale, (double)mscale.y_scale, (double)mscale.z_scale);
+								     cur_mag, (double)mscale.x_scale, (double)mscale.y_scale, (double)mscale.z_scale);
 #endif
 						usleep(200000);
 					}

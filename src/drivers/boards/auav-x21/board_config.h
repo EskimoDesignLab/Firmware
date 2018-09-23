@@ -61,6 +61,8 @@
 #define PX4IO_SERIAL_VECTOR	STM32_IRQ_USART6
 #define PX4IO_SERIAL_TX_DMAMAP	DMAMAP_USART6_TX_2
 #define PX4IO_SERIAL_RX_DMAMAP	DMAMAP_USART6_RX_2
+#define PX4IO_SERIAL_RCC_REG	STM32_RCC_APB2ENR
+#define PX4IO_SERIAL_RCC_EN	RCC_APB2ENR_USART6EN
 #define PX4IO_SERIAL_CLOCK	STM32_PCLK2_FREQUENCY
 #define PX4IO_SERIAL_BITRATE	1500000			/* 1.5Mbps -> max rate for IO */
 
@@ -101,26 +103,17 @@
 #define PX4_SPI_BUS_RAMTRON	2
 #define PX4_SPI_BUS_BARO	PX4_SPI_BUS_SENSORS
 
-/* Use these in place of the spi_dev_e enumeration to select a specific SPI device on SPI1 */
-#define PX4_SPIDEV_ICM_20602 1
-#define PX4_SPIDEV_ICM_20608 2
-#define PX4_SPIDEV_BARO      3
-#define PX4_SPIDEV_MPU       4
+/* Use these in place of the uint32_t enumeration to select a specific SPI device on SPI1 */
+#define PX4_SPIDEV_ICM_20602 PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS, 1)
+#define PX4_SPIDEV_ICM_20608 PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS, 2)
+#define PX4_SPIDEV_BARO      PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS, 3)
+#define PX4_SPIDEV_MPU       PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS, 4)
 
 /* I2C busses */
 
 /* There is no I2C2 so there is not notion of internal / external*/
 #define PX4_I2C_BUS_EXPANSION 1
-#define PX4_I2C_BUS_ONBOARD   1
 #define PX4_I2C_BUS_LED		PX4_I2C_BUS_EXPANSION
-
-/* Devices not on the onboard bus.
- *
- * Note that these are unshifted addresses.
- */
-#define PX4_I2C_OBDEV_LED	0x55
-#define PX4_I2C_OBDEV_HMC5883	0x1e
-#define PX4_I2C_OBDEV_LIS3MDL	0x1e
 
 /*
  * ADC channels

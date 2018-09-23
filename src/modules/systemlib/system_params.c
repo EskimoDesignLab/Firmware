@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2013-2015 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2013-2017 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -65,16 +65,17 @@ PARAM_DEFINE_INT32(SYS_AUTOSTART, 0);
 PARAM_DEFINE_INT32(SYS_AUTOCONFIG, 0);
 
 /**
- * Set usage of IO board
+ * Enable HITL mode on next boot
  *
- * Can be used to use a standard startup script but with a FMU only set-up. Set to 0 to force the FMU only set-up.
+ * While enabled the system will boot in HITL mode and not enable all sensors and checks.
+ * When disabled the same vehicle can be normally flown outdoors.
  *
  * @boolean
- * @min 0
- * @max 1
+ * @reboot_required true
+ *
  * @group System
  */
-PARAM_DEFINE_INT32(SYS_USE_IO, 1);
+PARAM_DEFINE_INT32(SYS_HITL, 0);
 
 /**
  * Set restart type
@@ -86,6 +87,8 @@ PARAM_DEFINE_INT32(SYS_USE_IO, 1);
  * @value 0 Data survives resets
  * @value 1 Data survives in-flight resets only
  * @value 2 Data does not survive reset
+ * @category system
+ * @volatile
  * @group System
  */
 PARAM_DEFINE_INT32(SYS_RESTART_TYPE, 2);
@@ -123,10 +126,15 @@ PARAM_DEFINE_INT32(SYS_MC_EST_GROUP, 2);
  * @value 357600 Normal Telemetry (57600 baud, 8N1)
  * @value 3115200 Normal Telemetry (115200 baud, 8N1)
  * @value 419200 Iridium Telemetry (19200 baud, 8N1)
+ * @value 519200 Minimal Telemetry (19200 baud, 8N1)
+ * @value 538400 Minimal Telemetry (38400 baud, 8N1)
+ * @value 557600 Minimal Telemetry (57600 baud, 8N1)
+ * @value 5115200 Minimal Telemetry (115200 baud, 8N1)
+ * @value 6460800 RTPS Client (460800 baud)
  * @value 1921600 ESP8266 (921600 baud, 8N1)
  *
  * @min 0
- * @max 1921600
+ * @max 6460800
  * @reboot_required true
  * @group System
  */
@@ -241,3 +249,32 @@ PARAM_DEFINE_INT32(SYS_CAL_TMIN, 5);
  * @group System
  */
 PARAM_DEFINE_INT32(SYS_CAL_TMAX, 10);
+
+/**
+ * Control if the vehicle has a magnetometer
+ *
+ * Disable this if the board has no magnetometer, such as the Omnibus F4 SD.
+ * If disabled, the preflight checks will not check for the presence of a
+ * magnetometer.
+ *
+ * @boolean
+ * @reboot_required true
+ *
+ * @group System
+ */
+PARAM_DEFINE_INT32(SYS_HAS_MAG, 1);
+
+/**
+ * Control if the vehicle has a barometer
+ *
+ * Disable this if the board has no barometer, such as some of the the Omnibus
+ * F4 SD variants.
+ * If disabled, the preflight checks will not check for the presence of a
+ * barometer.
+ *
+ * @boolean
+ * @reboot_required true
+ *
+ * @group System
+ */
+PARAM_DEFINE_INT32(SYS_HAS_BARO, 1);

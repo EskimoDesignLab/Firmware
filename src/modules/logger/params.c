@@ -60,14 +60,46 @@ PARAM_DEFINE_INT32(SDLOG_UTC_OFFSET, 0);
  * @value 0 when armed until disarm (default)
  * @value 1 from boot until disarm
  * @value 2 from boot until shutdown
- * @value 3 from boot until shutdown - IMU and Baro data only (used for thermal calibration)
  *
  * @min 0
- * @max 3
+ * @max 2
  * @reboot_required true
  * @group SD Logging
  */
 PARAM_DEFINE_INT32(SDLOG_MODE, 0);
+
+/**
+ * Logging Topic Profile
+ *
+ * This is an integer bitmask controlling the set and rates of logged topics.
+ * The default allows for general log analysis and estimator replay, while
+ * keeping the log file size reasonably small.
+ *
+ * Enabling multiple sets leads to higher bandwidth requirements and larger log
+ * files.
+ *
+ * Set bits in the following positions to enable:
+ * 0 : Set to true to use the default set (used for general log analysis)
+ * 1 : Set to true to enable full rate estimator (EKF2) replay topics
+ * 2 : Set to true to enable topics for thermal calibration (high rate raw IMU and Baro sensor data)
+ * 3 : Set to true to enable topics for system identification (high rate actuator control and IMU data)
+ * 4 : Set to true to enable full rates for analysis of fast maneuvers (RC, attitude, rates and actuators)
+ * 5 : Set to true to enable debugging topics (debug_*.msg topics, for custom code)
+ * 6 : Set to true to enable topics for sensor comparison (low rate raw IMU, Baro and Magnetomer data)
+ *
+ * @min 0
+ * @max 127
+ * @bit 0 default set (log analysis)
+ * @bit 1 estimator replay (EKF2)
+ * @bit 2 thermal calibration
+ * @bit 3 system identification
+ * @bit 4 high rate
+ * @bit 5 debug
+ * @bit 6 sensor comparison
+ * @reboot_required true
+ * @group SD Logging
+ */
+PARAM_DEFINE_INT32(SDLOG_PROFILE, 3);
 
 /**
  * Maximum number of log directories to keep

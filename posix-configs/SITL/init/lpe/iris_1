@@ -43,6 +43,7 @@ param set MPC_Z_VEL_I 0.15
 param set EKF2_GBIAS_INIT 0.01
 param set EKF2_ANGERR_INIT 0.01
 param set SITL_UDP_PRT 14560
+param set SDLOG_DIRS_MAX 7
 # GPS only mode
 param set LPE_FUSION 145
 
@@ -52,9 +53,8 @@ tone_alarm start
 gyrosim start
 accelsim start
 barosim start
-adcsim start
 gpssim start
-pwm_out_sim mode_pwm
+pwm_out_sim start
 sensors start
 commander start
 land_detector start multicopter
@@ -63,9 +63,9 @@ attitude_estimator_q start
 local_position_estimator start
 mc_pos_control start
 mc_att_control start
-mixer load /dev/pwm_output0 ROMFS/px4fmu_common/mixers/quad_dc.main.mix
-mavlink start -u 14556 -r 4000000
-mavlink start -u 14557 -r 4000000 -m onboard -o 14540
+mixer load /dev/pwm_output0 ROMFS/px4fmu_common/mixers/quad_w.main.mix
+mavlink start -x -u 14556 -r 4000000
+mavlink start -x -u 14557 -r 4000000 -m onboard -o 14540
 mavlink stream -r 50 -s POSITION_TARGET_LOCAL_NED -u 14556
 mavlink stream -r 50 -s LOCAL_POSITION_NED -u 14556
 mavlink stream -r 50 -s GLOBAL_POSITION_INT -u 14556

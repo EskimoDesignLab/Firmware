@@ -62,7 +62,7 @@ We can accumulate VTV and VTY recursively as they are of fixed size, where:
 
 VTV = transpose(V)*V =
  __                                                                                                                        __
-|      n                      x0+x1+...+xm                   x0^2+x1^2+...+xm^3   ..........  x0^n+x1^n+...+xn^n             |
+|    m+1                      x0+x1+...+xm                   x0^2+x1^2+...+xm^3   ..........  x0^n+x1^n+...+xm^n             |
 |x0+x1+...+xm              x0^2+x1^2+...+xm^3                x0^3+x1^3+...+xm^3   ..........  x0^(n+1)+x1^(n+1)+...+xm^(n+1) |
 |      .                            .                                  .                             .                       |
 |      .                            .                                  .                             .                       |
@@ -140,7 +140,7 @@ public:
 		}
 
 		for (unsigned i = 0; i < _forder; i++) {
-			res[i] = 0.0f;
+			res[i] = 0.0;
 
 			for (int j = 0; j < _forder; j++) {
 				res[i] += IVTV(i, j) * (double)_VTY(j);
@@ -158,7 +158,7 @@ private:
 
 	void update_VTY(double x, double y)
 	{
-		double temp = 1.0f;
+		double temp = 1.0;
 		PF_DEBUG("O %.6f\n", (double)x);
 
 		for (int8_t i = _forder - 1; i >= 0; i--) {

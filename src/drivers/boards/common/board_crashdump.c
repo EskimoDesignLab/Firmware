@@ -1,3 +1,5 @@
+#ifdef CONFIG_BOARD_CRASHDUMP
+
 #include <px4_config.h>
 #include <px4_tasks.h>
 
@@ -16,8 +18,15 @@ static void copy_reverse(stack_word_t *dest, stack_word_t *src, int size)
 	}
 }
 
+static uint32_t *__attribute__((noinline)) __sdata_addr(void)
+{
+	return &_sdata;
+}
+
+
 __EXPORT void board_crashdump(uintptr_t currentsp, FAR void *tcb, FAR const uint8_t *filename, int lineno)
 {
+#ifndef CRASHDUMP_RESET_ONLY
 	/* We need a chunk of ram to save the complete context in.
 	 * Since we are going to reboot we will use &_sdata
 	 * which is the lowest memory and the amount we will save
@@ -25,7 +34,7 @@ __EXPORT void board_crashdump(uintptr_t currentsp, FAR void *tcb, FAR const uint
 	 * Unfortunately this is hard to test. See dead below
 	 */
 
-	fullcontext_s *pdump = (fullcontext_s *)&_sdata;
+	fullcontext_s *pdump = (fullcontext_s *)__sdata_addr();
 
 	(void)enter_critical_section();
 
@@ -96,7 +105,7 @@ __EXPORT void board_crashdump(uintptr_t currentsp, FAR void *tcb, FAR const uint
 
 	} else {
 		pdump->info.stacks.user.top = (uint32_t) rtcb->adj_stack_ptr;
-		pdump->info.stacks.user.size = (uint32_t) rtcb->adj_stack_size;;
+		pdump->info.stacks.user.size = (uint32_t) rtcb->adj_stack_size;
 	}
 
 #if CONFIG_ARCH_INTERRUPTSTACK > 3
@@ -139,7 +148,7 @@ __EXPORT void board_crashdump(uintptr_t currentsp, FAR void *tcb, FAR const uint
 		pdump->info.flags |= eInvalidUserStackPtr;
 	}
 
-	int rv = stm32_bbsram_savepanic(HARDFAULT_FILENO, (uint8_t *)pdump, sizeof(fullcontext_s));
+	int rv = px4_savepanic(HARDFAULT_FILENO, (uint8_t *)pdump, sizeof(fullcontext_s));
 
 	/* Test if memory got wiped because of using _sdata */
 
@@ -157,7 +166,11 @@ __EXPORT void board_crashdump(uintptr_t currentsp, FAR void *tcb, FAR const uint
 		up_lowputc('!');
 	}
 
+#endif /* CRASHDUMP_RESET_ONLY */
+
 #if defined(CONFIG_BOARD_RESET_ON_CRASH)
 	board_reset(0);
 #endif
 }
+
+#endif /* CONFIG_BOARD_CRASHDUMP */

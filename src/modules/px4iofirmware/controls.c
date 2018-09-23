@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2012-2014 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2012-2017 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,6 +35,8 @@
  * @file controls.c
  *
  * R/C inputs and servo outputs.
+ *
+ * @author Lorenz Meier <lorenz@px4.io>
  */
 
 #include <px4_config.h>
@@ -42,7 +44,7 @@
 
 #include <drivers/drv_hrt.h>
 #include <drivers/drv_rc_input.h>
-#include <systemlib/perf_counter.h>
+#include <perf/perf_counter.h>
 #include <systemlib/ppm_decode.h>
 #include <rc/st24.h>
 #include <rc/sumd.h>
@@ -228,24 +230,6 @@ controls_tick()
 		rssi = 0;
 	}
 
-	perf_begin(c_gather_dsm);
-	bool dsm_updated, st24_updated, sumd_updated;
-	(void)dsm_port_input(&rssi, &dsm_updated, &st24_updated, &sumd_updated);
-
-	if (dsm_updated) {
-		PX4_ATOMIC_MODIFY_OR(r_status_flags, PX4IO_P_STATUS_FLAGS_RC_DSM);
-	}
-
-	if (st24_updated) {
-		PX4_ATOMIC_MODIFY_OR(r_status_flags, PX4IO_P_STATUS_FLAGS_RC_ST24);
-	}
-
-	if (sumd_updated) {
-		PX4_ATOMIC_MODIFY_OR(r_status_flags, PX4IO_P_STATUS_FLAGS_RC_SUMD);
-	}
-
-	perf_end(c_gather_dsm);
-
 	perf_begin(c_gather_sbus);
 
 	bool sbus_failsafe, sbus_frame_drop;
@@ -297,6 +281,28 @@ controls_tick()
 	}
 
 	perf_end(c_gather_ppm);
+
+	bool dsm_updated = false, st24_updated = false, sumd_updated = false;
+
+	if (!((r_status_flags & PX4IO_P_STATUS_FLAGS_RC_SBUS) || (r_status_flags & PX4IO_P_STATUS_FLAGS_RC_PPM))) {
+		perf_begin(c_gather_dsm);
+
+		(void)dsm_port_input(&rssi, &dsm_updated, &st24_updated, &sumd_updated);
+
+		if (dsm_updated) {
+			PX4_ATOMIC_MODIFY_OR(r_status_flags, PX4IO_P_STATUS_FLAGS_RC_DSM);
+		}
+
+		if (st24_updated) {
+			PX4_ATOMIC_MODIFY_OR(r_status_flags, PX4IO_P_STATUS_FLAGS_RC_ST24);
+		}
+
+		if (sumd_updated) {
+			PX4_ATOMIC_MODIFY_OR(r_status_flags, PX4IO_P_STATUS_FLAGS_RC_SUMD);
+		}
+
+		perf_end(c_gather_dsm);
+	}
 
 	/* limit number of channels to allowable data size */
 	if (r_raw_rc_count > PX4IO_RC_INPUT_CHANNELS) {
@@ -492,11 +498,16 @@ controls_tick()
 	 *
 	 * Firstly, manual override must be enabled, RC input available and a mixer loaded.
 	 */
-	if ((r_setup_arming & PX4IO_P_SETUP_ARMING_MANUAL_OVERRIDE_OK) &&
-	    (r_status_flags & PX4IO_P_STATUS_FLAGS_RC_OK) &&
-	    !(r_raw_rc_flags & PX4IO_P_RAW_RC_FLAGS_FAILSAFE) &&
-	    !(r_setup_arming & PX4IO_P_SETUP_ARMING_RC_HANDLING_DISABLED) &&
-	    (r_status_flags & PX4IO_P_STATUS_FLAGS_MIXER_OK)) {
+	if (/* condition 1: Override is always allowed */
+		(r_setup_arming & PX4IO_P_SETUP_ARMING_MANUAL_OVERRIDE_OK) &&
+		/* condition 2: We have valid RC control inputs from the user */
+		(r_status_flags & PX4IO_P_STATUS_FLAGS_RC_OK) &&
+		/* condition 3: The system didn't go already into failsafe mode with fixed outputs */
+		!(r_raw_rc_flags & PX4IO_P_RAW_RC_FLAGS_FAILSAFE) &&
+		/* condition 4: RC handling wasn't generally disabled */
+		!(r_setup_arming & PX4IO_P_SETUP_ARMING_RC_HANDLING_DISABLED) &&
+		/* condition 5: We have a valid mixer to map RC inputs to actuator outputs */
+		(r_status_flags & PX4IO_P_STATUS_FLAGS_MIXER_OK)) {
 
 		bool override = false;
 

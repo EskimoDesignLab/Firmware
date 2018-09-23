@@ -1,5 +1,5 @@
 
-#include <unit_test/unit_test.h>
+#include <unit_test.h>
 
 #include <matrix/math.hpp>
 #include <matrix/filter.hpp>
@@ -363,11 +363,10 @@ bool MatrixTest::inverseTests()
 			 4, 5, 6,
 			 7, 8, 10
 			};
-	float data_check[9] = {
-		-0.4f, -0.8f,  0.6f,
-		-0.4f,  4.2f, -2.4f,
-		0.6f, -2.8f,  1.6f
-	};
+	float data_check[9] = {-0.4f, -0.8f,  0.6f,
+			       -0.4f,  4.2f, -2.4f,
+			       0.6f, -2.8f,  1.6f
+			      };
 
 	SquareMatrix<float, 3> A(data);
 	SquareMatrix<float, 3> A_I = inv(A);
@@ -624,7 +623,9 @@ bool MatrixTest::vector2Tests()
 	ut_test(fabs(c(0) - 0) < 1e-5);
 	ut_test(fabs(c(1) - 0) < 1e-5);
 
-	Matrix<float, 2, 1> d(a);
+	static Matrix<float, 2, 1> d(a);
+	// the static keywork is a workaround for an internal bug of GCC
+	// "internal compiler error: in trunc_int_for_mode, at explow.c:55"
 	ut_test(fabs(d(0, 0) - 1) < 1e-5);
 	ut_test(fabs(d(1, 0) - 0) < 1e-5);
 
