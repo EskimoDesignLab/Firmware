@@ -393,21 +393,19 @@ __EXPORT void board_spi_reset(int ms)
 		// stm32_gpiowrite(_PIN_OFF(GPIO_SPI4_CS_PC14), 0);
 	}
 
-	if (HW_VER_FMUV3 == board_get_hw_version()) {
-		stm32_configgpio(_PIN_OFF(GPIO_SPI1_CS_PC1));
-		stm32_gpiowrite(_PIN_OFF(GPIO_SPI1_CS_PC1), 0);
+	stm32_configgpio(_PIN_OFF(GPIO_SPI4_GPIO_PC14));
+	stm32_gpiowrite(_PIN_OFF(GPIO_SPI4_GPIO_PC14), 0);
 
-		// stm32_configgpio(_PIN_OFF(GPIO_SPI4_NSS_PE4));
-		// stm32_gpiowrite(_PIN_OFF(GPIO_SPI4_NSS_PE4), 0);
+	// stm32_configgpio(_PIN_OFF(GPIO_SPI4_NSS_PE4));
+	// stm32_gpiowrite(_PIN_OFF(GPIO_SPI4_NSS_PE4), 0);
 
-		stm32_configgpio(_PIN_OFF(GPIO_SPI4_SCK));
-		stm32_configgpio(_PIN_OFF(GPIO_SPI4_MISO));
-		stm32_configgpio(_PIN_OFF(GPIO_SPI4_MOSI));
+	stm32_configgpio(_PIN_OFF(GPIO_SPI4_SCK));
+	stm32_configgpio(_PIN_OFF(GPIO_SPI4_MISO));
+	stm32_configgpio(_PIN_OFF(GPIO_SPI4_MOSI));
 
-		stm32_gpiowrite(_PIN_OFF(GPIO_SPI4_SCK), 0);
-		stm32_gpiowrite(_PIN_OFF(GPIO_SPI4_MISO), 0);
-		stm32_gpiowrite(_PIN_OFF(GPIO_SPI4_MOSI), 0);
-	}
+	stm32_gpiowrite(_PIN_OFF(GPIO_SPI4_SCK), 0);
+	stm32_gpiowrite(_PIN_OFF(GPIO_SPI4_MISO), 0);
+	stm32_gpiowrite(_PIN_OFF(GPIO_SPI4_MOSI), 0);
 
 	/* set the sensor rail off */
 	// stm32_configgpio(GPIO_VDD_3V3_SENSORS_EN);
@@ -430,12 +428,10 @@ __EXPORT void board_spi_reset(int ms)
 	stm32_configgpio(GPIO_SPI1_MISO);
 	stm32_configgpio(GPIO_SPI1_MOSI);
 
-	if (HW_VER_FMUV3 == board_get_hw_version()) {
-		stm32_configgpio(GPIO_SPI4_SCK);
-		stm32_configgpio(GPIO_SPI4_MISO);
-		stm32_configgpio(GPIO_SPI4_MOSI);
-		stm32_spi4_initialize();
-	}
+	stm32_configgpio(GPIO_SPI4_SCK);
+	stm32_configgpio(GPIO_SPI4_MISO);
+	stm32_configgpio(GPIO_SPI4_MOSI);
+	stm32_spi4_initialize();
 
 	stm32_spi1_initialize();
 }

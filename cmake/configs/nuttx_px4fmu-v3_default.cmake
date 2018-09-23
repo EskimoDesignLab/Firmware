@@ -13,38 +13,50 @@ set(config_module_list
 	#
 	# Board support modules
 	#
-	drivers/barometer
-	drivers/differential_pressure
-	drivers/distance_sensor
-	drivers/magnetometer
+	#drivers/barometer
+	#drivers/differential_pressure
+	#drivers/distance_sensor
+	#drivers/magnetometer
 	drivers/telemetry
 
-	drivers/batt_smbus
-	drivers/blinkm
-	drivers/camera_trigger
+	#drivers/barometer/bmp280
+	#drivers/barometer/ms5611
+	drivers/barometer/lps33
+	#drivers/blinkm
+	#drivers/bst
+	#drivers/camera_trigger
+	#drivers/frsky_telemetry
 	drivers/gps
-	drivers/imu/adis16448
-	drivers/imu/bmi160
-	drivers/imu/l3gd20
-	drivers/imu/lsm303d
+	#drivers/hott
+	#drivers/imu/adis16448
+	#drivers/imu/bmi160
+	#drivers/imu/l3gd20
+	#drivers/imu/lsm303d
 	drivers/imu/mpu6000
 	drivers/imu/mpu9250
-	drivers/irlock
-	drivers/mkblctrl
-	drivers/oreoled
-	drivers/protocol_splitter
+	#drivers/telemetry/iridiumsbd
+	#drivers/irlock
+	drivers/magnetometer/hmc5883
+	#drivers/magnetometer/lis3mdl
+	#drivers/mb12xx
+	#drivers/mkblctrl
+	#drivers/oreoled
+	#drivers/protocol_splitter
 	drivers/pwm_input
-	drivers/pwm_out_sim
-	drivers/px4flow
+	#drivers/pwm_out_sim
+	#drivers/px4flow
 	drivers/px4fmu
 	drivers/px4io
-	drivers/rgbled
+	#drivers/rgbled
 	drivers/stm32
-	drivers/stm32/adc
-	drivers/stm32/tone_alarm
-	drivers/tap_esc
+	#drivers/stm32/adc
+	#drivers/stm32/tone_alarm
+	#drivers/tap_esc
 	drivers/vmount
 	modules/sensors
+	drivers/run_cam
+	drivers/icarus/charging_i2c
+	drivers/icarus/wake_up_i2c_slave
 
 	#
 	# System commands

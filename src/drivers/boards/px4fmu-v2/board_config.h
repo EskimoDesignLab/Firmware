@@ -178,7 +178,7 @@
 
 /* FMUv2 SPI4 chip selects Assignments */
 
-#define GPIO_SPI4_GPIO_EXT               GPIO_SPI4_GPIO_PC14
+// #define GPIO_SPI4_GPIO_EXT               GPIO_SPI4_GPIO_PC14
 // #define GPIO_SPI4_EXT_NSS                GPIO_SPI4_NSS_PE4
 
 /* FMUv2 DRDY */
@@ -202,13 +202,13 @@
 #define PX4_SPI_BUS_SENSORS      1
 #define PX4_SPI_BUS_RAMTRON      2
 #define PX4_SPI_BUS_EXT          4
-#define PX4_SPI_BUS_BARO         PX4_SPI_BUS_RAMTRON
+#define PX4_SPI_BUS_BARO         PX4_SPI_BUS_EXT
 
 /* Use these to select a specific SPI device on SPI1 */
 
 #define PX4_SPIDEV_GYRO       PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS, 1)
 #define PX4_SPIDEV_ACCEL_MAG  PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS, 2)
-// #define PX4_SPIDEV_BARO       PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS, 3)
+#define PX4_SPIDEV_BARO       PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS, 3)
 #define PX4_SPIDEV_MPU        PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS, 4)
 
 /* FMUv3 SPI on external bus */
@@ -223,6 +223,10 @@
 #define PX4_I2C_BUS_EXPANSION	1
 #define PX4_I2C_BUS_ONBOARD	2
 // #define PX4_I2C_BUS_LED		PX4_I2C_BUS_ONBOARD
+
+/* Satellite GPIO */
+#define SAT_NET_AV (GPIO_INPUT|GPIO_PULLUP|GPIO_PORTB|GPIO_PIN12)
+#define SAT_SLEEP (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTC|GPIO_PIN13)
 
 /*----------------------------------------------------------*/
 /*           FMUv3 Cube SPI chip selects and DRDY           */
@@ -358,7 +362,7 @@
  *
  * These are the channel numbers of the ADCs of the microcontroller that can be used by the Px4 Firmware in the adc driver
  */
-#define ADC_CHANNELS (1 << 2) | (1 << 3) | (1 << 4) | (1 << 10) | (1 << 11) | (1 << 12) | (1 << 13) | (1 << 14) | (1 << 15)
+// #define ADC_CHANNELS (1 << 2) | (1 << 3) | (1 << 4) | (1 << 10) | (1 << 11) | (1 << 12) | (1 << 13) | (1 << 14) | (1 << 15)
 
 // ADC defines to be used in sensors.cpp to read from a particular channel
 // #define ADC_BATTERY_VOLTAGE_CHANNEL	2

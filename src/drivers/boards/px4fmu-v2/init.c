@@ -391,14 +391,14 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 			break;
 
 		case HW_VER_FMUV3_STATE:
-			hw_type[1]++;
-			hw_type[2] = '0';
+			// hw_type[1]++;
+			// hw_type[2] = '0';
 
-			/* Has CAN2 transceiver Remove pull up */
+			// /* Has CAN2 transceiver Remove pull up */
 
-			stm32_configgpio(GPIO_CAN2_RX);
+			// stm32_configgpio(GPIO_CAN2_RX);
 
-			break;
+			// break;
 
 		case HW_VER_FMUV2MINI_STATE:
 
