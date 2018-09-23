@@ -141,8 +141,6 @@ list(GET config_args 0 OS)
 list(GET config_args 1 BOARD)
 list(GET config_args 2 LABEL)
 
-set(THREADS "4" CACHE STRING "number of threads to use for external build processes")
-set(DEBUG_PORT "/dev/ttyACM0" CACHE STRING "debugging port")
 set(EXTERNAL_MODULES_LOCATION "" CACHE STRING "External modules source location")
 
 if (NOT EXTERNAL_MODULES_LOCATION STREQUAL "")
@@ -263,7 +261,15 @@ if (CATKIN_DEVEL_PREFIX)
 endif()
 
 find_package(PythonInterp REQUIRED)
-px4_find_python_module(jinja2 REQUIRED)
+
+option(PYTHON_COVERAGE "Python code coverage" OFF)
+if(PYTHON_COVERAGE)
+	message(STATUS "python coverage enabled")
+	set(PYTHON_EXECUTABLE coverage run -p)
+else()
+	# run normally (broken under coveragepy)
+	px4_find_python_module(jinja2 REQUIRED)
+endif()
 
 #=============================================================================
 # check required toolchain variables
@@ -295,9 +301,7 @@ message(STATUS "C++ compiler: ${cxx_compiler_version_short}")
 #=============================================================================
 # external libraries
 #
-px4_os_prebuild_targets(OUT prebuild_targets
-	BOARD ${BOARD}
-	THREADS ${THREADS})
+px4_os_prebuild_targets(OUT prebuild_targets BOARD ${BOARD})
 
 #=============================================================================
 # build flags
@@ -454,6 +458,51 @@ if (BUILD_DOXYGEN)
 		message("Doxygen needs to be installed to generate documentation")
 	endif()
 endif()
+
+#=============================================================================
+# Metadata - helpers for generating documentation
+#
+
+add_custom_target(metadata_airframes
+	COMMAND ${CMAKE_COMMAND} -E make_directory ${PX4_BINARY_DIR}/docs
+	COMMAND ${PYTHON_EXECUTABLE} ${PX4_SOURCE_DIR}/Tools/px_process_airframes.py
+		-v -a ${PX4_SOURCE_DIR}//ROMFS/px4fmu_common/init.d
+		--markdown ${PX4_BINARY_DIR}/docs/airframes.md
+	COMMAND ${PYTHON_EXECUTABLE} ${PX4_SOURCE_DIR}/Tools/px_process_airframes.py
+		-v -a ${PX4_SOURCE_DIR}//ROMFS/px4fmu_common/init.d
+		--xml ${PX4_BINARY_DIR}/docs/airframes.xml
+	COMMENT "Generating full airframe metadata (markdown and xml)"
+	USES_TERMINAL
+)
+
+add_custom_target(metadata_parameters
+	COMMAND ${CMAKE_COMMAND} -E make_directory ${PX4_BINARY_DIR}/docs
+	COMMAND ${PYTHON_EXECUTABLE} ${PX4_SOURCE_DIR}/src/lib/parameters/px_process_params.py
+		--src-path `find ${PX4_SOURCE_DIR}/src -maxdepth 4 -type d`
+		--inject-xml ${PX4_SOURCE_DIR}/src/lib/parameters/parameters_injected.xml
+		--markdown ${PX4_BINARY_DIR}/docs/parameters.md
+	COMMAND ${PYTHON_EXECUTABLE} ${PX4_SOURCE_DIR}/src/lib/parameters/px_process_params.py
+		--src-path `find ${PX4_SOURCE_DIR}/src -maxdepth 4 -type d`
+		--inject-xml ${PX4_SOURCE_DIR}/src/lib/parameters/parameters_injected.xml
+		--xml ${PX4_BINARY_DIR}/docs/parameters.xml
+	COMMENT "Generating full parameter metadata (markdown and xml)"
+	USES_TERMINAL
+)
+
+add_custom_target(metadata_module_documentation
+	COMMAND ${CMAKE_COMMAND} -E make_directory ${PX4_BINARY_DIR}/docs
+	COMMAND ${PYTHON_EXECUTABLE} ${PX4_SOURCE_DIR}/Tools/px_process_module_doc.py -v --src-path ${PX4_SOURCE_DIR}/src
+		--markdown ${PX4_BINARY_DIR}/docs/modules
+	COMMENT "Generating module documentation"
+	USES_TERMINAL
+)
+
+add_custom_target(all_metadata
+	DEPENDS
+		metadata_airframes
+		metadata_parameters
+		metadata_module_documentation
+)
 
 #=============================================================================
 # packaging

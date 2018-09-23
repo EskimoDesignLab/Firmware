@@ -601,9 +601,6 @@ ACCELSIM::devIOCTL(unsigned long cmd, unsigned long arg)
 		memcpy((struct accel_calibration_s *) arg, &(_accel_scale), sizeof(_accel_scale));
 		return OK;
 
-	case ACCELIOCSELFTEST:
-		return OK;
-
 	default:
 		/* give it to the superclass */
 		return VirtDevObj::devIOCTL(cmd, arg);
@@ -716,9 +713,6 @@ ACCELSIM::mag_ioctl(unsigned long cmd, unsigned long arg)
 		 * so always return 0.
 		 */
 		return 0;
-
-	case MAGIOCSELFTEST:
-		return OK;
 
 	default:
 		/* give it to the superclass */
@@ -843,6 +837,8 @@ ACCELSIM::_measure()
 
 	accel_report.timestamp = hrt_absolute_time();
 
+	accel_report.device_id = 1310728;
+
 	// use the temperature from the last mag reading
 	accel_report.temperature = _last_temperature;
 
@@ -861,7 +857,6 @@ ACCELSIM::_measure()
 	accel_report.z = raw_accel_report.z;
 
 	accel_report.scaling = _accel_range_scale;
-	accel_report.range_m_s2 = _accel_range_m_s2;
 
 	_accel_reports->force(&accel_report);
 
@@ -926,6 +921,7 @@ ACCELSIM::mag_measure()
 
 
 	mag_report.timestamp = hrt_absolute_time();
+	mag_report.device_id = 196616;
 	mag_report.is_external = false;
 
 	mag_report.x_raw = (int16_t)(raw_mag_report.x / _mag_range_scale);

@@ -62,6 +62,7 @@
 #include <nuttx/analog/adc.h>
 
 #include <kinetis.h>
+#include <kinetis_uart.h>
 #include <chip/kinetis_uart.h>
 #include "board_config.h"
 
@@ -243,31 +244,7 @@ kinetis_boardinitialize(void)
 	/* Power on Spektrum */
 
 	VDD_3V3_SPEKTRUM_POWER_EN(true);
-
 }
-
-//FIXME: Stubs  -----v
-int up_rtc_getdatetime(FAR struct tm *tp);
-int up_rtc_getdatetime(FAR struct tm *tp)
-{
-	tp->tm_sec = 0;
-	tp->tm_min = 0;
-	tp->tm_hour = 0;
-	tp->tm_mday = 30;
-	tp->tm_mon = 10;
-	tp->tm_year = 116;
-	tp->tm_wday = 1;    /* Day of the week (0-6) */
-	tp->tm_yday = 0;    /* Day of the year (0-365) */
-	tp->tm_isdst = 0;   /* Non-0 if daylight savings time is in effect */
-	return 0;
-}
-
-static void kinetis_serial_dma_poll(void)
-{
-	// todo:Stubbed
-}
-//FIXME: Stubs  -----v
-
 
 /****************************************************************************
  * Name: board_app_initialize
@@ -337,6 +314,7 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 #endif
 
 	/* set up the serial DMA polling */
+#ifdef SERIAL_HAVE_DMA
 	static struct hrt_call serial_dma_call;
 	struct timespec ts;
 
@@ -352,6 +330,7 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 		       ts_to_abstime(&ts),
 		       (hrt_callout)kinetis_serial_dma_poll,
 		       NULL);
+#endif
 
 #if defined(CONFIG_KINETIS_BBSRAM)
 

@@ -34,6 +34,7 @@ set(config_module_list
 	systemcmds/perf
 	systemcmds/pwm
 	systemcmds/reboot
+	systemcmds/shutdown
 	systemcmds/sd_bench
 	systemcmds/top
 	systemcmds/topic_listener
@@ -49,7 +50,6 @@ set(config_module_list
 	modules/commander/commander_tests
 	lib/controllib/controllib_test
 	modules/mavlink/mavlink_tests
-	modules/mc_pos_control/mc_pos_control_tests
 	modules/uORB/uORB_tests
 	systemcmds/tests
 
@@ -60,6 +60,7 @@ set(config_module_list
 	#
 	# General system control
 	#
+	modules/camera_feedback
 	modules/commander
 	modules/events
 	#modules/gpio_led
@@ -145,11 +146,6 @@ set(config_module_list
 	#examples/hwtest
 )
 
-# Default config_sitl_rcS_dir (posix_sitl_default), this is overwritten later
-# for the config posix_sitl_efk2 and set again, explicitly, for posix_sitl_lpe,
-# which are based on posix_sitl_default.
-set(config_sitl_rcS_dir posix-configs/SITL/init/ekf2 CACHE INTERNAL "init script dir for sitl")
-
 set(config_sitl_viewer jmavsim CACHE STRING "viewer for sitl")
 set_property(CACHE config_sitl_viewer PROPERTY STRINGS "jmavsim;none")
 
@@ -163,3 +159,4 @@ if(REPLAY_FILE)
 	message("Building with uorb publisher rules support")
 	add_definitions(-DORB_USE_PUBLISHER_RULES)
 endif()
+

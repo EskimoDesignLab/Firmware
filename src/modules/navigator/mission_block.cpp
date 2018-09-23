@@ -243,7 +243,7 @@ MissionBlock::is_mission_item_reached()
 						&dist_xy, &dist_z);
 
 				if (dist >= 0.0f && dist <= _navigator->get_acceptance_radius(fabsf(_mission_item.loiter_radius) * 1.2f)
-				    && dist_z <= _navigator->get_altitude_acceptance_radius()) {
+				    && dist_z <= _navigator->get_default_altitude_acceptance_radius()) {
 
 					// now set the loiter to the final altitude in the NAV_CMD_LOITER_TO_ALT mission item
 					curr_sp->alt = altitude_amsl;
@@ -258,7 +258,7 @@ MissionBlock::is_mission_item_reached()
 
 					// set required yaw from bearing to the next mission item
 					if (_mission_item.force_heading) {
-						struct position_setpoint_s next_sp = _navigator->get_position_setpoint_triplet()->next;
+						const position_setpoint_s &next_sp = _navigator->get_position_setpoint_triplet()->next;
 
 						if (next_sp.valid) {
 							_mission_item.yaw = get_bearing_to_next_waypoint(_navigator->get_global_position()->lat,
@@ -452,13 +452,15 @@ MissionBlock::issue_command(const mission_item_s &item)
 		vcmd.param2 = item.params[1];
 		vcmd.param3 = item.params[2];
 		vcmd.param4 = item.params[3];
-		vcmd.param5 = (double)item.params[4];
-		vcmd.param6 = (double)item.params[5];
 
 		if (item.nav_cmd == NAV_CMD_DO_SET_ROI_LOCATION && item.altitude_is_relative) {
-			vcmd.param7 = item.params[6] + _navigator->get_home_position()->alt;
+			vcmd.param5 = item.lat;
+			vcmd.param6 = item.lon;
+			vcmd.param7 = item.altitude + _navigator->get_home_position()->alt;
 
 		} else {
+			vcmd.param5 = (double)item.params[4];
+			vcmd.param6 = (double)item.params[5];
 			vcmd.param7 = item.params[6];
 		}
 
@@ -520,7 +522,7 @@ MissionBlock::mission_item_to_position_setpoint(const mission_item_s &item, posi
 
 		// if already flying (armed and !landed) treat TAKEOFF like regular POSITION
 		if ((_navigator->get_vstatus()->arming_state == vehicle_status_s::ARMING_STATE_ARMED)
-		    && !_navigator->get_land_detected()->landed) {
+		    && !_navigator->get_land_detected()->landed && !_navigator->get_land_detected()->maybe_landed) {
 
 			sp->type = position_setpoint_s::SETPOINT_TYPE_POSITION;
 

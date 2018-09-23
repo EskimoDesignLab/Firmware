@@ -372,20 +372,6 @@ private:
 	void			mag_measure();
 
 	/**
-	 * Accel self test
-	 *
-	 * @return 0 on success, 1 on failure
-	 */
-	int			accel_self_test();
-
-	/**
-	 * Mag self test
-	 *
-	 * @return 0 on success, 1 on failure
-	 */
-	int			mag_self_test();
-
-	/**
 	 * Read a register from the LSM303D
 	 *
 	 * @param		The register to read.
@@ -622,11 +608,11 @@ LSM303D::~LSM303D()
 int
 LSM303D::init()
 {
-	int ret = PX4_ERROR;
-
 	/* do SPI init (and probe) first */
-	if (SPI::init() != OK) {
-		warnx("SPI init failed");
+	int ret = SPI::init();
+
+	if (ret != OK) {
+		PX4_ERR("SPI init failed (%i)", ret);
 		goto out;
 	}
 
@@ -649,7 +635,7 @@ LSM303D::init()
 	ret = _mag->init();
 
 	if (ret != OK) {
-		warnx("MAG init failed");
+		PX4_ERR("MAG init failed (%i)", ret);
 		goto out;
 	}
 
@@ -664,10 +650,6 @@ LSM303D::init()
 	_mag->_mag_topic = orb_advertise_multi(ORB_ID(sensor_mag), &mrp,
 					       &_mag->_mag_orb_class_instance, ORB_PRIO_LOW);
 
-	if (_mag->_mag_topic == nullptr) {
-		warnx("ADVERT ERR");
-	}
-
 
 	_accel_class_instance = register_class_devname(ACCEL_BASE_DEVICE_PATH);
 
@@ -678,10 +660,6 @@ LSM303D::init()
 	/* measurement will have generated a report, publish */
 	_accel_topic = orb_advertise_multi(ORB_ID(sensor_accel), &arp,
 					   &_accel_orb_class_instance, (external()) ? ORB_PRIO_VERY_HIGH : ORB_PRIO_DEFAULT);
-
-	if (_accel_topic == nullptr) {
-		warnx("ADVERT ERR");
-	}
 
 out:
 	return ret;
@@ -952,9 +930,6 @@ LSM303D::ioctl(struct file *filp, int cmd, unsigned long arg)
 		memcpy((struct accel_calibration_s *) arg, &_accel_scale, sizeof(_accel_scale));
 		return OK;
 
-	case ACCELIOCSELFTEST:
-		return accel_self_test();
-
 	default:
 		/* give it to the superclass */
 		return SPI::ioctl(filp, cmd, arg);
@@ -1060,15 +1035,6 @@ LSM303D::mag_ioctl(struct file *filp, int cmd, unsigned long arg)
 		memcpy((struct mag_calibration_s *) arg, &_mag_scale, sizeof(_mag_scale));
 		return OK;
 
-	case MAGIOCSRANGE:
-		return mag_set_range(arg);
-
-	case MAGIOCGRANGE:
-		return _mag_range_ga;
-
-	case MAGIOCSELFTEST:
-		return mag_self_test();
-
 	case MAGIOCGEXTERNAL:
 		/* Even if this sensor is on the "external" SPI bus
 		 * it is still fixed to the autopilot assembly,
@@ -1080,42 +1046,6 @@ LSM303D::mag_ioctl(struct file *filp, int cmd, unsigned long arg)
 		/* give it to the superclass */
 		return SPI::ioctl(filp, cmd, arg);
 	}
-}
-
-int
-LSM303D::accel_self_test()
-{
-	if (_accel_read == 0) {
-		return 1;
-	}
-
-	return 0;
-}
-
-int
-LSM303D::mag_self_test()
-{
-	if (_mag_read == 0) {
-		return 1;
-	}
-
-	/**
-	 * inspect mag offsets
-	 * don't check mag scale because it seems this is calibrated on chip
-	 */
-	if (fabsf(_mag_scale.x_offset) < 0.000001f) {
-		return 1;
-	}
-
-	if (fabsf(_mag_scale.y_offset) < 0.000001f) {
-		return 1;
-	}
-
-	if (fabsf(_mag_scale.z_offset) < 0.000001f) {
-		return 1;
-	}
-
-	return 0;
 }
 
 uint8_t
@@ -1577,7 +1507,6 @@ LSM303D::measure()
 	accel_report.z_integral = aval_integrated(2);
 
 	accel_report.scaling = _accel_range_scale;
-	accel_report.range_m_s2 = _accel_range_m_s2;
 
 	/* return device ID */
 	accel_report.device_id = _device_id.devid;
@@ -1658,7 +1587,6 @@ LSM303D::mag_measure()
 	mag_report.y = ((yraw_f * _mag_range_scale) - _mag_scale.y_offset) * _mag_scale.y_scale;
 	mag_report.z = ((zraw_f * _mag_range_scale) - _mag_scale.z_offset) * _mag_scale.z_scale;
 	mag_report.scaling = _mag_range_scale;
-	mag_report.range_ga = (float)_mag_range_ga;
 	mag_report.error_count = perf_event_count(_bad_registers) + perf_event_count(_bad_values);
 
 	/* remember the temperature. The datasheet isn't clear, but it
@@ -1891,7 +1819,7 @@ start(bool external_bus, enum Rotation rotation, unsigned range)
 	}
 
 	if (g_dev == nullptr) {
-		warnx("failed instantiating LSM303D obj");
+		PX4_ERR("failed instantiating LSM303D obj");
 		goto fail;
 	}
 
@@ -1981,7 +1909,7 @@ test()
 		errx(1, "failed to get if mag is onboard or external");
 	}
 
-	warnx("mag device active: %s", ret ? "external" : "onboard");
+	PX4_INFO("mag device active: %s", ret ? "external" : "onboard");
 
 	/* do a simple demand read */
 	sz = read(fd_mag, &m_report, sizeof(m_report));
@@ -2029,7 +1957,7 @@ reset()
 	fd = open(LSM303D_DEVICE_PATH_MAG, O_RDONLY);
 
 	if (fd < 0) {
-		warnx("mag could not be opened, external mag might be used");
+		PX4_WARN("mag could not be opened, external mag might be used");
 
 	} else {
 		/* no need to reset the mag as well, the reset() is the same */
@@ -2093,10 +2021,10 @@ test_error()
 void
 usage()
 {
-	warnx("missing command: try 'start', 'info', 'test', 'reset', 'testerror' or 'regdump'");
-	warnx("options:");
-	warnx("    -X    (external bus)");
-	warnx("    -R rotation");
+	PX4_INFO("missing command: try 'start', 'info', 'test', 'reset', 'testerror' or 'regdump'");
+	PX4_INFO("options:");
+	PX4_INFO("    -X    (external bus)");
+	PX4_INFO("    -R rotation");
 }
 
 } // namespace

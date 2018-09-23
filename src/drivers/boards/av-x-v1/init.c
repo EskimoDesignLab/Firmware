@@ -82,8 +82,56 @@
 #include <systemlib/hardfault_log.h>
 
 #include <parameters/param.h>
+#include <px4_i2c.h>
 
 #include "up_internal.h"
+
+static int configure_switch(void);
+
+/************************************************************************************
+ * Name: board_rc_input
+ *
+ * Description:
+ *   All boards my optionally provide this API to invert the Serial RC input.
+ *   This is needed on SoCs that support the notion RXINV or TXINV as apposed to
+ *   and external XOR controlled by a GPIO
+ *
+ ************************************************************************************/
+
+__EXPORT void board_rc_input(bool invert_on, uint32_t uxart_base)
+{
+
+	irqstate_t irqstate = px4_enter_critical_section();
+
+	uint32_t cr1 =	getreg32(STM32_USART_CR1_OFFSET + uxart_base);
+	uint32_t cr2 =	getreg32(STM32_USART_CR2_OFFSET + uxart_base);
+	uint32_t regval = cr1;
+
+	/* {R|T}XINV bit fields can only be written when the USART is disabled (UE=0). */
+
+	regval &= ~USART_CR1_UE;
+
+	putreg32(regval, STM32_USART_CR1_OFFSET + uxart_base);
+
+	if (invert_on) {
+#if defined(BOARD_HAS_RX_TX_SWAP) &&	RC_SERIAL_PORT_IS_SWAPED == 1
+
+		/* This is only ever turned on */
+
+		cr2 |= (USART_CR2_RXINV | USART_CR2_TXINV | USART_CR2_SWAP);
+#else
+		cr2 |= (USART_CR2_RXINV | USART_CR2_TXINV);
+#endif
+
+	} else {
+		cr2 &= ~(USART_CR2_RXINV | USART_CR2_TXINV);
+	}
+
+	putreg32(cr2, STM32_USART_CR2_OFFSET + uxart_base);
+	putreg32(cr1, STM32_USART_CR1_OFFSET + uxart_base);
+
+	leave_critical_section(irqstate);
+}
 
 /************************************************************************************
  * Name: board_on_reset
@@ -354,11 +402,62 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 
 #endif
 
-	//board_spi_reset(10);
-
-	// ethernet switch
-	//uint8_t txdata[] = {0x51, 0x00, 0x21, 0x00}; //0x5100, 0x2100 MSB to LSB here.
-	//HAL_I2C_Master_Transmit(&hi2c3, (uint16_t)(0x5F<<1), txdata, 4, 0xFFFF);
+	configure_switch();
 
 	return OK;
+}
+
+/************************************************************************************
+ * Name: configure_switch
+ *
+ * Description:
+ * Configure KSZ9897R ethernet switch on i2c
+ *
+ ************************************************************************************/
+static int configure_switch(void)
+{
+	int ret = PX4_ERROR;
+
+	// attach to the i2c bus
+	struct i2c_master_s *i2c = px4_i2cbus_initialize(PX4_I2C_BUS_ONBOARD);
+
+	if (i2c == NULL) {
+		PX4_ERR("I2C device not opened");
+	}
+
+	// ethernet switch enable
+	uint8_t txdata[] = {0x51, 0x00, 0x21, 0x00}; //0x5100, 0x2100 MSB to LSB here.
+
+	struct px4_i2c_msg_t msgv;
+
+	msgv.frequency = 100000;
+	msgv.addr = 0x5F;
+	msgv.flags = 0;
+	msgv.buffer = &txdata[0];
+	msgv.length = sizeof(txdata);
+
+	unsigned retry_count = 0;
+	const unsigned retries = 5;
+
+	do {
+		ret = I2C_TRANSFER(i2c, &msgv, 1);
+
+		/* success */
+		if (ret == PX4_OK) {
+			break;
+
+		} else {
+			PX4_ERR("ETH switch I2C fail: %d, retrying", ret);
+		}
+
+		/* if we have already retried once, or we are going to give up, then reset the bus */
+		if ((retry_count >= 1) || (retry_count >= retries)) {
+			I2C_RESET(i2c);
+		}
+
+	} while (retry_count++ < retries);
+
+	px4_i2cbus_uninitialize(i2c);
+
+	return ret;
 }

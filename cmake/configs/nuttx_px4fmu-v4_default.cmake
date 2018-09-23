@@ -25,6 +25,7 @@ set(config_module_list
 	drivers/blinkm
 	#drivers/camera_trigger
 	drivers/gps
+	drivers/heater
 	drivers/irlock
 	drivers/mkblctrl
 	drivers/oreoled
@@ -34,6 +35,7 @@ set(config_module_list
 	drivers/px4flow
 	drivers/px4fmu
 	drivers/rgbled
+	drivers/rc_input
 	drivers/stm32
 	drivers/stm32/adc
 	drivers/stm32/tone_alarm
@@ -73,7 +75,6 @@ set(config_module_list
 	modules/commander/commander_tests
 	lib/controllib/controllib_test
 	modules/mavlink/mavlink_tests
-	modules/mc_pos_control/mc_pos_control_tests
 	modules/uORB/uORB_tests
 	systemcmds/tests
 
