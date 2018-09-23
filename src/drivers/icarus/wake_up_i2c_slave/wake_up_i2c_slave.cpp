@@ -84,7 +84,7 @@
 /* Configuration Constants */
 
 // JASSUME QUE CEST LI2C SUR LE CONECTEUR EXTERNE: À VALIDER !!!
-#define SRF02_I2C_BUS 		PX4_I2C_BUS_EXPANSION
+#define SRF02_I2C_BUS 		PX4_I2C_BUS_ONBOARD
 
 // LADRESSE -> VALIDER CE QUE LON VEUT
 #define SRF02_I2C_BASEADDR 	0x12 /* 7-bit address. 8-bit address is 0xE0 */

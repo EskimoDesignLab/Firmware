@@ -2179,7 +2179,6 @@ bool
 start_bus(struct mpu6000_bus_option &bus, enum Rotation rotation, int range, int device_type)
 {
 	int fd = -1;
-
 	if (bus.dev != nullptr) {
 		warnx("%s SPI not available", bus.external ? "External" : "Internal");
 		return false;
@@ -2209,6 +2208,8 @@ start_bus(struct mpu6000_bus_option &bus, enum Rotation rotation, int range, int
 		goto fail;
 	}
 
+	warnx("MPU6000 started");
+
 	/* set the poll rate to default, starts automatic data collection */
 
 	fd = open(bus.accelpath, O_RDONLY);
@@ -2226,6 +2227,7 @@ start_bus(struct mpu6000_bus_option &bus, enum Rotation rotation, int range, int
 	}
 
 	close(fd);
+	
 
 	return true;
 
@@ -2238,6 +2240,7 @@ fail:
 	if (bus.dev != nullptr) {
 		delete bus.dev;
 		bus.dev = nullptr;
+		warnx("MPU6000 start failed");
 	}
 
 	return false;
@@ -2257,17 +2260,17 @@ start(enum MPU6000_BUS busid, enum Rotation rotation, int range, int device_type
 
 	for (unsigned i = 0; i < NUM_BUS_OPTIONS; i++) {
 		if (busid == MPU6000_BUS_ALL && bus_options[i].dev != NULL) {
-			// this device is already started
+			warnx("this device is already started");
 			continue;
 		}
 
 		if (busid != MPU6000_BUS_ALL && bus_options[i].busid != busid) {
-			// not the one that is asked for
+			warnx("not the one that is asked for (1)");
 			continue;
 		}
 
 		if (bus_options[i].device_type != device_type) {
-			// not the one that is asked for
+			warnx("not the one that is asked for (2), %d", device_type);
 			continue;
 		}
 

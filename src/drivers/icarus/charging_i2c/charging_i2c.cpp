@@ -81,7 +81,7 @@
 /* Configuration Constants */
 
 // JASSUME QUE CEST LI2C SUR LE CONECTEUR EXTERNE: À VALIDER !!!
-#define SRF02_I2C_BUS 		PX4_I2C_BUS_EXPANSION
+#define SRF02_I2C_BUS 		PX4_I2C_BUS_ONBOARD
 
 // LADRESSE -> VALIDER CE QUE LON VEUT
 #define SRF02_I2C_BASEADDR 	0x36 /* vaut 0x6C selon la convention du chip de balancing. ladresse est tassé vers la droite et le dernier bit est sous-entendu */

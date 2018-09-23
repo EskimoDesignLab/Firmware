@@ -167,7 +167,7 @@ __EXPORT void stm32_spi1select(FAR struct spi_dev_s *dev, uint32_t devid, bool s
 
 	// 	break;
 
-	case PX4_SPIDEV_ICM_20608:
+	case PX4_SPIDEV_ICM_20602:
 	case PX4_SPIDEV_ACCEL_MAG:
 
 		/* Making sure the other peripherals are not selected */
@@ -179,7 +179,7 @@ __EXPORT void stm32_spi1select(FAR struct spi_dev_s *dev, uint32_t devid, bool s
 			// stm32_gpiowrite(GPIO_SPI1_CS_PC15, !selected);
 		}
 
-		stm32_gpiowrite(GPIO_SPI1_CS_PC2, !selected);
+		stm32_gpiowrite(GPIO_SPI1_CS_PC1, !selected);
 		stm32_gpiowrite(GPIO_SPI1_CS_PC2, 1);
 
 		break;
