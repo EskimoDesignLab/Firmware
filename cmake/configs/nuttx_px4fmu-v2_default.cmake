@@ -2,6 +2,8 @@ px4_nuttx_configure(HWCLASS m4 CONFIG nsh ROMFS y ROMFSROOT px4fmu_common IO px4
 
 #set(config_uavcan_num_ifaces 2)
 
+set(config_bl_file ${PX4_SOURCE_DIR}/ROMFS/px4fmu_common/extras/px4fmuv3_bl.bin)
+
 set(config_module_list
 	#
 	# Board support modules
@@ -25,7 +27,7 @@ set(config_module_list
 	#drivers/distance_sensor/mb12xx
 	drivers/distance_sensor/sf0x
 	drivers/distance_sensor/sf1xx
-	drivers/distance_sensor/srf02
+	#drivers/distance_sensor/srf02
 	#drivers/distance_sensor/teraranger
 	#drivers/distance_sensor/tfmini
 	#drivers/distance_sensor/ulanding
@@ -62,7 +64,7 @@ set(config_module_list
 	#
 	# System commands
 	#
-	#systemcmds/bl_update
+	systemcmds/bl_update
 	#systemcmds/config
 	#systemcmds/dumpfile
 	#systemcmds/esc_calib
@@ -92,7 +94,6 @@ set(config_module_list
 	#lib/rc/rc_tests
 	#modules/commander/commander_tests
 	#modules/mavlink/mavlink_tests
-	#modules/mc_pos_control/mc_pos_control_tests
 	#modules/uORB/uORB_tests
 	#systemcmds/tests
 
@@ -174,3 +175,5 @@ set(config_module_list
 	# Hardware test
 	#examples/hwtest
 )
+
+set(flight_tasks_to_remove Orbit)

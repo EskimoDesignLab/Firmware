@@ -384,20 +384,6 @@ private:
 	 */
 	int 			self_test();
 
-	/**
-	 * Accel self test
-	 *
-	 * @return 0 on success, 1 on failure
-	 */
-	int 			accel_self_test();
-
-	/**
-	 * Gyro self test
-	 *
-	 * @return 0 on success, 1 on failure
-	 */
-	int 			gyro_self_test();
-
 	/*
 	  set low pass filter frequency
 	 */
@@ -903,26 +889,6 @@ ADIS16448::self_test()
 	return (perf_event_count(_sample_perf) > 0) ? 0 : 1;
 }
 
-int
-ADIS16448::accel_self_test()
-{
-	if (self_test()) {
-		return 1;
-	}
-
-	return 0;
-}
-
-int
-ADIS16448::gyro_self_test()
-{
-	if (self_test()) {
-		return 1;
-	}
-
-	return 0;
-}
-
 ssize_t
 ADIS16448::gyro_read(struct file *filp, char *buffer, size_t buflen)
 {
@@ -1137,9 +1103,6 @@ ADIS16448::ioctl(struct file *filp, int cmd, unsigned long arg)
 	case ACCELIOCGRANGE:
 		return (unsigned long)((_accel_range_m_s2) / CONSTANTS_ONE_G + 0.5f);
 
-	case ACCELIOCSELFTEST:
-		return accel_self_test();
-
 	case ACCELIOCTYPE:
 		return (ADIS16448_Product);
 
@@ -1202,9 +1165,6 @@ ADIS16448::gyro_ioctl(struct file *filp, int cmd, unsigned long arg)
 	case GYROIOCGRANGE:
 		return (unsigned long)(_gyro_range_rad_s * 180.0f / M_PI_F + 0.5f);
 
-	case GYROIOCSELFTEST:
-		return gyro_self_test();
-
 	case GYROIOCTYPE:
 		return (ADIS16448_Product);
 
@@ -1260,14 +1220,8 @@ ADIS16448::mag_ioctl(struct file *filp, int cmd, unsigned long arg)
 		memcpy((struct mag_calibration_s *) arg, &_mag_scale, sizeof(_mag_scale));
 		return OK;
 
-	case MAGIOCSRANGE:
-		return -EINVAL;
-
 	case MAGIOCGRANGE:
 		return (unsigned long)(_mag_range_mgauss);
-
-	case MAGIOCSELFTEST:
-		return OK;
 
 	case MAGIOCTYPE:
 		return (ADIS16448_Product);
@@ -1458,7 +1412,6 @@ ADIS16448::measure()
 	}
 
 	grb.scaling = _gyro_range_scale * M_PI_F / 180.0f;
-	grb.range_rad_s = _gyro_range_rad_s;
 
 	/* Accel report: */
 	arb.x_raw = report.accel_x;
@@ -1488,7 +1441,6 @@ ADIS16448::measure()
 	}
 
 	arb.scaling = _accel_range_scale;
-	arb.range_m_s2 = _accel_range_m_s2;
 
 	/* Mag report: */
 	mrb.x_raw = report.mag_x;
@@ -1518,14 +1470,10 @@ ADIS16448::measure()
 	}
 
 	mrb.scaling  = _mag_range_scale / 1000.0f;
-	mrb.range_ga = _mag_range_mgauss / 1000.0f;
 
 	/* Temperature report: */
-	grb.temperature_raw = report.temp;
 	grb.temperature 	= (report.temp * 0.07386f) + 31.0f;
-
-	arb.temperature_raw = report.temp;
-	arb.temperature 	= (report.temp * 0.07386f) + 31.0f;
+	arb.temperature 	= grb.temperature;
 
 	matrix::Vector3f aval(x_in_new, y_in_new, z_in_new);
 	matrix::Vector3f aval_integrated;

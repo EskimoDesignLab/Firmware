@@ -618,6 +618,8 @@ int DfMpu9250Wrapper::_publish(struct imu_sensor_data &data)
 
 	accel_report.timestamp = gyro_report.timestamp = hrt_absolute_time();
 
+	accel_report.error_count = gyro_report.error_count = mag_report.error_count = data.error_counter;
+
 	// ACCEL
 
 	float xraw_f = data.accel_m_s2_x;
@@ -706,11 +708,9 @@ int DfMpu9250Wrapper::_publish(struct imu_sensor_data &data)
 
 	// TODO: get these right
 	gyro_report.scaling = -1.0f;
-	gyro_report.range_rad_s = -1.0f;
 	gyro_report.device_id = m_id.dev_id;
 
 	accel_report.scaling = -1.0f;
-	accel_report.range_m_s2 = -1.0f;
 	accel_report.device_id = m_id.dev_id;
 
 	if (_mag_enabled) {
@@ -718,7 +718,6 @@ int DfMpu9250Wrapper::_publish(struct imu_sensor_data &data)
 		mag_report.is_external = false;
 
 		mag_report.scaling = -1.0f;
-		mag_report.range_ga = -1.0f;
 		mag_report.device_id = m_id.dev_id;
 
 		xraw_f = data.mag_ga_x;

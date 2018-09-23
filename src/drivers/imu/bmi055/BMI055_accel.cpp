@@ -308,41 +308,6 @@ BMI055_accel::self_test()
 	return (perf_event_count(_sample_perf) > 0) ? 0 : 1;
 }
 
-int
-BMI055_accel::accel_self_test()
-{
-	if (self_test()) {
-		return 1;
-	}
-
-	/* inspect accel offsets */
-	if (fabsf(_accel_scale.x_offset) < 0.000001f) {
-		return 1;
-	}
-
-	if (fabsf(_accel_scale.x_scale - 1.0f) > 0.4f || fabsf(_accel_scale.x_scale - 1.0f) < 0.000001f) {
-		return 1;
-	}
-
-	if (fabsf(_accel_scale.y_offset) < 0.000001f) {
-		return 1;
-	}
-
-	if (fabsf(_accel_scale.y_scale - 1.0f) > 0.4f || fabsf(_accel_scale.y_scale - 1.0f) < 0.000001f) {
-		return 1;
-	}
-
-	if (fabsf(_accel_scale.z_offset) < 0.000001f) {
-		return 1;
-	}
-
-	if (fabsf(_accel_scale.z_scale - 1.0f) > 0.4f || fabsf(_accel_scale.z_scale - 1.0f) < 0.000001f) {
-		return 1;
-	}
-
-	return 0;
-}
-
 /*
   deliberately trigger an error in the sensor to trigger recovery
  */
@@ -483,9 +448,6 @@ BMI055_accel::ioctl(struct file *filp, int cmd, unsigned long arg)
 
 	case ACCELIOCGRANGE:
 		return (unsigned long)((_accel_range_m_s2) / CONSTANTS_ONE_G + 0.5f);
-
-	case ACCELIOCSELFTEST:
-		return accel_self_test();
 
 	default:
 		/* give it to the superclass */
@@ -779,11 +741,9 @@ BMI055_accel::measure()
 	arb.z_integral = aval_integrated(2);
 
 	arb.scaling = _accel_range_scale;
-	arb.range_m_s2 = _accel_range_m_s2;
 
 	_last_temperature = 23 + report.temp * 1.0f / 512.0f;
 
-	arb.temperature_raw = report.temp;
 	arb.temperature = _last_temperature;
 	arb.device_id = _device_id.devid;
 

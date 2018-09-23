@@ -1,8 +1,6 @@
 
 px4_nuttx_configure(HWCLASS m4 CONFIG nsh ROMFS y ROMFSROOT px4fmu_common)
 
-set(config_uavcan_num_ifaces 1)
-
 set(config_module_list
 	#
 	# Board support modules
@@ -20,6 +18,7 @@ set(config_module_list
 	drivers/gps
 	drivers/px4flow
 	drivers/px4fmu
+	drivers/rc_input
 	drivers/rgbled
 	drivers/stm32
 	drivers/stm32/adc
@@ -44,7 +43,7 @@ set(config_module_list
 	systemcmds/reboot
 	systemcmds/sd_bench
 	systemcmds/top
-	systemcmds/topic_listener
+	#systemcmds/topic_listener
 	systemcmds/tune_control
 	systemcmds/ver
 

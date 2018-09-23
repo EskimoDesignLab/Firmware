@@ -430,16 +430,14 @@ MulticopterAttitudeControl::control_attitude(float dt)
 	_rates_sp = eq.emult(attitude_gain);
 
 	/* Feed forward the yaw setpoint rate.
-	 * The yaw_feedforward_rate is a commanded rotation around the world z-axis,
+	 * yaw_sp_move_rate is the feed forward commanded rotation around the world z-axis,
 	 * but we need to apply it in the body frame (because _rates_sp is expressed in the body frame).
 	 * Therefore we infer the world z-axis (expressed in the body frame) by taking the last column of R.transposed (== q.inversed)
-	 * and multiply it by the yaw setpoint rate (yaw_sp_move_rate) and gain (_yaw_ff).
+	 * and multiply it by the yaw setpoint rate (yaw_sp_move_rate).
 	 * This yields a vector representing the commanded rotatation around the world z-axis expressed in the body frame
 	 * such that it can be added to the rates setpoint.
 	 */
-	Vector3f yaw_feedforward_rate = q.inversed().dcm_z();
-	yaw_feedforward_rate *= _v_att_sp.yaw_sp_move_rate * _yaw_ff.get();
-	_rates_sp += yaw_feedforward_rate;
+	_rates_sp += q.inversed().dcm_z() * _v_att_sp.yaw_sp_move_rate;
 
 
 	/* limit rates */
@@ -450,18 +448,6 @@ MulticopterAttitudeControl::control_attitude(float dt)
 
 		} else {
 			_rates_sp(i) = math::constrain(_rates_sp(i), -_mc_rate_max(i), _mc_rate_max(i));
-		}
-	}
-
-	/* VTOL weather-vane mode, dampen yaw rate */
-	if (_vehicle_status.is_vtol && _v_att_sp.disable_mc_yaw_control) {
-		if (_v_control_mode.flag_control_velocity_enabled || _v_control_mode.flag_control_auto_enabled) {
-
-			const float wv_yaw_rate_max = _auto_rate_max(2) * _vtol_wv_yaw_rate_scale.get();
-			_rates_sp(2) = math::constrain(_rates_sp(2), -wv_yaw_rate_max, wv_yaw_rate_max);
-
-			// prevent integrator winding up in weathervane mode
-			_rates_int(2) = 0.0f;
 		}
 	}
 }

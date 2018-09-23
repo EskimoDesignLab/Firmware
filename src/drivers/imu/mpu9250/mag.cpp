@@ -225,7 +225,6 @@ MPU9250_mag::_measure(struct ak8963_regs data)
 	mrb.x = ((xraw_f * _mag_range_scale * _mag_asa_x) - _mag_scale.x_offset) * _mag_scale.x_scale;
 	mrb.y = ((yraw_f * _mag_range_scale * _mag_asa_y) - _mag_scale.y_offset) * _mag_scale.y_scale;
 	mrb.z = ((zraw_f * _mag_range_scale * _mag_asa_z) - _mag_scale.z_offset) * _mag_scale.z_scale;
-	mrb.range_ga = 48.0f;
 	mrb.scaling = _mag_range_scale;
 	mrb.temperature = _parent->_last_temperature;
 	mrb.device_id = _parent->_mag->_device_id.devid;
@@ -379,36 +378,9 @@ MPU9250_mag::ioctl(struct file *filp, int cmd, unsigned long arg)
 		memcpy((struct mag_scale *) arg, &_mag_scale, sizeof(_mag_scale));
 		return OK;
 
-	case MAGIOCSRANGE:
-		return -EINVAL;
-
-	case MAGIOCGRANGE:
-		return 48; // fixed full scale measurement range of +/- 4800 uT == 48 Gauss
-
-	case MAGIOCSELFTEST:
-		return self_test();
-
-#ifdef MAGIOCSHWLOWPASS
-
-	case MAGIOCSHWLOWPASS:
-		return -EINVAL;
-#endif
-
-#ifdef MAGIOCGHWLOWPASS
-
-	case MAGIOCGHWLOWPASS:
-		return -EINVAL;
-#endif
-
 	default:
 		return (int)CDev::ioctl(filp, cmd, arg);
 	}
-}
-
-int
-MPU9250_mag::self_test(void)
-{
-	return 0;
 }
 
 void

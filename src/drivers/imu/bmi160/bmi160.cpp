@@ -492,63 +492,6 @@ BMI160::self_test()
 	return (perf_event_count(_sample_perf) > 0) ? 0 : 1;
 }
 
-int
-BMI160::accel_self_test()
-{
-	if (self_test()) {
-		return 1;
-	}
-
-	return 0;
-}
-
-int
-BMI160::gyro_self_test()
-{
-	if (self_test()) {
-		return 1;
-	}
-
-	/*
-	 * Maximum deviation of 10 degrees
-	 */
-	const float max_offset = (float)(10 * M_PI_F / 180.0f);
-	/* 30% scale error is chosen to catch completely faulty units but
-	 * to let some slight scale error pass. Requires a rate table or correlation
-	 * with mag rotations + data fit to
-	 * calibrate properly and is not done by default.
-	 */
-	const float max_scale = 0.3f;
-
-	/* evaluate gyro offsets, complain if offset -> zero or larger than 30 dps. */
-	if (fabsf(_gyro_scale.x_offset) > max_offset) {
-		return 1;
-	}
-
-	/* evaluate gyro scale, complain if off by more than 30% */
-	if (fabsf(_gyro_scale.x_scale - 1.0f) > max_scale) {
-		return 1;
-	}
-
-	if (fabsf(_gyro_scale.y_offset) > max_offset) {
-		return 1;
-	}
-
-	if (fabsf(_gyro_scale.y_scale - 1.0f) > max_scale) {
-		return 1;
-	}
-
-	if (fabsf(_gyro_scale.z_offset) > max_offset) {
-		return 1;
-	}
-
-	if (fabsf(_gyro_scale.z_scale - 1.0f) > max_scale) {
-		return 1;
-	}
-
-	return 0;
-}
-
 /*
   deliberately trigger an error in the sensor to trigger recovery
  */
@@ -742,9 +685,6 @@ BMI160::ioctl(struct file *filp, int cmd, unsigned long arg)
 	case ACCELIOCGRANGE:
 		return (unsigned long)((_accel_range_m_s2) / CONSTANTS_ONE_G + 0.5f);
 
-	case ACCELIOCSELFTEST:
-		return accel_self_test();
-
 	default:
 		/* give it to the superclass */
 		return SPI::ioctl(filp, cmd, arg);
@@ -801,9 +741,6 @@ BMI160::gyro_ioctl(struct file *filp, int cmd, unsigned long arg)
 
 	case GYROIOCGRANGE:
 		return (unsigned long)(_gyro_range_rad_s * 180.0f / M_PI_F + 0.5f);
-
-	case GYROIOCSELFTEST:
-		return gyro_self_test();
 
 	default:
 		/* give it to the superclass */
@@ -1186,11 +1123,9 @@ BMI160::measure()
 	arb.z_integral = aval_integrated(2);
 
 	arb.scaling = _accel_range_scale;
-	arb.range_m_s2 = _accel_range_m_s2;
 
 	_last_temperature = 23 + report.temp * 1.0f / 512.0f;
 
-	arb.temperature_raw = report.temp;
 	arb.temperature = _last_temperature;
 
 	/* return device ID */
@@ -1224,9 +1159,7 @@ BMI160::measure()
 	grb.z_integral = gval_integrated(2);
 
 	grb.scaling = _gyro_range_scale;
-	grb.range_rad_s = _gyro_range_rad_s;
 
-	grb.temperature_raw = report.temp;
 	grb.temperature = _last_temperature;
 
 	/* return device ID */

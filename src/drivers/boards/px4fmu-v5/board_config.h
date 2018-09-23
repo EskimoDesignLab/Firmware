@@ -98,6 +98,8 @@
 #define GPIO_nLED_GREEN      /* PC6 */  (GPIO_OUTPUT|GPIO_OPENDRAIN|GPIO_SPEED_50MHz|GPIO_OUTPUT_SET|GPIO_PORTC|GPIO_PIN6)
 #define GPIO_nLED_BLUE       /* PC7 */  (GPIO_OUTPUT|GPIO_OPENDRAIN|GPIO_SPEED_50MHz|GPIO_OUTPUT_SET|GPIO_PORTC|GPIO_PIN7)
 
+#define BOARD_HAS_CONTROL_STATUS_LEDS      1
+
 
 /* SENSORS are on SPI1, 5, 6
  * MEMORY is on bus SPI2
@@ -331,8 +333,8 @@
 #define GPIO_HW_VER_DRIVE    /* PG0   */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_SET|GPIO_PORTG|GPIO_PIN0)
 #define GPIO_HW_VER_SENSE    /* PC2   */ ADC1_GPIO(12)
 #define HW_INFO_INIT         {'V','5','x', 'x',0}
-#define HW_INFO_INIT_REV     2
-#define HW_INFO_INIT_VER     3
+#define HW_INFO_INIT_VER     2
+#define HW_INFO_INIT_REV     3
 /* CAN Silence
  *
  * Silent mode control \ ESC Mux select
@@ -345,7 +347,7 @@
 /* HEATER
  * PWM in future
  */
-#define GPIO_HEATER        /* PA7  T14CH1 */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTA|GPIO_PIN7)
+#define GPIO_HEATER_OUTPUT   /* PA7  T14CH1 */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTA|GPIO_PIN7)
 
 /* PWM Capture
  *
@@ -553,13 +555,20 @@
 
 #define GPIO_RSSI_IN                       /* PB0  */ (GPIO_INPUT|GPIO_PULLUP|GPIO_PORTB|GPIO_PIN0)
 #define GPIO_RSSI_IN_INIT                  /* PB0  */ 0 /* Leave as ADC RSSI_IN */
-/* Change GPIO_nSAFETY_SWITCH_LED_OUT to
- * (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_SET|GPIO_PORTE|GPIO_PIN12)
- * to enable the safety switch led on FMU
+
+/* Safety Switch is HW version dependent on having an PX4IO
+ * So we init to a benign state with the _INIT definition
+ * and provide the the non _INIT one for the driver to make a run time
+ * decision to use it.
  */
-#define GPIO_nSAFETY_SWITCH_LED_OUT        /* PE12 */ (GPIO_INPUT|GPIO_FLOAT|GPIO_PORTE|GPIO_PIN12)
 #define GPIO_nSAFETY_SWITCH_LED_OUT_INIT   /* PE12 */ (GPIO_INPUT|GPIO_FLOAT|GPIO_PORTE|GPIO_PIN12)
+#define GPIO_nSAFETY_SWITCH_LED_OUT        /* PE12 */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_SET|GPIO_PORTE|GPIO_PIN12)
+
+/* Enable the FMU to control it if there is no px4io fixme:This should be BOARD_SAFETY_LED(__ontrue) */
+#define GPIO_LED_SAFETY GPIO_nSAFETY_SWITCH_LED_OUT
 #define GPIO_SAFETY_SWITCH_IN              /* PE10 */ (GPIO_INPUT|GPIO_PULLUP|GPIO_PORTE|GPIO_PIN10)
+/* Enable the FMU to use the switch it if there is no px4io fixme:This should be BOARD_SAFTY_BUTTON() */
+#define GPIO_BTN_SAFETY GPIO_SAFETY_SWITCH_IN /* Enable the FMU to control it if there is no px4io */
 
 /* Power switch controls ******************************************************/
 
@@ -719,10 +728,16 @@
 		PX4_ADC_GPIO,                     \
 		GPIO_HW_REV_DRIVE,                \
 		GPIO_HW_VER_DRIVE,                \
+		GPIO_CAN1_TX,                     \
+		GPIO_CAN1_RX,                     \
+		GPIO_CAN2_TX,                     \
+		GPIO_CAN2_RX,                     \
+		GPIO_CAN3_TX,                     \
+		GPIO_CAN3_RX,                     \
 		GPIO_CAN1_SILENT_S0,              \
 		GPIO_CAN2_SILENT_S1,              \
 		GPIO_CAN3_SILENT_S2,              \
-		GPIO_HEATER,                      \
+		GPIO_HEATER_OUTPUT,               \
 		GPIO_nPOWER_IN_A,                 \
 		GPIO_nPOWER_IN_B,                 \
 		GPIO_nPOWER_IN_C,                 \

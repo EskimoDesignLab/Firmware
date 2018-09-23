@@ -152,8 +152,8 @@ __BEGIN_DECLS
  * high-speed mode (Low) or silent mode (high)
  */
 
-#define GPIO_CAN0_STB           (GPIO_LOWDRIVE | GPIO_OUTPUT_ONE  | PIN_PORTC | PIN19)
-#define GPIO_CAN1_STB           (GPIO_LOWDRIVE | GPIO_OUTPUT_ONE  | PIN_PORTC | PIN18)
+#define GPIO_CAN0_STB           (GPIO_LOWDRIVE | GPIO_OUTPUT_ZER0  | PIN_PORTC | PIN19)
+#define GPIO_CAN1_STB           (GPIO_LOWDRIVE | GPIO_OUTPUT_ZER0  | PIN_PORTC | PIN18)
 
 
 /* Safety Switch
@@ -259,9 +259,9 @@ __BEGIN_DECLS
 /* I2C busses */
 
 #define PX4_I2C_BUS_EXPANSION               PX4_BUS_NUMBER_TO_PX4(0)
-#define PX4_I2C_BUS_ONBOARD                 PX4_BUS_NUMBER_TO_PX4(1)
-
-#define PX4_I2C_BUS_LED                     PX4_I2C_BUS_EXPANSION
+#define PX4_I2C_BUS_EXPANSION1              PX4_BUS_NUMBER_TO_PX4(1) // V3 RC15 has mpl3115a2 on onboard but this goes to a connector
+// So it is treated as external.
+#define PX4_I2C_BUS_LED                     PX4_I2C_BUS_EXPANSION1
 
 /*
  * ADC channels
@@ -492,6 +492,10 @@ __BEGIN_DECLS
 		GPIO_ENET_INH,        \
 		GPIO_ENET_CONFIG0,    \
 		GPIO_ENET_CONFIG1,    \
+		PIN_CAN0_RX,          \
+		PIN_CAN0_TX,          \
+		PIN_CAN1_RX,          \
+		PIN_CAN1_TX,          \
 		GPIO_CAN0_STB,        \
 		GPIO_CAN1_STB,        \
 		GPIO_BTN_SAFETY,      \
@@ -539,6 +543,7 @@ __BEGIN_DECLS
 #  endif
 #endif /* HAVE_AUTOMOUNTER */
 
+#define BOARD_HAS_NOISY_FXOS8700_MAG 1 // Disable internal MAG
 
 /************************************************************************************
  * Public data

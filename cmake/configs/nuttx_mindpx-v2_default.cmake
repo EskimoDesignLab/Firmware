@@ -29,6 +29,7 @@ set(config_module_list
 	drivers/px4flow
 	drivers/px4fmu
 	drivers/rgbled
+	drivers/rc_input
 	#drivers/rgbled_pwm
 	drivers/stm32
 	drivers/stm32/adc
@@ -65,7 +66,6 @@ set(config_module_list
 	drivers/distance_sensor/sf0x/sf0x_tests
 	drivers/test_ppm
 	modules/commander/commander_tests
-	modules/mc_pos_control/mc_pos_control_tests
 	lib/controllib/controllib_test
 	modules/mavlink/mavlink_tests
 	modules/uORB/uORB_tests

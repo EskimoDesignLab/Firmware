@@ -386,20 +386,6 @@ private:
 	 */
 	int 			self_test();
 
-	/**
-	 * Accel self test
-	 *
-	 * @return 0 on success, 1 on failure
-	 */
-	int				accel_self_test();
-
-	/**
-	 * Gyro self test
-	 *
-	 * @return 0 on success, 1 on failure
-	 */
-	int				gyro_self_test();
-
 	/*
 	  set low pass filter frequency
 	 */
@@ -690,8 +676,6 @@ MPU6000::init()
 	float accel_cut = MPU6000_ACCEL_DEFAULT_DRIVER_FILTER_FREQ;
 
 	if (accel_cut_ph != PARAM_INVALID && param_get(accel_cut_ph, &accel_cut) == PX4_OK) {
-		PX4_INFO("accel cutoff set to %.2f Hz", double(accel_cut));
-
 		_accel_filter_x.set_cutoff_frequency(MPU6000_ACCEL_DEFAULT_RATE, accel_cut);
 		_accel_filter_y.set_cutoff_frequency(MPU6000_ACCEL_DEFAULT_RATE, accel_cut);
 		_accel_filter_z.set_cutoff_frequency(MPU6000_ACCEL_DEFAULT_RATE, accel_cut);
@@ -704,8 +688,6 @@ MPU6000::init()
 	float gyro_cut = MPU6000_GYRO_DEFAULT_DRIVER_FILTER_FREQ;
 
 	if (gyro_cut_ph != PARAM_INVALID && param_get(gyro_cut_ph, &gyro_cut) == PX4_OK) {
-		PX4_INFO("gyro cutoff set to %.2f Hz", double(gyro_cut));
-
 		_gyro_filter_x.set_cutoff_frequency(MPU6000_GYRO_DEFAULT_RATE, gyro_cut);
 		_gyro_filter_y.set_cutoff_frequency(MPU6000_GYRO_DEFAULT_RATE, gyro_cut);
 		_gyro_filter_z.set_cutoff_frequency(MPU6000_GYRO_DEFAULT_RATE, gyro_cut);
@@ -1072,71 +1054,6 @@ MPU6000::self_test()
 	return (perf_event_count(_sample_perf) > 0) ? 0 : 1;
 }
 
-int
-MPU6000::accel_self_test()
-{
-	if (self_test()) {
-		return 1;
-	}
-
-	return 0;
-}
-
-int
-MPU6000::gyro_self_test()
-{
-	if (self_test()) {
-		return 1;
-	}
-
-	/*
-	 * Maximum deviation of 20 degrees, according to
-	 * http://www.farnell.com/datasheets/1788002.pdf
-	 * Section 6.1, initial ZRO tolerance
-	 *
-	 * 20 dps (0.34 rad/s) initial offset
-	 * and 20 dps temperature drift, so 0.34 rad/s * 2
-	 */
-	const float max_offset = 2.0f * 0.34f;
-
-	/* 30% scale error is chosen to catch completely faulty units but
-	 * to let some slight scale error pass. Requires a rate table or correlation
-	 * with mag rotations + data fit to
-	 * calibrate properly and is not done by default.
-	 */
-	const float max_scale = 0.3f;
-
-	/* evaluate gyro offsets, complain if offset -> zero or larger than 20 dps. */
-	if (fabsf(_gyro_scale.x_offset) > max_offset) {
-		return 1;
-	}
-
-	/* evaluate gyro scale, complain if off by more than 30% */
-	if (fabsf(_gyro_scale.x_scale - 1.0f) > max_scale) {
-		return 1;
-	}
-
-	if (fabsf(_gyro_scale.y_offset) > max_offset) {
-		return 1;
-	}
-
-	if (fabsf(_gyro_scale.y_scale - 1.0f) > max_scale) {
-		return 1;
-	}
-
-	if (fabsf(_gyro_scale.z_offset) > max_offset) {
-		return 1;
-	}
-
-	if (fabsf(_gyro_scale.z_scale - 1.0f) > max_scale) {
-		return 1;
-	}
-
-	return 0;
-}
-
-
-
 /*
   perform a self-test comparison to factory trim values. This takes
   about 200ms and will return OK if the current values are within 14%
@@ -1485,9 +1402,6 @@ MPU6000::ioctl(struct file *filp, int cmd, unsigned long arg)
 	case ACCELIOCGRANGE:
 		return (unsigned long)((_accel_range_m_s2) / CONSTANTS_ONE_G + 0.5f);
 
-	case ACCELIOCSELFTEST:
-		return accel_self_test();
-
 	case ACCELIOCGEXTERNAL:
 		return _interface->ioctl(cmd, dummy);
 
@@ -1552,9 +1466,6 @@ MPU6000::gyro_ioctl(struct file *filp, int cmd, unsigned long arg)
 
 	case GYROIOCGRANGE:
 		return (unsigned long)(_gyro_range_rad_s * 180.0f / M_PI_F + 0.5f);
-
-	case GYROIOCSELFTEST:
-		return gyro_self_test();
 
 	default:
 		/* give it to the superclass */
@@ -1970,6 +1881,7 @@ MPU6000::measure()
 
 	/* NOTE: Axes have been swapped to match the board a few lines above. */
 
+	arb.scaling = _accel_range_scale;
 	arb.x_raw = report.accel_x;
 	arb.y_raw = report.accel_y;
 	arb.z_raw = report.accel_z;
@@ -1997,9 +1909,6 @@ MPU6000::measure()
 	arb.y_integral = aval_integrated(1);
 	arb.z_integral = aval_integrated(2);
 
-	arb.scaling = _accel_range_scale;
-	arb.range_m_s2 = _accel_range_m_s2;
-
 	if (is_icm_device()) { // if it is an ICM20608
 		_last_temperature = (report.temp) / 326.8f + 25.0f;
 
@@ -2007,7 +1916,6 @@ MPU6000::measure()
 		_last_temperature = (report.temp) / 361.0f + 35.0f;
 	}
 
-	arb.temperature_raw = report.temp;
 	arb.temperature = _last_temperature;
 
 	/* return device ID */
@@ -2041,9 +1949,7 @@ MPU6000::measure()
 	grb.z_integral = gval_integrated(2);
 
 	grb.scaling = _gyro_range_scale;
-	grb.range_rad_s = _gyro_range_rad_s;
 
-	grb.temperature_raw = report.temp;
 	grb.temperature = _last_temperature;
 
 	/* return device ID */
@@ -2100,10 +2006,6 @@ MPU6000::print_info()
 	}
 
 	::printf("temperature: %.1f\n", (double)_last_temperature);
-	float accel_cut = _accel_filter_x.get_cutoff_freq();
-	::printf("accel cutoff set to %10.2f Hz\n", double(accel_cut));
-	float gyro_cut = _gyro_filter_x.get_cutoff_freq();
-	::printf("gyro cutoff set to %10.2f Hz\n", double(gyro_cut));
 }
 
 void

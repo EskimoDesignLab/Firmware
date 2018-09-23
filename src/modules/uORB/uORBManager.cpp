@@ -35,22 +35,17 @@
 #include <sys/stat.h>
 #include <stdarg.h>
 #include <fcntl.h>
-#include <errno.h>
 
 #include <px4_config.h>
 #include <px4_posix.h>
 #include <px4_tasks.h>
 
+#include "uORBDeviceNode.hpp"
 #include "uORBUtils.hpp"
 #include "uORBManager.hpp"
-#include "uORBDevices.hpp"
 
-
-//=========================  Static initializations =================
 uORB::Manager *uORB::Manager::_Instance = nullptr;
 
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
 bool uORB::Manager::initialize()
 {
 	if (_Instance == nullptr) {
@@ -60,12 +55,10 @@ bool uORB::Manager::initialize()
 	return _Instance != nullptr;
 }
 
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
 uORB::Manager::Manager()
 {
 #ifdef ORB_USE_PUBLISHER_RULES
-	const char *file_name = "./rootfs/orb_publisher.rules";
+	const char *file_name = PX4_STORAGEDIR"/orb_publisher.rules";
 	int ret = readPublisherRulesFromFile(file_name, _publisher_rule);
 
 	if (ret == PX4_OK) {
@@ -90,17 +83,7 @@ uORB::DeviceMaster *uORB::Manager::get_device_master()
 	if (!_device_master) {
 		_device_master = new DeviceMaster();
 
-		if (_device_master) {
-			int ret = _device_master->init();
-
-			if (ret != PX4_OK) {
-				PX4_ERR("Initialization of DeviceMaster failed (%i)", ret);
-				errno = -ret;
-				delete _device_master;
-				_device_master = nullptr;
-			}
-
-		} else {
+		if (_device_master == nullptr) {
 			PX4_ERR("Failed to allocate DeviceMaster");
 			errno = ENOMEM;
 		}
@@ -188,11 +171,8 @@ orb_advert_t uORB::Manager::orb_advertise_multi(const struct orb_metadata *meta,
 
 #endif /* ORB_USE_PUBLISHER_RULES */
 
-	int result, fd;
-	orb_advert_t advertiser;
-
 	/* open the node as an advertiser */
-	fd = node_open(meta, data, true, instance, priority);
+	int fd = node_open(meta, true, instance, priority);
 
 	if (fd == PX4_ERROR) {
 		PX4_ERR("%s advertise failed", meta->o_name);
@@ -202,13 +182,15 @@ orb_advert_t uORB::Manager::orb_advertise_multi(const struct orb_metadata *meta,
 	/* Set the queue size. This must be done before the first publication; thus it fails if
 	 * this is not the first advertiser.
 	 */
-	result = px4_ioctl(fd, ORBIOCSETQUEUESIZE, (unsigned long)queue_size);
+	int result = px4_ioctl(fd, ORBIOCSETQUEUESIZE, (unsigned long)queue_size);
 
 	if (result < 0 && queue_size > 1) {
 		PX4_WARN("orb_advertise_multi: failed to set queue size");
 	}
 
 	/* get the advertiser handle and close the node */
+	orb_advert_t advertiser;
+
 	result = px4_ioctl(fd, ORBIOCGADVERTISER, (unsigned long)&advertiser);
 	px4_close(fd);
 
@@ -248,13 +230,13 @@ int uORB::Manager::orb_unadvertise(orb_advert_t handle)
 
 int uORB::Manager::orb_subscribe(const struct orb_metadata *meta)
 {
-	return node_open(meta, nullptr, false);
+	return node_open(meta, false);
 }
 
 int uORB::Manager::orb_subscribe_multi(const struct orb_metadata *meta, unsigned instance)
 {
 	int inst = instance;
-	return node_open(meta, nullptr, false, &inst);
+	return node_open(meta, false, &inst);
 }
 
 int uORB::Manager::orb_unsubscribe(int fd)
@@ -324,41 +306,27 @@ int uORB::Manager::orb_get_interval(int handle, unsigned *interval)
 
 int uORB::Manager::node_advertise(const struct orb_metadata *meta, int *instance, int priority)
 {
-	int fd = -1;
 	int ret = PX4_ERROR;
 
 	/* fill advertiser data */
-	const struct orb_advertdata adv = { meta, instance, priority };
 
-	/* open the control device */
-	fd = px4_open(TOPIC_MASTER_DEVICE_PATH, 0);
-
-	if (fd < 0) {
-		goto out;
+	if (get_device_master()) {
+		ret = _device_master->advertise(meta, instance, priority);
 	}
-
-	/* advertise the object */
-	ret = px4_ioctl(fd, ORBIOCADVERTISE, (unsigned long)(uintptr_t)&adv);
 
 	/* it's PX4_OK if it already exists */
 	if ((PX4_OK != ret) && (EEXIST == errno)) {
 		ret = PX4_OK;
 	}
 
-out:
-
-	if (fd >= 0) {
-		px4_close(fd);
-	}
-
 	return ret;
 }
 
-int uORB::Manager::node_open(const struct orb_metadata *meta, const void *data, bool advertiser, int *instance,
-			     int priority)
+int uORB::Manager::node_open(const struct orb_metadata *meta, bool advertiser, int *instance, int priority)
 {
 	char path[orb_maxpath];
-	int fd = -1, ret;
+	int fd = -1;
+	int ret = PX4_ERROR;
 
 	/*
 	 * If meta is null, the object was not defined, i.e. it is not
@@ -366,14 +334,6 @@ int uORB::Manager::node_open(const struct orb_metadata *meta, const void *data, 
 	 */
 	if (nullptr == meta) {
 		errno = ENOENT;
-		return PX4_ERROR;
-	}
-
-	/*
-	 * Advertiser must publish an initial value.
-	 */
-	if (advertiser && (data == nullptr)) {
-		errno = EINVAL;
 		return PX4_ERROR;
 	}
 
