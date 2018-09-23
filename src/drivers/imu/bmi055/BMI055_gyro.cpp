@@ -210,7 +210,7 @@ BMI055_gyro::probe()
 		return OK;
 	}
 
-	DEVICE_DEBUG("unexpected whoami 0x%02x", _whoami);
+	PX4_ERR("unexpected whoami 0x%02x", _whoami);
 	return -EIO;
 }
 

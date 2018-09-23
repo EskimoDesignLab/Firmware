@@ -737,19 +737,19 @@ CHARGING_I2C::collect()
 		}
 
 		// publish des valeurs lu sur le MAX17205 (et conditionnement des valeurs) (VOIR TABLEAU 1 PAGE 26 DE LA DATASHEET)
-		report.AvgVCell = (float)(((int)val1[1] * 256) | (int)val1[0])/12800.0f;	// average cell voltage (V)
-		report.AvgCell3 = (float)(((int)val2[1] * 256) | (int)val2[0])/12800.0f;	// cell 3 voltage (V)
-		report.AvgCell2 = (float)(((int)val3[1] * 256) | (int)val3[0])/12800.0f;	// cell 2 voltage (V)
-		report.AvgCell1 = (float)(((int)val4[1] * 256) | (int)val4[0])/12800.0f;	// cell 1 voltage (V)
+		report.avg_vcell = (float)(((int)val1[1] * 256) | (int)val1[0])/12800.0f;	// average cell voltage (V)
+		report.avg_vcell3 = (float)(((int)val2[1] * 256) | (int)val2[0])/12800.0f;	// cell 3 voltage (V)
+		report.avg_vcell2 = (float)(((int)val3[1] * 256) | (int)val3[0])/12800.0f;	// cell 2 voltage (V)
+		report.avg_vcell1 = (float)(((int)val4[1] * 256) | (int)val4[0])/12800.0f;	// cell 1 voltage (V)
 
-		report.RepCap = (float)(((int)val5[1] * 256) | (int)val5[0])*((5.0f/1000.0f)/(_parameters.rsense / 1000.0f));		// reported capacity (mAh)
+		report.rep_cap = (float)(((int)val5[1] * 256) | (int)val5[0])*((5.0f/1000.0f)/(_parameters.rsense / 1000.0f));		// reported capacity (mAh)
 	
-		report.Current = (float)(int16_t((val6[1] * 256) | val6[0]))*((1.5625f/1000.0f)/(_parameters.rsense / 1000.0f));	// current (mA)
-		report.AvgCurrent = (float)(int16_t((val7[1] * 256) | val7[0]))*((1.5625f/1000.0f)/(_parameters.rsense / 1000.0f));		// average current (mA)
+		report.current = (float)(int16_t((val6[1] * 256) | val6[0]))*((1.5625f/1000.0f)/(_parameters.rsense / 1000.0f));	// current (mA)
+		report.avg_current = (float)(int16_t((val7[1] * 256) | val7[0]))*((1.5625f/1000.0f)/(_parameters.rsense / 1000.0f));		// average current (mA)
 
-		report.TTE = (float)(((int)val8[1] * 256) | (int)val8[0])/640.0f;		// time to empty (hr)
-		report.TTF = (float)(((int)val9[1] * 256) | (int)val9[0])/640.0f;		// time to full (hr)
-		report.RepSOC = (float)(((int)val10[1] * 256) | (int)val10[0])/256.0f;		// reported state of charge (%)
+		report.tte = (float)(((int)val8[1] * 256) | (int)val8[0])/640.0f;		// time to empty (hr)
+		report.ttf = (float)(((int)val9[1] * 256) | (int)val9[0])/640.0f;		// time to full (hr)
+		report.rep_soc = (float)(((int)val10[1] * 256) | (int)val10[0])/256.0f;		// reported state of charge (%)
 
 	}
 	/////////////////////////////////////////////////////////////////////////////////////////
@@ -919,16 +919,16 @@ CHARGING_I2C::collect()
 		// publish des valeurs lu sur le MAX17205 (et conditionnement des valeurs) (VOIR TABLEAU 1 PAGE 26 DE LA DATASHEET)
 		//struct charging_info_s report;
 
-		report.AvgVCell = 1;
-		report.AvgCell3 = 1;
-		report.AvgCell2 = 1;
-		report.AvgCell1 = 1;
-		report.RepCap = 1;
-		report.Current = 1;
-		report.AvgCurrent = 1;
-		report.TTE = 1;
-		report.TTF = 1;
-		report.RepSOC = 1;
+		report.avg_vcell = 1;
+		report.avg_vcell3 = 1;
+		report.avg_vcell2 = 1;
+		report.avg_vcell1 = 1;
+		report.rep_cap = 1;
+		report.current = 1;
+		report.avg_current = 1;
+		report.tte = 1;
+		report.ttf = 1;
+		report.rep_soc = 1;
 
 	}
 	/////////////////////////////////////////////////////////////////////////////////////////
@@ -940,16 +940,16 @@ CHARGING_I2C::collect()
 
 		// publish des valeurs lu sur le MAX17205 (et conditionnement des valeurs) (VOIR TABLEAU 1 PAGE 26 DE LA DATASHEET)
 		//struct charging_info_s report;
-		report.AvgVCell = 0;
-		report.AvgCell3 = 0;
-		report.AvgCell2 = 0;
-		report.AvgCell1 = 0;
-		report.RepCap = 0;
-		report.Current = 0;
-		report.AvgCurrent = 0;
-		report.TTE = 0;
-		report.TTF = 0;
-		report.RepSOC = 0;
+		report.avg_vcell = 0;
+		report.avg_vcell3 = 0;
+		report.avg_vcell2 = 0;
+		report.avg_vcell1 = 0;
+		report.rep_cap = 0;
+		report.current = 0;
+		report.avg_current = 0;
+		report.tte = 0;
+		report.ttf = 0;
+		report.rep_soc = 0;
 	}
 											
 	/* publish it, if we are the primary */

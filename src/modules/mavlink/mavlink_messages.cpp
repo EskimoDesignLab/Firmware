@@ -1814,6 +1814,25 @@ protected:
 
 			/* ensure that only active trigger events are sent */
 			if (trigger.timestamp > 0) {
+<<<<<<< HEAD
+				mavlink_msg_camera_trigger_send_struct(_mavlink->get_channel(), &msg);
+
+				/* send MAV_CMD_IMAGE_START_CAPTURE */
+				mavlink_command_long_t msg_cmd;
+
+				msg_cmd.target_system = mavlink_system.sysid;
+				msg_cmd.target_component = MAV_COMP_ID_CAMERA;
+				msg_cmd.command = MAV_CMD_IMAGE_START_CAPTURE;
+				msg_cmd.confirmation = 0;
+				msg_cmd.param1 = 0; // all cameras
+				msg_cmd.param2 = 0; // duration 0 because only taking one picture
+				msg_cmd.param3 = 1; // only take one
+				msg_cmd.param4 = NAN;
+				msg_cmd.param5 = NAN;
+				msg_cmd.param6 = NAN;
+				msg_cmd.param7 = NAN;
+=======
+>>>>>>> 5f8c08db7958ea3ff0762e8f3d1b52ee8a648403
 
 				mavlink_msg_camera_trigger_send_struct(_mavlink->get_channel(), &msg);
 

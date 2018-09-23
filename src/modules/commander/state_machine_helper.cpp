@@ -895,8 +895,13 @@ bool prearm_check(orb_advert_t *mavlink_log_pub, const vehicle_status_flags_s &s
 		}
 	}
 
+<<<<<<< HEAD
+	if (battery->warning >= battery_status_s::BATTERY_WARNING_LOW) {
+		preflight_ok = false;
+=======
 	// Arm Requirements: mission
 	if (arm_requirements & ARM_REQ_MISSION_BIT) {
+>>>>>>> 5f8c08db7958ea3ff0762e8f3d1b52ee8a648403
 
 		if (!status_flags.condition_auto_mission_available) {
 			if (prearm_ok && reportFailures) {

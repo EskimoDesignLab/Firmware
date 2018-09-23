@@ -404,27 +404,27 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 
 			/* Detection for a Pixhack3 */
 
-			stm32_configgpio(HW_VER_PA8);
-			up_udelay(10);
-			bool isph3 = stm32_gpioread(HW_VER_PA8);
-			stm32_configgpio(HW_VER_PA8_INIT);
+			// stm32_configgpio(HW_VER_PA8);
+			// up_udelay(10);
+			// bool isph3 = stm32_gpioread(HW_VER_PA8);
+			// stm32_configgpio(HW_VER_PA8_INIT);
 
 
-			if (isph3) {
+			// if (isph3) {
 
-				/* Pixhack3 looks like a FMuV3 Cube */
+			// 	/* Pixhack3 looks like a FMuV3 Cube */
 
-				hw_version = HW_VER_FMUV3_STATE;
-				hw_type[1]++;
-				hw_type[2] = '0';
-				message("\nPixhack V3 detected, forcing to fmu-v3");
+			// 	hw_version = HW_VER_FMUV3_STATE;
+			// 	hw_type[1]++;
+			// 	hw_type[2] = '0';
+			// 	message("\nPixhack V3 detected, forcing to fmu-v3");
 
-			} else {
+			// } else {
 
-				/* It is a mini */
+			// 	/* It is a mini */
 
-				hw_type[2] = 'M';
-			}
+			// 	hw_type[2] = 'M';
+			// }
 
 			break;
 
