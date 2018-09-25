@@ -460,7 +460,6 @@ LPS33::ioctl(struct file *filp, int cmd, unsigned long arg)
 void
 LPS33::start()
 {
-    warnx("poll state machine entered");
 	/* reset the report ring and state machine */
 	_collect_phase = false;
 	_reports->flush();
@@ -500,10 +499,8 @@ LPS33::cycle_trampoline(void *arg)
 void
 LPS33::cycle()
 {
-    warnx("Cycle phase Entered");
 	/* collection phase? */
 	if (_collect_phase) {
-        warnx("Cycle phase begin");
 		/* perform collection */
 		if (OK != collect()) {
 			DEVICE_DEBUG("collection error");
@@ -596,8 +593,6 @@ LPS33::collect()
 
     int	ret =0;
     //uint8_t check_counter;
-
-    warnx("COLLECTION PHASE BEGIN");
 
 	perf_begin(_sample_perf);
     struct baro_report new_report;
