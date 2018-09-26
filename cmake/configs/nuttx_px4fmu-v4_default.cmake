@@ -20,6 +20,7 @@ set(config_module_list
 	drivers/barometer/lps33
 	drivers/icarus/charging_i2c
 	drivers/icarus/wake_up_i2c_slave
+	drivers/magnetometer/hmc5883
 	
 	drivers/batt_smbus
 	drivers/blinkm
