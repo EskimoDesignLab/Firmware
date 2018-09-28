@@ -917,16 +917,16 @@ CHARGING_I2C::print_info()
 	perf_print_counter(_sample_perf);
 	perf_print_counter(_comms_errors);
 	printf("poll interval:  %u ticks\n", _measure_ticks);
-	printf("average cell voltage : %f V\n", double(last_report.avg_vcell));
-	printf("cell 1 voltage : %f V\n", double(last_report.avg_vcell1));
-	printf("cell 2 voltage : %f V\n", double(last_report.avg_vcell2));
-	printf("cell 3 voltage : %f V\n", double(last_report.avg_vcell3));
-	printf("capacity : %f mAh\n",double(last_report.rep_cap));
-	printf("current : %f mA\n",double(last_report.current));
-	printf("average current : %f mA\n",double(last_report.avg_current));
-	printf("time to empty : %f hr\n",double(last_report.tte));
-	printf("time to full : %f hr\n",double(last_report.ttf));
-	printf("state of charge : %f %%\n",double(last_report.rep_soc));
+	printf("average cell voltage : %.2f V\n", (double)last_report.avg_vcell);
+	printf("cell 1 voltage : %.2f V\n", (double)(last_report.avg_vcell1));
+	printf("cell 2 voltage : %.2f V\n", (double)(last_report.avg_vcell2));
+	printf("cell 3 voltage : %.2f V\n", (double)(last_report.avg_vcell3));
+	printf("capacity : %f mAh\n",(double)(last_report.rep_cap));
+	printf("current : %.2f mA\n",(double)(last_report.current));
+	printf("average current : %.2f mA\n",(double)(last_report.avg_current));
+	printf("time to empty : %f hr\n",(double)(last_report.tte));
+	printf("time to full : %f hr\n",(double)(last_report.ttf));
+	printf("state of charge : %f %%\n",(double)(last_report.rep_soc));
 
 	_reports->print_info("report queue");
 
