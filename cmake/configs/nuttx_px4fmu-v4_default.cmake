@@ -23,25 +23,25 @@ set(config_module_list
 	drivers/magnetometer/hmc5883
 	
 	drivers/batt_smbus
-	drivers/blinkm
+	#drivers/blinkm
 	#drivers/camera_trigger
 	drivers/gps
-	drivers/heater
-	drivers/irlock
-	drivers/mkblctrl
-	drivers/oreoled
-	drivers/pca9685
+	#drivers/heater
+	#drivers/irlock
+	#drivers/mkblctrl
+	#drivers/oreoled
+	#drivers/pca9685
 	drivers/pwm_input
 	drivers/pwm_out_sim
-	drivers/px4flow
+	#drivers/px4flow
 	drivers/px4fmu
-	drivers/rgbled
+	#drivers/rgbled
 	drivers/rc_input
 	drivers/stm32
 	drivers/stm32/adc
-	drivers/stm32/tone_alarm
+	#drivers/stm32/tone_alarm
 	drivers/tap_esc
-	drivers/vmount
+	#drivers/vmount
 	modules/sensors
 
 	#
@@ -70,14 +70,14 @@ set(config_module_list
 	#
 	# Testing
 	#
-	drivers/distance_sensor/sf0x/sf0x_tests
-	drivers/test_ppm
+	#drivers/distance_sensor/sf0x/sf0x_tests
+	#drivers/test_ppm
 	#lib/rc/rc_tests
-	modules/commander/commander_tests
-	lib/controllib/controllib_test
-	modules/mavlink/mavlink_tests
-	modules/uORB/uORB_tests
-	systemcmds/tests
+	#modules/commander/commander_tests
+	#lib/controllib/controllib_test
+	#modules/mavlink/mavlink_tests
+	#modules/uORB/uORB_tests
+	#systemcmds/tests
 
 	#
 	# General system control
@@ -126,17 +126,17 @@ set(config_module_list
 	#
 	# OBC challenge
 	#
-	examples/bottle_drop
+	#examples/bottle_drop
 
 	#
 	# Rover apps
 	#
-	examples/rover_steering_control
+	#examples/rover_steering_control
 
 	#
 	# Segway
 	#
-	examples/segway
+	#examples/segway
 
 	#
 	# Demo apps
@@ -144,16 +144,16 @@ set(config_module_list
 
 	# Tutorial code from
 	# https://px4.io/dev/px4_simple_app
-	examples/px4_simple_app
+	#examples/px4_simple_app
 
 	# Tutorial code from
 	# https://px4.io/dev/debug_values
-	examples/px4_mavlink_debug
+	#examples/px4_mavlink_debug
 
 	# Tutorial code from
 	# https://px4.io/dev/example_fixedwing_control
-	examples/fixedwing_control
+	#examples/fixedwing_control
 
 	# Hardware test
-	examples/hwtest
+	#examples/hwtest
 )
