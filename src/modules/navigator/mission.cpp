@@ -56,6 +56,7 @@
 #include <lib/ecl/geo/geo.h>
 #include <navigator/navigation.h>
 #include <uORB/uORB.h>
+#include <uORB/topics/go_to_sleep.h>
 #include <uORB/topics/mission.h>
 #include <uORB/topics/mission_result.h>
 
@@ -65,6 +66,7 @@ Mission::Mission(Navigator *navigator) :
 	MissionBlock(navigator),
 	ModuleParams(navigator)
 {
+	_pub_go_sleep = orb_advertise(ORB_ID(go_to_sleep), &_go_sleep_s);
 }
 
 void
@@ -571,6 +573,18 @@ Mission::advance_mission()
 void
 Mission::set_mission_items()
 {
+	if(_last_cmd_was_sleep){
+		/* send one vector */
+		_go_sleep_s.sleep = true;
+		_go_sleep_s.sleep_time_ms = 1000;
+		_go_sleep_s.timestamp = hrt_absolute_time();
+		orb_publish(ORB_ID(go_to_sleep), _pub_go_sleep, &_go_sleep_s);
+
+		_last_cmd_was_sleep = false;
+		usleep(1000);
+		// GO IN SLEEP MODE
+	}
+	
 	/* reset the altitude foh (first order hold) logic, if altitude foh is enabled (param) a new foh element starts now */
 	_min_current_sp_distance_xy = FLT_MAX;
 
@@ -920,6 +934,13 @@ Mission::set_mission_items()
 		}
 
 	} else {
+		
+		if (_mission_item.nav_cmd == NAV_CMD_SLEEP_ICARUS) {	
+			// GO IN SLEEP MODE ICARUS
+			_last_cmd_was_sleep = true;
+			_mission_item.autocontinue = true;
+		}
+
 		/* handle non-position mission items such as commands */
 		switch (_mission_execution_mode) {
 		case mission_result_s::MISSION_EXECUTION_MODE_NORMAL:
