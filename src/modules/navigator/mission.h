@@ -60,6 +60,7 @@
 #include <uORB/topics/vehicle_global_position.h>
 #include <uORB/topics/vehicle_status.h>
 #include <uORB/topics/vehicle_roi.h>
+#include <uORB/topics/go_to_sleep.h>
 #include <uORB/uORB.h>
 
 class Navigator;
@@ -251,8 +252,11 @@ private:
 	)
 
 	struct mission_s _offboard_mission {};
+	struct go_to_sleep_s _go_sleep_s  {};
+	orb_advert_t _pub_go_sleep;
 
 	int32_t _current_offboard_mission_index{-1};
+
 
 	// track location of planned mission landing
 	bool	_land_start_available{false};
@@ -265,6 +269,7 @@ private:
 		MISSION_TYPE_OFFBOARD
 	} _mission_type{MISSION_TYPE_NONE};
 
+	bool _last_cmd_was_sleep{false}; 
 	bool _inited{false};
 	bool _home_inited{false};
 	bool _need_mission_reset{false};
