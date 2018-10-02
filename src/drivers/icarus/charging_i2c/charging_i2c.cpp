@@ -34,16 +34,14 @@
 #include <systemlib/err.h>
 
 #include <drivers/drv_hrt.h>
-#include <drivers/drv_range_finder.h>
 #include <drivers/device/ringbuffer.h>
+#include <drivers/icarus/charging_i2c/charging_i2c.h>
 
 #include <uORB/uORB.h>
-#include <uORB/topics/subsystem_info.h>
-#include <uORB/topics/distance_sensor.h>
 
-// on inclu le nouveau UORB topic spécifique pour le driver charging i2c
+// on inclut le nouveau UORB topic spécifique pour le driver charging i2c
+#include <uORB/topics/battery_status.h>
 #include <uORB/topics/charging_info.h>
-#include <uORB/topics/charging_info_2.h>
 
 #include <board_config.h>
 
@@ -64,9 +62,10 @@ public:
 	CHARGING_I2C(int bus = MAX17205_I2C_BUS, int address = MAX17205_I2C_BASEADDR);
 	virtual ~CHARGING_I2C();
 	virtual int 		init();
-	virtual ssize_t		read(struct file *filp, char *buffer, size_t buflen);
+	virtual ssize_t     read(struct file *filp, charging_info_s *report, size_t buflen);
 	virtual int			ioctl(struct file *filp, int cmd, unsigned long arg);
 	void				print_info();
+	void				checkEeprom();
 
 protected:
 	virtual int			probe();
@@ -95,13 +94,9 @@ private:
 	int					_class_instance;
 	int					_orb_class_instance;
 
-	orb_advert_t		_distance_sensor_topic;
-	// test topic custom pour charging i2c
+	// topic custom pour charging i2c
 	orb_advert_t     	_charging_info_topic;
-
-	// pour subsrcibe au topic du charging_info (il y a des info que lon veut recevoir)
-	int			_charging_info_sub_2;
-	struct charging_info_2_s		_charging_2;
+	orb_advert_t		_battery_pub;
 
 	perf_counter_t		_sample_perf;
 	perf_counter_t		_comms_errors;
@@ -112,6 +107,7 @@ private:
 	std::vector<uint8_t>	addr_ind; 	/* temp sonar i2c address vector */
 
 	struct charging_info_s last_report;
+	float bat_full_cap;
 
 
 	/**
@@ -166,7 +162,7 @@ private:
 extern "C" { __EXPORT int charging_i2c_main(int argc, char *argv[]);}
 
 CHARGING_I2C::CHARGING_I2C(int bus, int address) :
-		I2C("MB12xx", MAX17205_DEVICE_PATH, bus, address, 100000), // _address est private on appelle donc le constructor de la classe mere
+		I2C("MAX17205", MAX17205_DEVICE_PATH, bus, address, 100000), // _address est private on appelle donc le constructor de la classe mere
 		// la frequence du bus est à 100 khz ***
 		_reports(nullptr),
 		_sensor_ok(false),
@@ -174,10 +170,10 @@ CHARGING_I2C::CHARGING_I2C(int bus, int address) :
 		_collect_phase(false),
 		_class_instance(-1),
 		_orb_class_instance(-1),
-		_distance_sensor_topic(nullptr),
+		// _battery_pub(nullptr),
 		_charging_info_topic(nullptr),	// charging_i2c custom topic
-		_sample_perf(perf_alloc(PC_ELAPSED, "srf02_i2c_read")),
-		_comms_errors(perf_alloc(PC_COUNT, "srf02_i2c_comms_errors")),
+		_sample_perf(perf_alloc(PC_ELAPSED, "charging_i2c_read")),
+		_comms_errors(perf_alloc(PC_COUNT, "charging_i2c_comms_errors")),
 		_cycle_counter(0),	/* initialising counter for cycling function to zero */
 		_cycling_rate(0),	/* initialising cycling rate (which can differ depending on one sonar or multiple) */
 		_index_counter(0) 	/* initialising temp sonar i2c address to zero */
@@ -210,7 +206,7 @@ CHARGING_I2C::~CHARGING_I2C()
 	}
 
 	if (_class_instance != -1) {
-		unregister_class_devname(RANGE_FINDER_BASE_DEVICE_PATH, _class_instance);
+		unregister_class_devname(MAX17205_DEVICE_PATH, _class_instance);
 	}
 
 	/* free perf counters */
@@ -255,13 +251,20 @@ CHARGING_I2C::init()
 		return ret;
 	}
 
-	_class_instance = register_class_devname(RANGE_FINDER_BASE_DEVICE_PATH);
+	_class_instance = register_class_devname(MAX17205_DEVICE_PATH);
 
 	/* get a publish handle on the range finder topic */
 	struct charging_info_s ds_report = {};
+	struct battery_status_s battery_report = {};
+
+	_battery_pub = orb_advertise_multi(ORB_ID(battery_status), &battery_report,
+											 &_orb_class_instance, ORB_PRIO_VERY_HIGH);
 
 	_charging_info_topic = orb_advertise_multi(ORB_ID(charging_info), &ds_report,
 											   &_orb_class_instance, ORB_PRIO_LOW);
+
+	
+
 
 	if (_charging_info_topic == nullptr) {
 		DEVICE_LOG("failed to create distance_sensor object. Did you start uOrb?");
@@ -423,58 +426,59 @@ CHARGING_I2C::ioctl(struct file *filp, int cmd, unsigned long arg)
 }
 
 ssize_t
-CHARGING_I2C::read(struct file *filp, char *buffer, size_t buflen)
+CHARGING_I2C::read(struct file *filp, charging_info_s *report, size_t buflen)
 {
 
-	unsigned count = buflen / sizeof(struct distance_sensor_s);
-	struct distance_sensor_s *rbuf = reinterpret_cast<struct distance_sensor_s *>(buffer);
-	int ret = 0;
+	// on met lasresse pour faire un read des parametres (0x6C selon la chip -> 0x36 selon la nomenclature du driver)
+	set_device_address(0x36); /* Address in 7bit format (0x6C -> 0x36)*/
 
-	/* buffer must be large enough */
-	if (count < 1) {
-		return -ENOSPC;
-	}
+	// commandes pour lire les valeurs pertinentes sur le MAX17205 (voir plus bas pour les valeurs lues)
+	uint8_t cmd[11] = {0x19,0xD2,0xD3,0xD4,0x05,0x0A,0x0B,0x11,0x20,0x06,0xB8};
 
-	/* if automatic measurement is enabled */
-	if (_measure_ticks > 0) {
+	// valeurs à lire sur le MAX17205
+	uint8_t val1[2] = {0,0};
+	uint8_t val2[2] = {0,0};
+	uint8_t val3[2] = {0,0};
+	uint8_t val4[2] = {0,0};
+	uint8_t val5[2] = {0,0};
+	uint8_t val6[2] = {0,0};
+	uint8_t val7[2] = {0,0};
+	uint8_t val8[2] = {0,0};
+	uint8_t val9[2] = {0,0};
+	uint8_t val10[2] = {0,0};
 
-		/*
-		 * While there is space in the caller's buffer, and reports, copy them.
-		 * Note that we may be pre-empted by the workq thread while we are doing this;
-		 * we are careful to avoid racing with them.
-		 */
-		while (count--) {
-			if (_reports->get(rbuf)) {
-				ret += sizeof(*rbuf);
-				rbuf++;
-			}
-		}
+	perf_begin(_sample_perf);
 
-		/* if there was no data, warn the caller */
-		return ret ? ret : -EAGAIN;
-	}
+	// lectures des registres
+	transfer(&cmd[0], 1, val1, 2); // envoie la commande au slave pour faire un read AvgVCell
+	transfer(&cmd[1], 1, val2, 2); // envoie la commande au slave pour faire un read AvgCell3
+	transfer(&cmd[2], 1, val3, 2); // envoie la commande au slave pour faire un read AvgCell2
+	transfer(&cmd[3], 1, val4, 2); // envoie la commande au slave pour faire un read AvgCell1
+	transfer(&cmd[4], 1, val5, 2); // envoie la commande au slave pour faire un read RepCap
+	transfer(&cmd[5], 1, val6, 2); // envoie la commande au slave pour faire un read Current
+	transfer(&cmd[6], 1, val7, 2); // envoie la commande au slave pour faire un read AvgCurrent
+	transfer(&cmd[7], 1, val8, 2); // envoie la commande au slave pour faire un read TTE (Time To Empty)
+	transfer(&cmd[8], 1, val9, 2); // envoie la commande au slave pour faire un read TTF (Time To Full)
+	transfer(&cmd[9], 1, val10, 2); // envoie la commande au slave pour faire un read	RepSOC
 
-	/* manual measurement - run one conversion */
-	do {
-		_reports->flush();
 
-		/* wait for it to complete */
-		usleep(_cycling_rate * 2);
 
-		/* run the collection phase */
-		if (OK != collect()) {
-			ret = -EIO;
-			break;
-		}
+	// publish des valeurs lu sur le MAX17205 (et conditionnement des valeurs) (VOIR TABLEAU 1 PAGE 26 DE LA DATASHEET)
+	report->avg_vcell = (float)(((int)val1[1] * 256) | (int)val1[0])/12800.0f;	// average cell voltage (V)
+	report->avg_vcell3 = (float)(((int)val2[1] * 256) | (int)val2[0])/12800.0f;	// cell 3 voltage (V)
+	report->avg_vcell2 = (float)(((int)val3[1] * 256) | (int)val3[0])/12800.0f;	// cell 2 voltage (V)
+	report->avg_vcell1 = (float)(((int)val4[1] * 256) | (int)val4[0])/12800.0f;	// cell 1 voltage (V)
 
-		/* state machine will have generated a report, copy it out */
-		if (_reports->get(rbuf)) {
-			ret = sizeof(*rbuf);
-		}
+	report->rep_cap = (float)(((int)val5[1] * 256) | (int)val5[0])*((5.0f/1000.0f)/(_parameters.rsense / 1000.0f));		// reported capacity (mAh)
 
-	} while (0);
+	report->current = (float)(int16_t((val6[1] * 256) | val6[0]))*((1.5625f/1000.0f)/(_parameters.rsense / 1000.0f));	// current (mA)
+	report->avg_current = (float)(int16_t((val7[1] * 256) | val7[0]))*((1.5625f/1000.0f)/(_parameters.rsense / 1000.0f));		// average current (mA)
 
-	return ret;
+	report->tte = (float)(((int)val8[1] * 256) | (int)val8[0])/640.0f;		// time to empty (hr)
+	report->ttf = (float)(((int)val9[1] * 256) | (int)val9[0])/640.0f;		// time to full (hr)
+	report->rep_soc = (float)(((int)val10[1] * 256) | (int)val10[0])/256.0f;		// reported state of charge (%)
+
+	return buflen;
 }
 
 
@@ -498,24 +502,7 @@ CHARGING_I2C::collect()
 	int ret = -EIO;
 
 	struct charging_info_s report;
-
-	static float BAT_CAP_REG;
-
-	static uint8_t BAT_CAP_REG_LSB;
-	static uint8_t BAT_CAP_REG_MSB;
-
-	static uint8_t BAT_FULL_CAP_REG_LSB;
-	static uint8_t BAT_FULL_CAP_REG_MSB;
-
-	static uint8_t RSENSE_REG_LSB;
-	static uint8_t RSENSE_REG_MSB;
-
-	//static uint8_t NEW_nNVCfG0_LSB;
-	//static uint8_t NEW_nNVCfG0_MSB;
-
-	static uint16_t Current_PackCfg; // to store current configuration and modify BALCFG bits to change balancing threshold
-	static uint8_t NEW_PackCfg_LSB;
-	static uint8_t NEW_PackCfg_MSB;
+	struct battery_status_s battery_report;
 
 	// update parameters for config or reading of MAX17205
 	parameters_update();
@@ -529,7 +516,7 @@ CHARGING_I2C::collect()
 		set_device_address(0x36); /* Address in 7bit format (0x6C -> 0x36)*/
 
 		// commandes pour lire les valeurs pertinentes sur le MAX17205 (voir plus bas pour les valeurs lues)
-		uint8_t cmd[11] = {0x19,0xD2,0xD3,0xD4,0x05,0x0A,0x0B,0x11,0x20,0x06,0xB8};
+		uint8_t cmd[11] = {0x19,0xD2,0xD3,0xD4,0x05,0x0A,0x0B,0x11,0x20,0x06,0X35};
 
 		// valeurs à lire sur le MAX17205
 		uint8_t val1[2] = {0,0};
@@ -542,6 +529,7 @@ CHARGING_I2C::collect()
 		uint8_t val8[2] = {0,0};
 		uint8_t val9[2] = {0,0};
 		uint8_t val10[2] = {0,0};
+		uint8_t val11[2] = {0,0};
 
 		perf_begin(_sample_perf);
 
@@ -556,6 +544,7 @@ CHARGING_I2C::collect()
 		ret = transfer(&cmd[7], 1, val8, 2); // envoie la commande au slave pour faire un read TTE (Time To Empty)
 		ret = transfer(&cmd[8], 1, val9, 2); // envoie la commande au slave pour faire un read TTF (Time To Full)
 		ret = transfer(&cmd[9], 1, val10, 2); // envoie la commande au slave pour faire un read	RepSOC
+		ret = transfer(&cmd[10], 1, val11, 2); // envoie la commande au slave pour faire un read	RepSOC
 
 		//ret = OK;
 
@@ -573,13 +562,57 @@ CHARGING_I2C::collect()
 		report.avg_vcell1 = (float)(((int)val4[1] * 256) | (int)val4[0])/12800.0f;	// cell 1 voltage (V)
 
 		report.rep_cap = (float)(((int)val5[1] * 256) | (int)val5[0])*((5.0f/1000.0f)/(_parameters.rsense / 1000.0f));		// reported capacity (mAh)
-
+		bat_full_cap = (float)(((int)val11[1] * 256) | (int)val11[0])*((5.0f/1000.0f)/(_parameters.rsense / 1000.0f));
+		// bat_full_cap = _parameters.bat_cap;
 		report.current = (float)(int16_t((val6[1] * 256) | val6[0]))*((1.5625f/1000.0f)/(_parameters.rsense / 1000.0f));	// current (mA)
 		report.avg_current = (float)(int16_t((val7[1] * 256) | val7[0]))*((1.5625f/1000.0f)/(_parameters.rsense / 1000.0f));		// average current (mA)
 
 		report.tte = (float)(((int)val8[1] * 256) | (int)val8[0])/640.0f;		// time to empty (hr)
 		report.ttf = (float)(((int)val9[1] * 256) | (int)val9[0])/640.0f;		// time to full (hr)
-		report.rep_soc = (float)(((int)val10[1] * 256) | (int)val10[0])/256.0f;		// reported state of charge (%)
+		report.rep_soc = (float)(((int)val10[1] * 256) | (int)val10[0])/256.0f;
+		// report.rep_soc = report.rep_cap/(_parameters.bat_cap*1.0f) * 100;	// reported state of charge (%)
+
+		battery_report.voltage_v = report.avg_vcell3 + report.avg_vcell2 + report.avg_vcell1;
+		battery_report.voltage_filtered_v = battery_report.voltage_v;
+		battery_report.current_a = report.current / 1000.0f;
+		battery_report.current_filtered_a = battery_report.current_a;
+		battery_report.average_current_a = report.avg_current / 1000.0f;
+		battery_report.discharged_mah = -1;
+		battery_report.remaining = report.rep_soc / 100.0f;
+		battery_report.scale = -1;
+		battery_report.temperature = 0;
+		battery_report.cell_count = 3;
+		battery_report.connected = true;
+		battery_report.system_source = true;
+		battery_report.priority = 0;
+		battery_report.capacity = report.rep_cap;
+		battery_report.cycle_count = -1;
+		battery_report.run_time_to_empty = report.tte;
+		battery_report.average_time_to_empty = 0;
+		battery_report.serial_number = 0;
+		battery_report.is_powering_off = false;
+		if(report.avg_vcell1 < 3.5f ||
+			report.avg_vcell1 < 3.5f ||
+			report.avg_vcell1 < 3.5f)
+		{
+			battery_report.warning = battery_report.BATTERY_WARNING_LOW;
+		} 
+		else if(report.avg_vcell1 < 3.3f ||
+			report.avg_vcell1 < 3.3f ||
+			report.avg_vcell1 < 3.3f)
+		{
+			battery_report.warning = battery_report.BATTERY_WARNING_CRITICAL;
+		} 
+		else if(report.avg_vcell1 < 3.1f ||
+			report.avg_vcell1 < 3.1f ||
+			report.avg_vcell1 < 3.1f)
+		{
+			battery_report.warning = battery_report.BATTERY_WARNING_EMERGENCY;
+		} 
+		else
+		{
+			battery_report.warning = battery_report.BATTERY_WARNING_NONE;
+		}
 
 		last_report = report;
 
@@ -587,178 +620,72 @@ CHARGING_I2C::collect()
 		/////////////////////////////////////////////////////////////////////////////////////////
 		// CONFIGURATION DU MAX17205 SI LE PARAMETRE is_new_bat EST A 1
 		/////////////////////////////////////////////////////////////////////////////////////////
-	else if((int)(_parameters.is_new_bat) == 1)
-	{
-		errx(1,"NVconfig CONFIRMED! Proceeding to config in 10 seconds.");
-		errx(1,"If this is not wanted, cut the power NOW !");
-		usleep(10000000); //Sleep for 10 seconds
+    else if((int)(_parameters.is_new_bat) == 1)
+    {
+        /* Safety */
+        usleep(10000000);
 
-		// on met ladresse pour faire un read des parametres (0x16 selon la chip -> 0x0B selon la nomenclature du driver)
-		BAT_CAP_REG = _parameters.bat_cap * 1.0f/(0.005f/(_parameters.rsense / 1000.0f));
+        uint8_t data1,data2,addressreg;
+        uint8_t dataArray[3];
 
-		// on calcul les LSB et MSB a programmer selon la capacité désirée
-		BAT_CAP_REG_LSB = (uint8_t)((uint16_t)(BAT_CAP_REG) & 0x00FF);
-		BAT_CAP_REG_MSB = (uint8_t)(((uint16_t)(BAT_CAP_REG) & 0xFF00)/256.0f);
+        set_device_address(0x0B);
 
-		BAT_FULL_CAP_REG_LSB = (uint8_t)((uint16_t)(BAT_CAP_REG+0.16f*BAT_CAP_REG) & 0x00FF);
-		BAT_FULL_CAP_REG_MSB = (uint8_t)(((uint16_t)(BAT_CAP_REG+0.16f*BAT_CAP_REG) & 0xFF00)/256.0f);
+        for(int i = 0; i<95; i++)
+        {
+            data1 = register_data[i] & 0x00FF;
+            data2 = (register_data[i] & 0xFF00)>>8;
+            addressreg = register_address[i] & 0x00FF;
 
-		// on calcul les LSB et MSB a programmer selon la résistance pour mesurer le courant que lon choisie
-		RSENSE_REG_LSB = (uint8_t)((uint16_t)(_parameters.rsense*100.0f) & 0x00FF);
-		RSENSE_REG_MSB = (uint8_t)(((uint16_t)(_parameters.rsense*100.0f) & 0xFF00)/256.0f);
+            dataArray[0] = addressreg;
+            dataArray[1] = data1;
+            dataArray[2] = data2;
 
+            transfer(dataArray, 3, nullptr, 0);
+        }
 
-		// adresses de registre et valeurs correspondantes pour configurer le MAX17205 (3S 1000 mAh LiPo)
-		uint8_t charging_reg[15] = {0xA0,0xA1,0xA2,0xA3,0xA5,0xA8,0xA9,0xB3,0xB5,0xB7,0xB8,0xB9,0xCF,0xB8,0XC8};
-		// config par défault a mettre dans les registre (8 bits LSB then 8 bits MSB)
-		uint8_t charging_config[26] = {0x3C,0x00,0x1B,0x80,0x0B,0x04,0x08,0x85,0x02,0x44,0xFE,0x0C,0x01,0xF4,0x01,0xF4,0x0E,0xA3,0x22,0x41,0x01,0x00,0x00,0x06,0x00,0xC8};
+        set_device_address(0x36);
 
-		perf_begin(_sample_perf);
+        /* Clear the ClearComm.NVerror register */
+        uint8_t DataToSend_1[3] = {0x61,0x00,0x00};
+        transfer(DataToSend_1, 3, nullptr, 0);
 
-		// premiere étape de programmation: setter chaque registre
-		set_device_address(0x0B); // slave adress -> 0x16
+        /* Send 0xE904 to the command register to initiate a block command write */
+        uint8_t DataToSend_2[3] = {0x60,0x04,0xE9};
+        transfer(DataToSend_2, 3, nullptr, 0);
 
-		uint8_t val11[2] = {0,0};
+        /* Wait for the copy to complete */
+        usleep(5000000);
 
-		// pour configurer Cgain à la valeur désiré.... (FONCTION ENLEVÉE)
-		/*
-		ret = transfer((uint8_t*)0xB8, 1, val11, 2); // envoie la commande au slave pour faire un read-> read à nNVCfg0
-		nNVCfG0 = (uint16_t)((val11[1] * 256) | val11[0]);
-		nNVCfG0 = nNVCfG0 | 0x0040;
-	    	NEW_nNVCfG0_LSB = (uint8_t)((uint16_t)(nNVCfG0) & 0x00FF);
-	    	NEW_nNVCfG0_MSB = (uint8_t)(((uint16_t)(nNVCfG0) & 0xFF00)/256.0f);
-		*/
+        /*Check if EEPROM write was successful */
+        uint8_t buffer[2] = {0,0};
+        uint8_t regcommstat[1] = {0x60};
+        ret = transfer(regcommstat, 1, buffer, 2); // Fait une lecture de l'etat du NV register
+        uint16_t NVStatus = ((uint16_t)((buffer[1] * 256) | buffer[0]) & 0b0000000000000100)>>2;
+        if(NVStatus )
+        {
+            warnx("NV ERROR ACTIVE");
+        }
 
-		// pour configurer le balancing threshold à la valeur désirée
-		// 0 - 000 -> no balance
-		// 1 - 001 -> 2.5 mV
-		// 2 - 010 -> 5.0 mV
-		// 3 - 011 -> 10.0 mV
-		// 4 - 100 -> 20.0 mV
-		// 5 - 101 -> 40.0 mV
-		// 6 - 110 -> 80.0 mV
-		// 7 - 111 -> 160.0 mV
+        /* Send 0x000F to the command register to POR the IC*/
+        uint8_t DataToSend_3[3] = {0x60,0x0F,0x00};
+        transfer(DataToSend_3, 3, nullptr, 0);
 
-		ret = transfer(&charging_reg[8], 1, val11, 2); // envoie la commande au slave pour faire un read-> read à nNVCfg0
-		Current_PackCfg = (uint16_t)((val11[1] * 256) | val11[0]);
+        /* Wait for firmware reboot */
+        usleep(5000000);
 
-		Current_PackCfg = Current_PackCfg & 0b1111111100011111;
+        /* Execute a POR Reboot */
+        uint8_t DataToSend_4[3] = {0xBB,0x01,0x00};
+        transfer(DataToSend_4, 3, nullptr, 0);
 
-		if((int)(_parameters.balance_threshold) == 0)
-			Current_PackCfg = Current_PackCfg | 0b0000000000000000;
-		else if((int)(_parameters.balance_threshold) == 1)
-			Current_PackCfg = Current_PackCfg | 0b0000000000100000;
-		else if((int)(_parameters.balance_threshold) == 2)
-			Current_PackCfg = Current_PackCfg | 0b0000000001000000;
-		else if((int)(_parameters.balance_threshold) == 3)
-			Current_PackCfg = Current_PackCfg | 0b0000000001100000;
-		else if((int)(_parameters.balance_threshold) == 4)
-			Current_PackCfg = Current_PackCfg | 0b0000000010000000;
-		else if((int)(_parameters.balance_threshold) == 5)
-			Current_PackCfg = Current_PackCfg | 0b0000000010100000;
-		else if((int)(_parameters.balance_threshold) == 6)
-			Current_PackCfg = Current_PackCfg | 0b0000000011000000;
-		else if((int)(_parameters.balance_threshold) == 7)
-			Current_PackCfg = Current_PackCfg | 0b0000000011100000;
-		else
-			Current_PackCfg = Current_PackCfg | 0b0000000010000000; // default blancing threshold to 20 mV if user value is not valid
+        /* TPOR is 10ms */
+        usleep(5000000);
 
-		NEW_PackCfg_LSB = (uint8_t)((uint16_t)(Current_PackCfg) & 0x00FF);
-		NEW_PackCfg_MSB = (uint8_t)(((uint16_t)(Current_PackCfg) & 0xFF00)/256.0f);
-
-		uint8_t test11[3] = {charging_reg[0],charging_config[1],charging_config[0]};
-		uint8_t test12[3] = {charging_reg[1],charging_config[3],charging_config[2]};
-		uint8_t test13[3] = {charging_reg[2],charging_config[5],charging_config[4]};
-		uint8_t test14[3] = {charging_reg[3],charging_config[7],charging_config[6]};
-		uint8_t test15[3] = {charging_reg[4],BAT_FULL_CAP_REG_LSB,BAT_FULL_CAP_REG_MSB};
-		uint8_t test16[3] = {charging_reg[5],charging_config[11],charging_config[10]};
-		uint8_t test17[3] = {charging_reg[6],BAT_CAP_REG_LSB,BAT_CAP_REG_MSB};
-		uint8_t test18[3] = {charging_reg[7],BAT_CAP_REG_LSB,BAT_CAP_REG_MSB};
-		uint8_t test19[3] = {charging_reg[8],charging_config[17],charging_config[16]};
-		uint8_t test110[3] = {charging_reg[9],charging_config[19],charging_config[18]};
-		uint8_t test111[3] = {charging_reg[10],charging_config[21],charging_config[20]};
-		uint8_t test112[3] = {charging_reg[11],charging_config[23],charging_config[22]};
-		uint8_t test113[3] = {charging_reg[12],RSENSE_REG_LSB,RSENSE_REG_MSB};
-		//uint8_t test114[3] = {charging_reg[13],NEW_nNVCfG0_LSB,NEW_nNVCfG0_MSB};
-		//uint8_t test115[3] = {charging_reg[14],0x00,0x20};
-		uint8_t test116[3] = {charging_reg[8],NEW_PackCfg_LSB,NEW_PackCfg_MSB};
-
-
-		// configure registre pour la capacité de la battery
-		ret = transfer(test11, 3, nullptr, 0); // envoie l'adresse du registre à configurer
-		ret = transfer(test12, 3, nullptr, 0); // envoie l'adresse du registre à configurer
-		ret = transfer(test13, 3, nullptr, 0); // envoie l'adresse du registre à configurer
-		ret = transfer(test14, 3, nullptr, 0); // envoie l'adresse du registre à configurer
-		ret = transfer(test15, 3, nullptr, 0); // envoie l'adresse du registre à configurer
-		ret = transfer(test16, 3, nullptr, 0); // envoie l'adresse du registre à configurer
-		ret = transfer(test17, 3, nullptr, 0); // envoie l'adresse du registre à configurer
-		ret = transfer(test18, 3, nullptr, 0); // envoie l'adresse du registre à configurer
-		ret = transfer(test19, 3, nullptr, 0); // envoie l'adresse du registre à configurer
-		ret = transfer(test110, 3, nullptr, 0); // envoie l'adresse du registre à configurer
-		ret = transfer(test111, 3, nullptr, 0); // envoie l'adresse du registre à configurer
-		ret = transfer(test112, 3, nullptr, 0); // envoie l'adresse du registre à configurer
-		ret = transfer(test113, 3, nullptr, 0); // envoie l'adresse du registre à configurer
-		//ret = transfer(test115, 3, nullptr, 0); // envoie l'adresse du registre à configurer
-		//ret = transfer(test114, 3, nullptr, 0); // envoie l'adresse du registre à configurer
-		ret = transfer(test116, 3, nullptr, 0); // envoie l'adresse du registre à configurer
-
-		/* Deuxieme etape : Clear CommStat.NVError */
-		set_device_address(0x36); //slave adress -> 0x6C
-
-		/* Clear the ClearComm.NVerror register */
-		uint8_t CommStatRegister = (0x61);
-		uint8_t DataToSend[3] = {0x61,0x00,0x00};
-		ret = transfer(DataToSend, 3, nullptr, 0);
-
-		/* Send 0xE904 to the command register to initiate a block command write */
-		//uint8_t CommandRegister = (0x60);
-		uint8_t DataToSend_1[3] = {0x60,0x04,0xE9};
-		ret = transfer(DataToSend_1, 3, nullptr, 0);
-
-		/* Wait for the copy to complete */
-		usleep(5000000);
-
-		/*Check if EEPROM write was successful */
-		DataToSend[0] = CommStatRegister;
-		uint8_t valbuffer[2] = {0,0};
-		ret = transfer(&DataToSend[0], 1, valbuffer, 2); // Fait une lecture de l'etat du NV register
-		uint16_t NVStatus = ((uint16_t)((valbuffer[1] * 256) | valbuffer[0]) & 0b0000000000000100)>>2;
-		if(NVStatus)
-		{
-			warnx("NV ERROR ACTIVE, CONFIG WRITE FAILED");
-		}
-
-		/* Send 0x000F to the command register to POR the IC*/
-		//CommandRegister = (0x60);
-		uint8_t DataToSend_2[3] = {0x60,0x0F,0x00};
-		ret = transfer(DataToSend_2, 3, nullptr, 0);
-
-		/* Wait for firmware reboot */
-		usleep(5000000);
-
-		/* Execute a POR Reboot */
-		//uint8_t CounterRegister = (0xBB);
-		uint8_t DataToSend_3[3] = {0xBB,0x01,0x00};
-		transfer(DataToSend_3, 3, nullptr, 0);
-
-		// publish des valeurs lu sur le MAX17205 (et conditionnement des valeurs) (VOIR TABLEAU 1 PAGE 26 DE LA DATASHEET)
-		//struct charging_info_s report;
-		report.avg_vcell = 1;
-		report.avg_vcell3 = 1;
-		report.avg_vcell2 = 1;
-		report.avg_vcell1 = 1;
-		report.rep_cap = 1;
-		report.current = 1;
-		report.avg_current = 1;
-		report.tte = 1;
-		report.ttf = 1;
-		report.rep_soc = 1;
-
-		/* SetNewBat Value to 0 so we don't go back in the Config Loop*/
-		_parameters.is_new_bat = 0;
+        /* Reset is_new_bat value to 0 */
+        _parameters.is_new_bat = 0;
+        param_set(_parameter_handles.is_new_bat, &_parameters.is_new_bat);
 
 	}
-		/////////////////////////////////////////////////////////////////////////////////////////
+		///////////////////////////[b]///////////////////////
 		// PARAMETRE is_new_batt NON VALIDE (on)
 		/////////////////////////////////////////////////////////////////////////////////////////
 	else
@@ -779,12 +706,17 @@ CHARGING_I2C::collect()
 		report.rep_soc = 0;
 	}
 
+	if (_battery_pub != nullptr){
+		orb_publish(ORB_ID(battery_status), _battery_pub, &battery_report);
+	}
+
 	/* publish it, if we are the primary */
 	if (_charging_info_topic != nullptr) {
 		orb_publish(ORB_ID(charging_info), _charging_info_topic, &report);
 	}
 
-	_reports->force(&report);
+
+	_reports->force(&battery_report);
 
 	/* notify anyone waiting for data */
 	poll_notify(POLLIN);
@@ -803,32 +735,12 @@ CHARGING_I2C::start()
 	_collect_phase = false;
 	_reports->flush();
 
-	// tente de subsriber au topic du charging_info car des info sont envoyer dans 2 sens
-	// TODO: tester cela et si marche pas, créer un nouveau topic pour recevoir des infos et non les envoyer
-	_charging_info_sub_2 = orb_subscribe(ORB_ID(charging_info_2));
-
 	warn("fonction start work_queue");
 
 	/* schedule a cycle to start things */
 	//
 	work_queue(HPWORK, &_work, (worker_t)&CHARGING_I2C::cycle_trampoline, this, 5);
 
-	// /* notify about state change */
-	// struct subsystem_info_s info = {};
-	// info.present = true;
-	// info.enabled = true;
-	// info.ok = true;
-	// info.subsystem_type = subsystem_info_s::SUBSYSTEM_TYPE_RANGEFINDER;
-
-	// static orb_advert_t pub = nullptr;
-
-	// if (pub != nullptr) {
-	// 	orb_publish(ORB_ID(subsystem_info), pub, &info);
-
-	// } else {
-	// 	pub = orb_advertise(ORB_ID(subsystem_info), &info);
-
-	// }
 }
 
 void
@@ -922,6 +834,7 @@ CHARGING_I2C::print_info()
 	printf("cell 2 voltage : %.2f V\n", (double)(last_report.avg_vcell2));
 	printf("cell 3 voltage : %.2f V\n", (double)(last_report.avg_vcell3));
 	printf("capacity : %f mAh\n",(double)(last_report.rep_cap));
+	printf("full capacity : %f mAh\n",(double)(bat_full_cap));
 	printf("current : %.2f mA\n",(double)(last_report.current));
 	printf("average current : %.2f mA\n",(double)(last_report.avg_current));
 	printf("time to empty : %f hr\n",(double)(last_report.tte));
@@ -931,6 +844,76 @@ CHARGING_I2C::print_info()
 	_reports->print_info("report queue");
 
 
+}
+
+void
+CHARGING_I2C::checkEeprom()
+{
+    /* Set I2C Address*/
+    set_device_address(0x36);
+
+    /* Sends NV number of tries remaining command */
+    uint8_t DataToSend_10[3] = {0x60,0xFA,0xE2};
+    transfer(DataToSend_10, 3, nullptr, 0);
+
+    /* Set I2C Address */
+    set_device_address(0x0B);
+
+    /* Check for Power status */
+    uint8_t dataret[2] = {0,0};
+    uint8_t reg[1] = {0xED};
+    transfer(reg, 1, dataret, 2);
+
+    int WriteLeft = 255;
+
+    /* Calculate Number of remaining writes */
+    if((int)dataret[0] == 0b00000000)
+    {
+        WriteLeft = 8;
+    }
+    else if((int)dataret[0] == 0b00000001)
+    {
+        WriteLeft = 7;
+    }
+    else if((int)dataret[0] == 0b00000011)
+    {
+        WriteLeft = 6;
+    }
+    else if((int)dataret[0] == 0b00000111)
+    {
+        WriteLeft = 5;
+    }
+    else if((int)dataret[0] == 0b00001111)
+    {
+        WriteLeft = 4;
+    }
+    else if((int)dataret[0] == 0b00011111)
+    {
+        WriteLeft = 3;
+    }
+    else if((int)dataret[0] == 0b00111111)
+    {
+        WriteLeft = 2;
+    }
+    else if((int)dataret[0] == 0b01111111)
+    {
+        WriteLeft = 1;
+    }
+    else if((int)dataret[0] == 0b11111111)
+    {
+        WriteLeft = 0;
+    }
+
+    if(WriteLeft != 255)
+    {
+        warnx("Number of EEPROM Writes left : %d",WriteLeft);
+    }
+    else
+    {
+        warnx("EEPROM read error !");
+    }
+
+    return;
 }
 
 /**
@@ -1057,65 +1040,28 @@ namespace  charging_i2c
 	void
 	test()
 	{
-		struct distance_sensor_s report;
+		struct charging_info_s report;
 		ssize_t sz;
-		int ret;
 
 		int fd = open(MAX17205_DEVICE_PATH, O_RDONLY);
 
 		if (fd < 0) {
-			err(1, "%s open failed (try 'srf02_i2c start' if the driver is not running", MAX17205_DEVICE_PATH);
+			err(1, "%s open failed (try 'charging_i2c start' if the driver is not running", MAX17205_DEVICE_PATH);
 		}
 
 		/* do a simple demand read */
 		sz = read(fd, &report, sizeof(report));
 
 		if (sz != sizeof(report)) {
-			err(1, "immediate read failed");
+			err(1, "immediate read failed 1 %d %d",sz,sizeof(report));
 		}
 
 		warnx("single read");
-		warnx("measurement: %0.2f m", (double)report.current_distance);
+		warnx("measurement total: %0.2f m", (double)report.avg_vcell);
+		warnx("measurement cell 1: %0.2f m", (double)report.avg_vcell1);
+		warnx("measurement cell 2: %0.2f m", (double)report.avg_vcell2);
+		warnx("measurement cell 3: %0.2f m", (double)report.avg_vcell3);
 		warnx("time:        %llu", report.timestamp);
-
-		/* start the sensor polling at 2Hz */
-		if (OK != ioctl(fd, SENSORIOCSPOLLRATE, 2)) {
-			errx(1, "failed to set 2Hz poll rate");
-		}
-
-		/* read the sensor 5x and report each value */
-		for (unsigned i = 0; i < 5; i++) {
-			struct pollfd fds;
-
-			/* wait for data to be ready */
-			fds.fd = fd;
-			fds.events = POLLIN;
-			ret = poll(&fds, 1, 2000);
-
-			if (ret != 1) {
-				errx(1, "timed out waiting for sensor data");
-			}
-
-			/* now go get it */
-			sz = read(fd, &report, sizeof(report));
-
-			if (sz != sizeof(report)) {
-				err(1, "periodic read failed");
-			}
-
-			warnx("periodic read %u", i);
-			warnx("valid %u", (float)report.current_distance > report.min_distance
-							  && (float)report.current_distance < report.max_distance ? 1 : 0);
-			warnx("measurement: %0.3f", (double)report.current_distance);
-			warnx("time:        %llu", report.timestamp);
-		}
-
-		/* reset the sensor polling to default rate */
-		if (OK != ioctl(fd, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_DEFAULT)) {
-			errx(1, "failed to set default poll rate");
-		}
-
-		errx(0, "PASS");
 	}
 
 /**
@@ -1153,6 +1099,8 @@ namespace  charging_i2c
 
 		printf("state @ %p\n", g_dev);
 		g_dev->print_info();
+
+		g_dev->checkEeprom();
 
 
 		exit(0);
