@@ -89,12 +89,12 @@ enum NAV_CMD {
 	NAV_CMD_VIDEO_START_CAPTURE = 2500,
 	NAV_CMD_VIDEO_STOP_CAPTURE = 2501,
 	NAV_CMD_DO_VTOL_TRANSITION = 3000,
+	NAV_CMD_SLEEP_ICARUS = 3002,
 	NAV_CMD_FENCE_RETURN_POINT = 5000,
 	NAV_CMD_FENCE_POLYGON_VERTEX_INCLUSION = 5001,
 	NAV_CMD_FENCE_POLYGON_VERTEX_EXCLUSION = 5002,
 	NAV_CMD_FENCE_CIRCLE_INCLUSION = 5003,
 	NAV_CMD_FENCE_CIRCLE_EXCLUSION = 5004,
-	NAV_CMD_SLEEP_ICARUS = 52336,
 	NAV_CMD_INVALID = UINT16_MAX /* ensure that casting a large number results in a specific error */
 };
 
@@ -162,8 +162,8 @@ struct mission_item_s {
 	};
 	struct {
 		uint16_t frame : 4,					/**< mission frame */
-			 origin : 3,						/**< how the mission item was generated */
-			 loiter_exit_xtrack : 1,			/**< exit xtrack location: 0 for center of loiter wp, 1 for exit location */
+			 origin : 3,					/**< how the mission item was generated */
+			 loiter_exit_xtrack : 1,		/**< exit xtrack location: 0 for center of loiter wp, 1 for exit location */
 			 force_heading : 1,				/**< heading needs to be reached */
 			 altitude_is_relative : 1,		/**< true if altitude is relative from start point	*/
 			 autocontinue : 1,				/**< true if next waypoint should follow after this one */
