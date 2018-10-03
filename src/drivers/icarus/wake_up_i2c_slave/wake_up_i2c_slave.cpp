@@ -72,6 +72,7 @@
 #include <uORB/uORB.h>
 #include <uORB/topics/subsystem_info.h>
 #include <uORB/topics/distance_sensor.h>
+#include <uORB/topics/go_to_sleep.h>
 
 // on inclu le nouveau UORB topic spécifique pour le driver charging i2c
 //#include <uORB/topics/charging_info.h>
@@ -154,6 +155,9 @@ private:
         	param_t test_dodo;
 
 	}	_parameter_handles;		/**< handles for interesting parameters */
+
+	struct go_to_sleep_s _go_sleep_s  {};
+	
 	///////////////////////////////////////////////////////////////////////////////////
 
 	float				_min_distance;
@@ -165,6 +169,8 @@ private:
 	bool				_collect_phase;
 	int					_class_instance;
 	int					_orb_class_instance;
+	int 				_sub_go_sleep;
+	
 
 	orb_advert_t		_distance_sensor_topic;
 	// test topic custom pour charging i2c
@@ -267,6 +273,8 @@ WAKE_UP_I2C_SLAVE::WAKE_UP_I2C_SLAVE(int bus, int address) :
 {
 	_parameter_handles.nb_sec_dodo = param_find("TEMPS_DODO_SEC");
 	_parameter_handles.test_dodo = param_find("TEST_MODE_DODO");
+
+	_sub_go_sleep = orb_subscribe(ORB_ID(go_to_sleep));
 
   	parameters_update();
 	/* enable debug() calls */
@@ -664,17 +672,31 @@ WAKE_UP_I2C_SLAVE::collect()
 	// update parameters for config or reading of MAX17205
 	parameters_update();
 
-	if((int)_parameters.test_dodo == 1 && flag_dodo == 0)
+	// the value can be changed in mission.cpp
+	memset(&_go_sleep_s, 0, sizeof(_go_sleep_s));
+	orb_copy(ORB_ID(go_to_sleep), _sub_go_sleep, &_go_sleep_s);
+
+
+	if(((int)_parameters.test_dodo == 1 && flag_dodo == 0) || _go_sleep_s.sleep)
 	{
+		if((int)_parameters.test_dodo == 1 && flag_dodo == 0){
+			flag_dodo = 1;
+			_parameters.test_dodo = 0.0f;
+			param_set(_parameter_handles.test_dodo,&_parameters.test_dodo);
 
-		flag_dodo = 1;
-		_parameters.test_dodo = 0.0f;
-		param_set(_parameter_handles.test_dodo,&_parameters.test_dodo);
+			temps_dodo_MSB_01 = (uint8_t)(((uint32_t)_parameters.nb_sec_dodo / 16777216) & 0x000000FF); // shift a droite de 24 bit
+			temps_dodo_MSB_02 = (uint8_t)(((uint32_t)_parameters.nb_sec_dodo / 65536) & 0x000000FF); // shift a droite de 24 bit
+			temps_dodo_LSB_01 = (uint8_t)(((uint32_t)_parameters.nb_sec_dodo / 256) & 0x000000FF); // shift a droite de 24 bit
+			temps_dodo_LSB_02 = (uint8_t)(((uint32_t)_parameters.nb_sec_dodo / 1) & 0x000000FF); // shift a droite de 24 bit
+		}else{
+			temps_dodo_MSB_01 = (uint8_t)(((uint32_t)_go_sleep_s.sleep_time_ms / 16777216) & 0x000000FF); // shift a droite de 24 bit
+			temps_dodo_MSB_02 = (uint8_t)(((uint32_t)_go_sleep_s.sleep_time_ms / 65536) & 0x000000FF); // shift a droite de 24 bit
+			temps_dodo_LSB_01 = (uint8_t)(((uint32_t)_go_sleep_s.sleep_time_ms / 256) & 0x000000FF); // shift a droite de 24 bit
+			temps_dodo_LSB_02 = (uint8_t)(((uint32_t)_go_sleep_s.sleep_time_ms / 1) & 0x000000FF); // shift a droite de 24 bit
 
-		temps_dodo_MSB_01 = (uint8_t)(((uint32_t)_parameters.nb_sec_dodo / 16777216) & 0x000000FF); // shift a droite de 24 bit
-		temps_dodo_MSB_02 = (uint8_t)(((uint32_t)_parameters.nb_sec_dodo / 65536) & 0x000000FF); // shift a droite de 24 bit
-		temps_dodo_LSB_01 = (uint8_t)(((uint32_t)_parameters.nb_sec_dodo / 256) & 0x000000FF); // shift a droite de 24 bit
-		temps_dodo_LSB_02 = (uint8_t)(((uint32_t)_parameters.nb_sec_dodo / 1) & 0x000000FF); // shift a droite de 24 bit
+		}
+
+		
 
 		/* read from the sensor */
 		uint8_t test1[5] = {0x31,temps_dodo_MSB_01,temps_dodo_MSB_02,temps_dodo_LSB_01,temps_dodo_LSB_02};
