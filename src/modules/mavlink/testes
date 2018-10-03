@@ -1,0 +1,12 @@
+mavlink stream -d /dev/ttyS0 -s HEARTBEAT -r 1000
+mavlink start -d /dev/ttyS0 -b 57600 -r 1000
+
+
+
+mavlink stream -d /dev/ttyS1 -s HEARTBEAT -r 1000
+mavlink start -d /dev/ttyS1 -b 57600 -m iridium -r 1000
+
+mavlink start -d /dev/ttyS1 -b 57600 -r 1000
+
+
+mavlink start -d /dev/ttyS1 -m magic -b 57600 -r 1000
