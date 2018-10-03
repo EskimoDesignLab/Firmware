@@ -516,10 +516,8 @@ LPS33::cycle_trampoline(void *arg)
 void
 LPS33::cycle()
 {
-    warnx("Cycle phase Entered");
 	/* collection phase? */
 	if (_collect_phase) {
-        warnx("Cycle phase begin");
 		/* perform collection */
 		if (OK != collect()) {
 			DEVICE_DEBUG("collection error");
@@ -612,8 +610,6 @@ LPS33::collect()
 
     int	ret =0;
     //uint8_t check_counter;
-
-    warnx("COLLECTION PHASE BEGIN");
 
 	perf_begin(_sample_perf);
     struct baro_report new_report;

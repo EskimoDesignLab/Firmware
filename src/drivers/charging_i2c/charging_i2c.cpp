@@ -1028,7 +1028,6 @@ void
 CHARGING_I2C::cycle_trampoline(void *arg)
 {
 
-	warn("fonction cycle trampoline");
 	CHARGING_I2C *dev = (CHARGING_I2C *)arg;
 
 	dev->cycle();

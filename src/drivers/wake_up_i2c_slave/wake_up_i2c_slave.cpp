@@ -803,7 +803,6 @@ void
 WAKE_UP_I2C_SLAVE::cycle_trampoline(void *arg)
 {
 
-	warn("fonction cycle trampoline");
 	WAKE_UP_I2C_SLAVE *dev = (WAKE_UP_I2C_SLAVE *)arg;
 
 	dev->cycle();
