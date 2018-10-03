@@ -1317,6 +1317,25 @@ MavlinkMissionManager::parse_mavlink_mission_item(const mavlink_mission_item_t *
 		mission_item->time_inside = 0.0f;
 
 		switch (mavlink_mission_item->command) {
+		case MAV_CMD_SLEEP_ICARUS:
+			mission_item->nav_cmd = NAV_CMD_SLEEP_ICARUS;
+			//maybe we need to add a time variable in struct mission_item_s
+			mission_item->time_inside = mavlink_mission_item->param1;
+
+
+			// TEST ONLY : TO REMOVE
+			/*
+			_go_sleep_s.sleep = true;
+			_go_sleep_s.sleep_time_ms = 1000;
+			_go_sleep_s.timestamp = hrt_absolute_time();
+			orb_publish(ORB_ID(go_to_sleep), _pub_go_sleep, &_go_sleep_s);
+
+			_last_cmd_was_sleep = false;
+			usleep(1000);
+			*/
+			// TEST ONLY
+		break;
+
 		case MAV_CMD_NAV_WAYPOINT:
 			mission_item->nav_cmd = NAV_CMD_WAYPOINT;
 			mission_item->time_inside = mavlink_mission_item->param1;
