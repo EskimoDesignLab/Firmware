@@ -994,8 +994,6 @@ CHARGING_I2C::start()
 	// TODO: tester cela et si marche pas, créer un nouveau topic pour recevoir des infos et non les envoyer
 	_charging_info_sub_2 = orb_subscribe(ORB_ID(charging_info_2));
 
-	warn("fonction start work_queue");
-
 	/* schedule a cycle to start things */
 	//
 	work_queue(HPWORK, &_work, (worker_t)&CHARGING_I2C::cycle_trampoline, this, 5);
