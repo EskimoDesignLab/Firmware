@@ -1260,6 +1260,7 @@ FixedwingPositionControl::control_position(const math::Vector<2> &curr_pos, cons
 					if(!flag_message_takeoff_normal)
 					{
 						mavlink_log_info(&_mavlink_log_pub,"take off normal");
+						warnx("take off normal");
 						flag_message_takeoff_normal = true;
 					}
 
@@ -1270,6 +1271,7 @@ FixedwingPositionControl::control_position(const math::Vector<2> &curr_pos, cons
 					if(!flag_message_takeoff_custom)
 					{
 						mavlink_log_info(&_mavlink_log_pub,"take off custom");
+						warnx("take off custom");
 						flag_message_takeoff_custom = true;
 					}
 

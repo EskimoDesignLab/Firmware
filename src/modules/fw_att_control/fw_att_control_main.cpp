@@ -1319,7 +1319,7 @@ FixedwingAttitudeControl::task_main()
 
 								if(hrt_absolute_time() - present_time >= (int)_parameters.take_off_custom_time_01) //
 								{
-									warn("Etienne Start");
+									warnx("Etienne Start");
 									present_time = hrt_absolute_time();
 									mode_seq0 = false;
 									mode_seq2 = true;
@@ -1415,7 +1415,7 @@ FixedwingAttitudeControl::task_main()
 									(int) _parameters.take_off_custom_time_09) // 120 ms
 								{
                                     warnx("Transit to Px4 Control");
-                                    present_time = hrt_absolute_time();
+									present_time = hrt_absolute_time();
 									mode_seq8 = false;
 									mode_seq9 = true;
 								}
