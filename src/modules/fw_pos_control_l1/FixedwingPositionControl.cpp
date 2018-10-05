@@ -1273,10 +1273,10 @@ FixedwingPositionControl::control_position(const math::Vector<2> &curr_pos, cons
 						flag_message_takeoff_custom = true;
 					}
 
-					_att_sp.roll_body = 0.0f;
-					_att_sp.yaw_body = 0.0f;
-					_att_sp.fw_control_yaw = 0.0f;
-					_att_sp.pitch_body = _parameters.take_off_custom_pitch;
+                    _att_sp.roll_body = _runway_takeoff.getRoll(_l1_control.nav_roll());
+                    _att_sp.yaw_body = _runway_takeoff.getYaw(_l1_control.nav_bearing());
+                    _att_sp.fw_control_yaw = _runway_takeoff.controlYaw();
+                    _att_sp.pitch_body = _runway_takeoff.getPitch(get_tecs_pitch());
 
 					_att_sp.decollage_custom = true;
 				}
