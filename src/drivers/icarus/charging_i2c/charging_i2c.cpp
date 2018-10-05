@@ -735,7 +735,7 @@ CHARGING_I2C::start()
 	_collect_phase = false;
 	_reports->flush();
 
-	warn("fonction start work_queue");
+	// warn("fonction start work_queue");
 
 	/* schedule a cycle to start things */
 	//
@@ -753,7 +753,7 @@ void
 CHARGING_I2C::cycle_trampoline(void *arg)
 {
 
-	warn("fonction cycle trampoline");
+	// warn("fonction cycle trampoline");
 	CHARGING_I2C *dev = (CHARGING_I2C *)arg;
 
 	dev->cycle();
