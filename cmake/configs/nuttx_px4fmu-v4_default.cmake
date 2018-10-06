@@ -22,7 +22,7 @@ set(config_module_list
 	drivers/icarus/wake_up_i2c_slave
 	drivers/magnetometer/hmc5883
 	
-	drivers/batt_smbus
+	#drivers/batt_smbus
 	#drivers/blinkm
 	#drivers/camera_trigger
 	drivers/gps

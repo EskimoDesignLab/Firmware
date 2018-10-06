@@ -164,7 +164,7 @@
 /* Legacy default */
 
 #if !defined(BOARD_NUMBER_BRICKS)
-#  define BOARD_NUMBER_BRICKS 0
+#  define BOARD_NUMBER_BRICKS 1
 #  if !defined(BOARD_ADC_BRICK_VALID)
 #    define BOARD_ADC_BRICK_VALID (1)
 #  endif
