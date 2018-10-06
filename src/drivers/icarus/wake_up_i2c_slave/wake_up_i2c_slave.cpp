@@ -470,7 +470,6 @@ WAKE_UP_I2C_SLAVE::collect()
 		sleep_LSB_02 = (uint8_t)(((uint32_t)_parameters.nb_sec_sleep) & 0x000000FF); 
 
 
-		/* read from the sensor */
 		uint8_t test1[5] = {GO_SLEEP_MESS_OVHD,sleep_MSB_01,sleep_MSB_02,sleep_LSB_01,sleep_LSB_02};
 
 		perf_begin(_sample_perf);
@@ -491,6 +490,19 @@ WAKE_UP_I2C_SLAVE::collect()
 		sleep_MSB_02 = (uint8_t)(((uint32_t)_go_sleep_s.sleep_time_ms >> 16) & 0x000000FF); 
 		sleep_LSB_01 = (uint8_t)(((uint32_t)_go_sleep_s.sleep_time_ms >> 8) & 0x000000FF); 
 		sleep_LSB_02 = (uint8_t)(((uint32_t)_go_sleep_s.sleep_time_ms) & 0x000000FF); 
+
+		uint8_t test1[5] = {GO_SLEEP_MESS_OVHD,sleep_MSB_01,sleep_MSB_02,sleep_LSB_01,sleep_LSB_02};
+
+		perf_begin(_sample_perf);
+
+		ret = transfer(test1, 5, nullptr, 0); // envoie l'adresse du registre à configurer
+
+		if (ret < 0) {
+			DEVICE_DEBUG("error reading from sensor: %d", ret);
+			perf_count(_comms_errors);
+			perf_end(_sample_perf);
+			return ret;
+		}
 	}
 	else if((int)_parameters.test_sleep == 0 && flag_sleep == 1)
 	{
