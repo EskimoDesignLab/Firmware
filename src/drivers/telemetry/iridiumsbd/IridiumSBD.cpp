@@ -934,6 +934,7 @@ satcom_result_code IridiumSBD::read_at(uint8_t *rx_buf, int *rx_len, int16_t tim
 						return SATCOM_RESULT_OK;
 
 					} else if (!strncmp((const char *)&rx_buf[last_rn_idx], "ERROR\r\n", 7)) {
+						VERBOSE_INFO("ERROR");
 						return SATCOM_RESULT_ERROR;
 
 					} else if (!strncmp((const char *)&rx_buf[last_rn_idx], "SBDRING\r\n", 9)) {
@@ -945,6 +946,8 @@ satcom_result_code IridiumSBD::read_at(uint8_t *rx_buf, int *rx_len, int16_t tim
 						return SATCOM_RESULT_SBDRING;
 
 					} else if (!strncmp((const char *)&rx_buf[last_rn_idx], "READY\r\n", 7)) {
+						VERBOSE_INFO("GET READY");
+
 						return SATCOM_RESULT_READY;
 
 					} else if (!strncmp((const char *)&rx_buf[last_rn_idx], "HARDWARE FAILURE", 16)) {
@@ -995,11 +998,11 @@ satcom_uart_status IridiumSBD::open_uart(char *uart_name)
 		return SATCOM_UART_OPEN_FAIL;
 	}
 
-	// set the UART speed to 115200
+	// set the UART speed to 19200
 	struct termios uart_config;
 	tcgetattr(uart_fd, &uart_config);
 	uart_config.c_cflag &= ~(CSTOPB | PARENB | CCTS_OFLOW | CRTS_IFLOW);
-	cfsetspeed(&uart_config, 115200);
+	cfsetspeed(&uart_config, 19200);
 	tcsetattr(uart_fd, TCSANOW, &uart_config);
 
 	VERBOSE_INFO("UART opened");
