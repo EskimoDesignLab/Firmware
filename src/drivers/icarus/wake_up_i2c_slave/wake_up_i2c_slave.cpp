@@ -116,7 +116,7 @@ private:
 	
 	struct {
 
-		float nb_sec_sleep;
+		int32_t nb_sec_sleep;
 		float test_sleep;
 
 	}	_parameters;			
@@ -448,8 +448,6 @@ WAKE_UP_I2C_SLAVE::collect()
 	static uint8_t sleep_LSB_01 = 0;
 	static uint8_t sleep_LSB_02 = 0;
 
-	static int flag_sleep = 0;
-
 	// update parameters for config or reading
 	parameters_update();
 
@@ -458,16 +456,16 @@ WAKE_UP_I2C_SLAVE::collect()
 	orb_copy(ORB_ID(go_to_sleep), _sub_go_sleep, &_go_sleep_s);
 
 	// Sleep request coming from a parameter change
-	if((int)_parameters.test_sleep == 1 && flag_sleep == 0)
+	if((int)_parameters.test_sleep == 1)
 	{
-		flag_sleep = 1;
 		_parameters.test_sleep = 0.0f;
 		param_set(_parameter_handles.test_sleep,&_parameters.test_sleep);
+		sleep(1);
 
-		sleep_MSB_01 = (uint8_t)(((uint32_t)_parameters.nb_sec_sleep >> 24) & 0x000000FF); 
-		sleep_MSB_02 = (uint8_t)(((uint32_t)_parameters.nb_sec_sleep >> 16) & 0x000000FF); 
-		sleep_LSB_01 = (uint8_t)(((uint32_t)_parameters.nb_sec_sleep >> 8) & 0x000000FF); 
-		sleep_LSB_02 = (uint8_t)(((uint32_t)_parameters.nb_sec_sleep) & 0x000000FF); 
+		sleep_MSB_01 = (uint8_t)((_parameters.nb_sec_sleep >> 24) & 0x000000FF); 
+		sleep_MSB_02 = (uint8_t)((_parameters.nb_sec_sleep >> 16) & 0x000000FF); 
+		sleep_LSB_01 = (uint8_t)((_parameters.nb_sec_sleep >> 8) & 0x000000FF); 
+		sleep_LSB_02 = (uint8_t)(_parameters.nb_sec_sleep & 0x000000FF); 
 
 
 		uint8_t test1[5] = {GO_SLEEP_MESS_OVHD,sleep_MSB_01,sleep_MSB_02,sleep_LSB_01,sleep_LSB_02};
@@ -503,10 +501,6 @@ WAKE_UP_I2C_SLAVE::collect()
 			perf_end(_sample_perf);
 			return ret;
 		}
-	}
-	else if((int)_parameters.test_sleep == 0 && flag_sleep == 1)
-	{
-		flag_sleep = 0;
 	}
 	
 	ret = OK;
