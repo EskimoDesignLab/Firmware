@@ -255,8 +255,8 @@ if ver hwcmp PX4FMU_V4
 then
 
 
-	mpu6000 -R 2 -s -T 20602 start
-	mpu9250 -R 6 -s start
+	mpu6000 -R 6 -s -T 20602 start
+	mpu9250 -R 2 -s start
 	lps33 start
 	charging_i2c start
 	wake_up_i2c_slave start
