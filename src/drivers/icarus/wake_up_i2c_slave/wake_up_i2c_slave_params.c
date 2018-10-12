@@ -56,7 +56,7 @@
  * @reboot_required true
  * @group PID
  */
-PARAM_DEFINE_FLOAT(TEMPS_DODO_SEC, 5.0f);
+PARAM_DEFINE_INT32(TEMPS_DODO_SEC, 5);
 
 /**
  * -> 0 if monitoring / 1 if configuring / other to desactivate the charging driver
