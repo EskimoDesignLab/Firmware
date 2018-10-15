@@ -236,7 +236,7 @@ PARAM_DEFINE_FLOAT(TK_RUD_OFF, 0.00f);
  * @increment 0.01
  * @group FW Attitude Control
  */
-PARAM_DEFINE_FLOAT(TK_NOSEPITCH_KP, 0.20f);
+PARAM_DEFINE_FLOAT(TK_NOSEPITCH_KP, 0.30f);
 
 /**
 * Custom stabilized pitch controler : Gain Kd
@@ -260,7 +260,7 @@ PARAM_DEFINE_FLOAT(TK_NOSEPITCH_KD, 0.02f);
  * @increment 0.01
  * @group FW Attitude Control
  */
-PARAM_DEFINE_FLOAT(TK_NOSEYAWRATE, 0.20f);
+PARAM_DEFINE_FLOAT(TK_NOSEYAWRATE, 0.40f);
 
 /**
  * Custom stabilized roll controler : Gain Kp
@@ -272,7 +272,7 @@ PARAM_DEFINE_FLOAT(TK_NOSEYAWRATE, 0.20f);
  * @increment 0.001
  * @group FW Attitude Control
  */
-PARAM_DEFINE_FLOAT(TK_NOSEROLL_KP, 1.000f);
+PARAM_DEFINE_FLOAT(TK_NOSEROLL_KP, 2.000f);
 
 /**
 * Custom stabilized roll controler : Gain Kd
