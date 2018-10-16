@@ -592,20 +592,20 @@ CHARGING_I2C::collect()
 		battery_report.serial_number = 0;
 		battery_report.is_powering_off = false;
 		if(report.avg_vcell1 < 3.5f ||
-			report.avg_vcell1 < 3.5f ||
-			report.avg_vcell1 < 3.5f)
+			report.avg_vcell2 < 3.5f ||
+			report.avg_vcell3 < 3.5f)
 		{
 			battery_report.warning = battery_report.BATTERY_WARNING_LOW;
 		} 
 		else if(report.avg_vcell1 < 3.3f ||
-			report.avg_vcell1 < 3.3f ||
-			report.avg_vcell1 < 3.3f)
+			report.avg_vcell2 < 3.3f ||
+			report.avg_vcell3 < 3.3f)
 		{
 			battery_report.warning = battery_report.BATTERY_WARNING_CRITICAL;
 		} 
 		else if(report.avg_vcell1 < 3.1f ||
-			report.avg_vcell1 < 3.1f ||
-			report.avg_vcell1 < 3.1f)
+			report.avg_vcell2 < 3.1f ||
+			report.avg_vcell3 < 3.1f)
 		{
 			battery_report.warning = battery_report.BATTERY_WARNING_EMERGENCY;
 		} 
