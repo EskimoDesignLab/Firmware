@@ -66,6 +66,7 @@ public:
 	virtual int			ioctl(struct file *filp, int cmd, unsigned long arg);
 	void				print_info();
 	void				checkEeprom();
+	void 				gaugereset();
 
 protected:
 	virtual int			probe();
@@ -847,6 +848,17 @@ CHARGING_I2C::print_info()
 }
 
 void
+CHARGING_I2C::gaugereset()
+{
+	/* Set I2C adress */
+    set_device_address(0x36);
+
+    /* Send a command to reset the Fuel Gauge */
+    uint8_t DataToSend[3] = {0xBB,0x01,0x00};
+    transfer(DataToSend, 3, nullptr, 0);
+}
+
+void
 CHARGING_I2C::checkEeprom()
 {
     /* Set I2C Address*/
@@ -936,6 +948,7 @@ namespace  charging_i2c
 	void	test();
 	void	reset();
 	void	info();
+	void	gaugereset();
 
 /**
  * Start the driver.
@@ -1102,8 +1115,23 @@ namespace  charging_i2c
 
 		g_dev->checkEeprom();
 
-
 		exit(0);
+	}
+
+/**
+ * Sends a command to the MAX17205 for a fuel gauge reset 
+ */
+	void
+	gaugereset()
+	{
+		if (g_dev == nullptr) {
+			errx(1, "driver not running");
+		}
+
+		printf("Resetting Fuel Gauge");
+		g_dev->gaugereset();
+
+		exit(0);	
 	}
 
 } /* namespace */
@@ -1146,5 +1174,12 @@ charging_i2c_main(int argc, char *argv[])
 		charging_i2c::info();
 	}
 
-	errx(1, "unrecognized command, try 'start', 'test', 'reset' or 'info'");
+	/*
+	 * Send a Gauge Reset command
+	 */
+	if(!strcmp(argv[1], "gaugereset")){
+		charging_i2c::gaugereset();
+	}
+
+	errx(1, "unrecognized command, try 'start', 'test', 'reset' , 'gaugereset' or 'info'");
 }
