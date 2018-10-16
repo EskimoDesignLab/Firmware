@@ -574,10 +574,10 @@ CHARGING_I2C::collect()
 
 		battery_report.voltage_v = report.avg_vcell3 + report.avg_vcell2 + report.avg_vcell1;
 		battery_report.voltage_filtered_v = battery_report.voltage_v;
-		battery_report.current_a = report.current / 1000.0f;
+		battery_report.current_a = report.current / 10.0f;
 		battery_report.current_filtered_a = battery_report.current_a;
-		battery_report.average_current_a = report.avg_current / 1000.0f;
-		battery_report.discharged_mah = -1;
+		battery_report.average_current_a = report.avg_current / 10.0f;
+		battery_report.discharged_mah = bat_full_cap - report.rep_cap;
 		battery_report.remaining = report.rep_soc / 100.0f;
 		battery_report.scale = -1;
 		battery_report.temperature = 0;
@@ -587,7 +587,7 @@ CHARGING_I2C::collect()
 		battery_report.priority = 0;
 		battery_report.capacity = report.rep_cap;
 		battery_report.cycle_count = -1;
-		battery_report.run_time_to_empty = report.tte;
+		battery_report.run_time_to_empty = report.tte*3600;
 		battery_report.average_time_to_empty = 0;
 		battery_report.serial_number = 0;
 		battery_report.is_powering_off = false;
