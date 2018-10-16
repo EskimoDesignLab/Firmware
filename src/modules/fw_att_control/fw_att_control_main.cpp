@@ -1408,7 +1408,7 @@ FixedwingAttitudeControl::task_main()
 
                                 _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
                                 _actuators_airframe.control[1] = (_pitchErr*_parameters.take_off_nosePitch_kp - _ctrl_state.pitch_rate*_parameters.take_off_nosePitch_kd) * r2servo + _parameters.take_off_horizontal_pos;
-                                _actuators_airframe.control[2] = ( - _ctrl_state.yaw_rate*_parameters.take_off_noseYawRate_kp) * r2servo + _parameters.take_off_rudder_offset;
+                                _actuators_airframe.control[2] = ( - _ctrl_state.yaw_rate*_parameters.take_off_noseYawRate_kp) + _parameters.take_off_rudder_offset;
                                 _actuators.control[actuator_controls_s::INDEX_ROLL] = (_rollErr*_parameters.take_off_noseRoll_kp - _ctrl_state.roll_rate*_parameters.take_off_noseRoll_kd) + _parameters.trim_roll;
                                 _actuators.control[actuator_controls_s::INDEX_PITCH] = _parameters.trim_pitch;
 								if (hrt_absolute_time() - present_time >=
