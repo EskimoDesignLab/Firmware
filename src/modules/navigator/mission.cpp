@@ -578,7 +578,7 @@ Mission::set_mission_items()
 	if(_last_cmd_was_sleep){
 		/* send one vector */
 		_go_sleep_s.sleep = true;
-		_go_sleep_s.sleep_time_ms = _mission_item.params[0];
+		_go_sleep_s.sleep_time_ms = (uint32_t)_mission_item.params[0];
 		_go_sleep_s.timestamp = hrt_absolute_time();
 
 		if(_pub_go_sleep == nullptr){
