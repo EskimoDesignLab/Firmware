@@ -1354,8 +1354,7 @@ MavlinkMissionManager::parse_mavlink_mission_item(const mavlink_mission_item_t *
 		case MAV_CMD_SLEEP_ICARUS:
 			_mavlink->send_statustext_info("MAV_CMD_SLEEP_ICARUS");
 			mission_item->nav_cmd = NAV_CMD_SLEEP_ICARUS;
-			//maybe we need to add a time variable in struct mission_item_s
-			mission_item->time_inside = mavlink_mission_item->param1;
+			mission_item->params[0] = mavlink_mission_item->param1;
 
 		break;
 

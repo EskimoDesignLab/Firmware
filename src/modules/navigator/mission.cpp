@@ -66,6 +66,8 @@ Mission::Mission(Navigator *navigator) :
 	MissionBlock(navigator),
 	ModuleParams(navigator)
 {
+	_go_sleep_s.sleep = false;
+	_go_sleep_s.sleep_time_ms = 10;
 	_pub_go_sleep = orb_advertise(ORB_ID(go_to_sleep), &_go_sleep_s);
 }
 
@@ -576,13 +578,19 @@ Mission::set_mission_items()
 	if(_last_cmd_was_sleep){
 		/* send one vector */
 		_go_sleep_s.sleep = true;
-		_go_sleep_s.sleep_time_ms = 1000;
+		_go_sleep_s.sleep_time_ms = _mission_item.params[0];
 		_go_sleep_s.timestamp = hrt_absolute_time();
-		orb_publish(ORB_ID(go_to_sleep), _pub_go_sleep, &_go_sleep_s);
 
+		if(_pub_go_sleep == nullptr){
+			_pub_go_sleep = orb_advertise(ORB_ID(go_to_sleep), &_go_sleep_s);
+		}else{
+			orb_publish(ORB_ID(go_to_sleep), _pub_go_sleep, &_go_sleep_s);
+		}
+
+		char to_print[80];
+		sprintf(to_print,"GO TO SLEEP ! time: %d\n",_go_sleep_s.sleep_time_ms);
+		mavlink_log_critical(_navigator->get_mavlink_log_pub(),to_print);
 		_last_cmd_was_sleep = false;
-		usleep(1000);
-		// GO IN SLEEP MODE
 	}
 	
 	/* reset the altitude foh (first order hold) logic, if altitude foh is enabled (param) a new foh element starts now */
@@ -937,6 +945,7 @@ Mission::set_mission_items()
 		
 		if (_mission_item.nav_cmd == NAV_CMD_SLEEP_ICARUS) {	
 			// GO IN SLEEP MODE ICARUS
+			mavlink_log_critical(_navigator->get_mavlink_log_pub(),"BEFORE GO TO SLEEP!");
 			_last_cmd_was_sleep = true;
 			_mission_item.autocontinue = true;
 		}
