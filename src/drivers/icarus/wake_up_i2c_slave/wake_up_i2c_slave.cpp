@@ -107,6 +107,7 @@ public:
 	* Diagnostics - print some basic information about the driver.
 	*/
 	void				print_info();
+	void sleeping();
     void                transferI2C(const uint8_t* sendData,uint8_t sendDataSize, uint8_t* receivedData, uint8_t receivedDataSize);
 
 protected:
@@ -211,6 +212,7 @@ WAKE_UP_I2C_SLAVE::WAKE_UP_I2C_SLAVE(int bus, int address) :
 	_collect_phase(false),
 	_class_instance(-1),
 	_orb_class_instance(-1),
+	_sub_go_sleep(-1),
 	_sample_perf(perf_alloc(PC_ELAPSED, "go_sleep_i2c_read")),
 	_comms_errors(perf_alloc(PC_COUNT, "go_sleep_i2c_comms_errors")),
 	_cycle_counter(0),	/* initialising counter for cycling function to zero */
@@ -219,8 +221,6 @@ WAKE_UP_I2C_SLAVE::WAKE_UP_I2C_SLAVE(int bus, int address) :
 {
 	_parameter_handles.nb_sec_sleep = param_find("TEMPS_DODO_SEC");
 	_parameter_handles.test_sleep = param_find("TEST_MODE_DODO");
-
-	_sub_go_sleep = orb_subscribe(ORB_ID(go_to_sleep));
 
   	parameters_update();
 	/* enable debug() calls */
@@ -438,6 +438,17 @@ WAKE_UP_I2C_SLAVE::measure()
 	return ret;
 }
 
+void WAKE_UP_I2C_SLAVE::sleeping(){
+
+	printf("sub_id : %d!\n",_sub_go_sleep);
+	
+	if(_go_sleep_s.sleep){
+		printf("sleep = true, time_s =  %d\n",_go_sleep_s.sleep_time_ms);
+	}else{
+		printf("sleep = false, time_s =  %d\n",_go_sleep_s.sleep_time_ms);
+	}
+}
+
 int
 WAKE_UP_I2C_SLAVE::collect()
 {
@@ -451,9 +462,19 @@ WAKE_UP_I2C_SLAVE::collect()
 	// update parameters for config or reading
 	parameters_update();
 
-	// the value can be changed in mission.cpp
-	memset(&_go_sleep_s, 0, sizeof(_go_sleep_s));
-	orb_copy(ORB_ID(go_to_sleep), _sub_go_sleep, &_go_sleep_s);
+	// the value change in mission.cpp
+	if (_sub_go_sleep < 0) {
+		_sub_go_sleep = orb_subscribe(ORB_ID(go_to_sleep));
+		orb_set_interval(_sub_go_sleep, 200);
+	}
+
+	bool ok_to_sleep = false;
+	orb_check(_sub_go_sleep,&ok_to_sleep);
+	_go_sleep_s.sleep = false;
+
+	if(ok_to_sleep){
+		orb_copy(ORB_ID(go_to_sleep), _sub_go_sleep, &_go_sleep_s);
+	}
 
 	// Sleep request coming from a parameter change
 	if((int)_parameters.test_sleep == 1)
@@ -516,8 +537,6 @@ WAKE_UP_I2C_SLAVE::start()
 	/* reset the report ring and state machine */
 	_collect_phase = false;
 	_reports->flush();
-
-	_sub_go_sleep = orb_subscribe(ORB_ID(go_to_sleep));
 
 	warn("fonction start work_queue");
 
@@ -603,6 +622,7 @@ WAKE_UP_I2C_SLAVE::print_info()
 	perf_print_counter(_comms_errors);
 	printf("poll interval:  %u ticks\n", _measure_ticks);
 	_reports->print_info("report queue");
+	sleeping();
 }
 
 void
