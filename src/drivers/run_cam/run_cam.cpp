@@ -33,17 +33,22 @@
 
 /**
  * @file run_cam.c
- * Control for RunCam Split 2
+ * Control for RunCam Split
  *
  * @author Adriatik Sermaxhaj <adri.sermax@gmail.com>
- * https://github.com/ManagementCenterInnsbruck/XMC_Cleanflight/blob/1a326ac8096c3eba6d6b2e0b22144bcacce1ecf3/src/main/io/rcsplit.c
+ * 
  */
+#include <strings.h>
+#include <px4_config.h>
+#include <px4_workqueue.h>
+#include <sys/types.h>
 
-#include <px4_tasks.h>
 #include <px4_posix.h>
-#include <string.h>
 #include <drivers/drv_hrt.h>
 #include <termios.h>
+
+#include <uORB/uORB.h>
+#include <uORB/topics/camera_trigger.h>
 
 static const int RCSPLIT_PACKET_HEADER      = 0x55;
 static const int RCSPLIT_PACKET_CMD_CTRL    = 0x01;
@@ -59,7 +64,7 @@ class RC_Spit
 
 
     int                     rcSplitInit         (char *uart_name);
-    int                     RunCamStateMachine  (char* uart_name, char* cmd);
+    int                     RunCamStateMachine  (char* cmd);
 
 
 
@@ -84,14 +89,22 @@ class RC_Spit
         RCSPLIT_CTRL_ARGU_WHO_ARE_YOU = 0xFF,
     };
 
-    rcsplitState_e oldState;
-    int _uart_fd;
+    bool            topic_initialized;
+    rcsplitState_e  _oldState;
+    int             _uart_fd;
+    work_s		    _work;
+    int             camera_trigger_sub_fd;
+    bool            new_data_camera_trigger;
+
+    struct camera_trigger_s _camera_trigger_s {};
 
     void                    sendCtrlCommand     (int port,rcsplit_ctrl_argument_e argument);
     uint8_t                 crc_high_first      (uint8_t *ptr, uint8_t len);
     int                     enable_flow_control (bool enabled,int uart_fd);
     int                     set_baud            (int uart_fd, char *device);
     void                    usage               (void);
+    static void             RC_trampoline       (void *arg);
+    void                    RC_task             (void);
 
 };
 
@@ -99,7 +112,13 @@ RC_Spit::
 RC_Spit()
 {
     _uart_fd = -1;
-	oldState = RCSPLIT_STATE_VIDEO_STARTED;
+	_oldState = RCSPLIT_STATE_VIDEO_STARTED;
+    topic_initialized = false;
+    camera_trigger_sub_fd = -1;
+
+    memset(&_camera_trigger_s, 0, sizeof(_camera_trigger_s));
+
+    memset(&_work, 0, sizeof(_work));
 }
 
 RC_Spit::
@@ -126,15 +145,15 @@ RC_Spit::crc_high_first(uint8_t *ptr, uint8_t len)
 }
 
 int 
-RC_Spit::RunCamStateMachine(char* uart_name, char* cmd){
+RC_Spit::RunCamStateMachine(char* cmd){
 
     rcsplit_ctrl_argument_e split_cmd = RCSPLIT_CTRL_ARGU_WHO_ARE_YOU;
-    rcsplitState_e newState = oldState;
+    rcsplitState_e newState = _oldState;
 
-    int test_uart = rcSplitInit(uart_name);
 
-    if (test_uart < 0) {
-        printf("ERROR opening UART %s, aborting..\n", uart_name);
+    if (_uart_fd < 0) {
+        printf("ERROR opening UART!\n");
+        return -1;
     }
 
     if (!strcmp(cmd, "rec")){
@@ -149,57 +168,74 @@ RC_Spit::RunCamStateMachine(char* uart_name, char* cmd){
     }
 
 
-    if(newState == RCSPLIT_STATE_VIDEO_STOPPED && oldState == RCSPLIT_STATE_VIDEO_STARTED){
+    if(newState == RCSPLIT_STATE_VIDEO_STOPPED && _oldState == RCSPLIT_STATE_VIDEO_STARTED){
+
         split_cmd = RCSPLIT_CTRL_ARGU_POWER_BTN;
-        sendCtrlCommand(test_uart,split_cmd);
+        sendCtrlCommand(_uart_fd,split_cmd);
         sleep(5);
-    }else if(newState == RCSPLIT_STATE_PHOTO && oldState == RCSPLIT_STATE_VIDEO_STARTED){
+
+    }else if(newState == RCSPLIT_STATE_PHOTO && _oldState == RCSPLIT_STATE_VIDEO_STARTED){
+
         split_cmd = RCSPLIT_CTRL_ARGU_POWER_BTN;
-        sendCtrlCommand(test_uart,split_cmd);
+        sendCtrlCommand(_uart_fd,split_cmd);
         sleep(5);
+
         split_cmd = RCSPLIT_CTRL_ARGU_CHANGE_MODE;
-        sendCtrlCommand(test_uart,split_cmd);
+        sendCtrlCommand(_uart_fd,split_cmd);
 
         //split_cmd = RCSPLIT_CTRL_ARGU_POWER_BTN;
-        //sendCtrlCommand(test_uart,split_cmd);
-    }else if(newState == RCSPLIT_STATE_VIDEO_STARTED && oldState == RCSPLIT_STATE_VIDEO_STOPPED){
+        //sendCtrlCommand(_uart_fd,split_cmd);
+    }else if(newState == RCSPLIT_STATE_VIDEO_STARTED && _oldState == RCSPLIT_STATE_VIDEO_STOPPED){
+
         split_cmd = RCSPLIT_CTRL_ARGU_POWER_BTN;
-        sendCtrlCommand(test_uart,split_cmd);
-    }else if(newState == RCSPLIT_STATE_PHOTO && oldState == RCSPLIT_STATE_VIDEO_STOPPED){
+        sendCtrlCommand(_uart_fd,split_cmd);
+
+    }else if(newState == RCSPLIT_STATE_PHOTO && _oldState == RCSPLIT_STATE_VIDEO_STOPPED){
+
         split_cmd = RCSPLIT_CTRL_ARGU_CHANGE_MODE;
-        sendCtrlCommand(test_uart,split_cmd);
+        sendCtrlCommand(_uart_fd,split_cmd);
 
         //split_cmd = RCSPLIT_CTRL_ARGU_POWER_BTN;
-        //sendCtrlCommand(test_uart,split_cmd);
-    }else if(newState == RCSPLIT_STATE_VIDEO_STARTED && oldState == RCSPLIT_STATE_PHOTO){
+        //sendCtrlCommand(_uart_fd,split_cmd);
+    }else if(newState == RCSPLIT_STATE_VIDEO_STARTED && _oldState == RCSPLIT_STATE_PHOTO){
+
         split_cmd = RCSPLIT_CTRL_ARGU_CHANGE_MODE;
-        sendCtrlCommand(test_uart,split_cmd);
+        sendCtrlCommand(_uart_fd,split_cmd);
+
         split_cmd = RCSPLIT_CTRL_ARGU_CHANGE_MODE;
-        sendCtrlCommand(test_uart,split_cmd);
+        sendCtrlCommand(_uart_fd,split_cmd);
+
         split_cmd = RCSPLIT_CTRL_ARGU_POWER_BTN;
-        sendCtrlCommand(test_uart,split_cmd);
-    }else if(newState == RCSPLIT_STATE_VIDEO_STOPPED && oldState == RCSPLIT_STATE_PHOTO){
+        sendCtrlCommand(_uart_fd,split_cmd);
+
+    }else if(newState == RCSPLIT_STATE_VIDEO_STOPPED && _oldState == RCSPLIT_STATE_PHOTO){
+
         split_cmd = RCSPLIT_CTRL_ARGU_CHANGE_MODE;
-        sendCtrlCommand(test_uart,split_cmd);
+        sendCtrlCommand(_uart_fd,split_cmd);
+
         split_cmd = RCSPLIT_CTRL_ARGU_CHANGE_MODE;
-        sendCtrlCommand(test_uart,split_cmd);
-    }else if(newState == RCSPLIT_STATE_PHOTO && oldState == RCSPLIT_STATE_PHOTO){
+        sendCtrlCommand(_uart_fd,split_cmd);
+
+    }else if(newState == RCSPLIT_STATE_PHOTO && _oldState == RCSPLIT_STATE_PHOTO){
         split_cmd = RCSPLIT_CTRL_ARGU_POWER_BTN;
-        sendCtrlCommand(test_uart,split_cmd);
+        sendCtrlCommand(_uart_fd,split_cmd);
     }else{
         if (!strcmp(cmd, "wifi")) {
-            sendCtrlCommand(test_uart,RCSPLIT_CTRL_ARGU_WIFI_BTN);
+            sendCtrlCommand(_uart_fd,RCSPLIT_CTRL_ARGU_WIFI_BTN);
+
         }else if (!strcmp(cmd, "mode")) {
-            sendCtrlCommand(test_uart,RCSPLIT_CTRL_ARGU_CHANGE_MODE);
+            sendCtrlCommand(_uart_fd,RCSPLIT_CTRL_ARGU_CHANGE_MODE);
+
         }else if (!strcmp(cmd, "who")) {
-            sendCtrlCommand(test_uart,RCSPLIT_CTRL_ARGU_WHO_ARE_YOU);
+            sendCtrlCommand(_uart_fd,RCSPLIT_CTRL_ARGU_WHO_ARE_YOU);
+
         }else{
             usage();
         }
 
     }
 
-    oldState = newState;
+    _oldState = newState;
 
     if(newState == RCSPLIT_STATE_PHOTO){
         printf("State: SNAP\n");
@@ -209,7 +245,7 @@ RC_Spit::RunCamStateMachine(char* uart_name, char* cmd){
         printf("State: STARTED\n");
     }
 
-    return test_uart;
+    return _uart_fd;
 }
 
 
@@ -266,6 +302,8 @@ RC_Spit::rcSplitInit(char *uart_name)
     }
 
     //cameraState = RCSPLIT_STATE_IS_READY;
+
+    work_queue(LPWORK, &_work, (worker_t)&RC_trampoline, this, 100);
 
     return _uart_fd;
 }
@@ -326,6 +364,36 @@ RC_Spit::enable_flow_control(bool enabled,int uart_fd)
 
     return ret;
 }
+
+void
+RC_Spit::RC_trampoline(void *arg)
+{
+	RC_Spit *rc = (RC_Spit *)arg;
+
+	rc->RC_task();
+}
+
+void
+RC_Spit::RC_task(void)
+{
+    if (!topic_initialized) {
+		camera_trigger_sub_fd = orb_subscribe(ORB_ID(camera_trigger));
+		orb_set_interval(camera_trigger_sub_fd, 250);
+
+		topic_initialized = true;
+	}
+
+
+    orb_check(camera_trigger_sub_fd, &new_data_camera_trigger);
+
+    if (new_data_camera_trigger) {
+        orb_copy(ORB_ID(camera_trigger), camera_trigger_sub_fd, &_camera_trigger_s);
+        char cmd[] = "mode"; // for test only: should be "snap": 
+        RunCamStateMachine(cmd);
+    } 
+}
+
+
 void 
 RC_Spit::usage(void)
 {
@@ -359,8 +427,6 @@ run_cam mode
 
 int run_cam_main(int argc, char *argv[])
 {
-	char uart_name[] = "/dev/ttyS6";
-
     if (!strcmp(argv[1], "start")) {
         if(p_rcsplit == nullptr){
             p_rcsplit = new RC_Spit();
@@ -382,21 +448,25 @@ int run_cam_main(int argc, char *argv[])
     }else{
         if(p_rcsplit != nullptr){
             int device_uart = -1;
+
             if(argv[2] == nullptr){
-                device_uart = p_rcsplit->RunCamStateMachine(uart_name,argv[1]);
+                char default_dev[] = "/dev/ttyS6";
+                device_uart = p_rcsplit->rcSplitInit(default_dev);
             }else{
-                device_uart = p_rcsplit->RunCamStateMachine(argv[2],argv[1]);
+                device_uart = p_rcsplit->rcSplitInit(argv[2]);
             }
 
             if(device_uart<0){
                 PX4_INFO("problem with uart initialisation!\n");
+            }else{
+                device_uart = p_rcsplit->RunCamStateMachine(argv[1]);
             }
         }else{
            printf("run_cam is not started!\n"); 
         }
     }
 
-	PX4_INFO("exiting");
+	printf("exiting!\n");
 
 	return 0;
 }
