@@ -42,6 +42,8 @@ mc_att_control start
 
 mc_pos_control start
 
+drop_deleaves start
+
 #
 # Start Land Detector
 #
