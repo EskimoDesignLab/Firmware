@@ -45,44 +45,71 @@
 #include <drivers/drv_hrt.h>
 #include <termios.h>
 
-// packet header and tail
-#define RCSPLIT_PACKET_HEADER    0x55
-#define RCSPLIT_PACKET_CMD_CTRL  0x01
-#define RCSPLIT_PACKET_TAIL      0xaa
-
-typedef enum {
-    RCSPLIT_STATE_UNKNOWN = 0,
-    RCSPLIT_STATE_INITIALIZING,
-    RCSPLIT_STATE_IS_READY,
-    RCSPLIT_STATE_VIDEO_STOPPED,
-    RCSPLIT_STATE_VIDEO_STARTED,
-    RCSPLIT_STATE_PHOTO,
-    RCSPLIT_STATE_SETUP,
-} rcsplitState_e;
-
-// the commands of RunCam Split serial protocol
-typedef enum {
-    RCSPLIT_CTRL_ARGU_INVALID = 0x0,
-    RCSPLIT_CTRL_ARGU_WIFI_BTN = 0x1,
-    RCSPLIT_CTRL_ARGU_POWER_BTN = 0x2,
-    RCSPLIT_CTRL_ARGU_CHANGE_MODE = 0x3,
-    RCSPLIT_CTRL_ARGU_WHO_ARE_YOU = 0xFF,
-} rcsplit_ctrl_argument_e;
-
-__EXPORT int            run_cam_main        (int argc, char *argv[]);
-void                    sendCtrlCommand     (int port,rcsplit_ctrl_argument_e argument);
-int                     rcSplitInit         (char *uart_name);
-uint8_t                 crc_high_first      (uint8_t *ptr, uint8_t len);
-rcsplit_ctrl_argument_e rc_split_cmd        (char *cmd);
-int                     enable_flow_control (bool enabled,int _uart_fd);
-int                     set_baud            (int _uart_fd, char *_device);
-int                     RunCamStateMachine   (char* uart_name, char* cmd);
-
-// communicate with camera device variables
-rcsplitState_e oldState = RCSPLIT_STATE_VIDEO_STARTED;
+static const int RCSPLIT_PACKET_HEADER      = 0x55;
+static const int RCSPLIT_PACKET_CMD_CTRL    = 0x01;
+static const int RCSPLIT_PACKET_TAIL        = 0xaa;
 
 
-uint8_t crc_high_first(uint8_t *ptr, uint8_t len)
+class RC_Spit
+{
+    public:
+
+    RC_Spit();
+	~RC_Spit();
+
+
+    int                     rcSplitInit         (char *uart_name);
+    int                     RunCamStateMachine  (char* uart_name, char* cmd);
+
+
+
+    private:
+
+    enum rcsplitState_e {
+        RCSPLIT_STATE_UNKNOWN = 0,
+        RCSPLIT_STATE_INITIALIZING,
+        RCSPLIT_STATE_IS_READY,
+        RCSPLIT_STATE_VIDEO_STOPPED,
+        RCSPLIT_STATE_VIDEO_STARTED,
+        RCSPLIT_STATE_PHOTO,
+        RCSPLIT_STATE_SETUP,
+    };
+
+    // the commands of RunCam Split serial protocol
+    enum rcsplit_ctrl_argument_e {
+        RCSPLIT_CTRL_ARGU_INVALID = 0x0,
+        RCSPLIT_CTRL_ARGU_WIFI_BTN = 0x1,
+        RCSPLIT_CTRL_ARGU_POWER_BTN = 0x2,
+        RCSPLIT_CTRL_ARGU_CHANGE_MODE = 0x3,
+        RCSPLIT_CTRL_ARGU_WHO_ARE_YOU = 0xFF,
+    };
+
+    rcsplitState_e oldState;
+    int _uart_fd;
+
+    void                    sendCtrlCommand     (int port,rcsplit_ctrl_argument_e argument);
+    uint8_t                 crc_high_first      (uint8_t *ptr, uint8_t len);
+    int                     enable_flow_control (bool enabled,int uart_fd);
+    int                     set_baud            (int uart_fd, char *device);
+    void                    usage               (void);
+
+};
+
+RC_Spit::
+RC_Spit()
+{
+    _uart_fd = -1;
+	oldState = RCSPLIT_STATE_VIDEO_STARTED;
+}
+
+RC_Spit::
+~RC_Spit()
+{
+	close(_uart_fd);
+}
+
+uint8_t 
+RC_Spit::crc_high_first(uint8_t *ptr, uint8_t len)
 {
     uint8_t i;
     uint8_t crc=0x00;
@@ -98,7 +125,8 @@ uint8_t crc_high_first(uint8_t *ptr, uint8_t len)
     return (crc);
 }
 
-int RunCamStateMachine(char* uart_name, char* cmd){
+int 
+RC_Spit::RunCamStateMachine(char* uart_name, char* cmd){
 
     rcsplit_ctrl_argument_e split_cmd = RCSPLIT_CTRL_ARGU_WHO_ARE_YOU;
     rcsplitState_e newState = oldState;
@@ -109,10 +137,10 @@ int RunCamStateMachine(char* uart_name, char* cmd){
         printf("ERROR opening UART %s, aborting..\n", uart_name);
     }
 
-    if (!strcmp(cmd, "record")){
+    if (!strcmp(cmd, "rec")){
         newState = RCSPLIT_STATE_VIDEO_STARTED;
-        printf("cmd:record\n");
-    }else if(!strcmp(cmd, "stop")){
+        printf("cmd:rec\n");
+    }else if(!strcmp(cmd, "nrec")){
         newState = RCSPLIT_STATE_VIDEO_STOPPED;
         printf("cmd:stop\n");
     }else if(!strcmp(cmd, "snap")){
@@ -165,6 +193,8 @@ int RunCamStateMachine(char* uart_name, char* cmd){
             sendCtrlCommand(test_uart,RCSPLIT_CTRL_ARGU_CHANGE_MODE);
         }else if (!strcmp(cmd, "who")) {
             sendCtrlCommand(test_uart,RCSPLIT_CTRL_ARGU_WHO_ARE_YOU);
+        }else{
+            usage();
         }
 
     }
@@ -183,7 +213,8 @@ int RunCamStateMachine(char* uart_name, char* cmd){
 }
 
 
-void sendCtrlCommand(int port,rcsplit_ctrl_argument_e argument)
+void 
+RC_Spit::sendCtrlCommand(int port,rcsplit_ctrl_argument_e argument)
 {
     if (!port)
         return ;
@@ -215,10 +246,11 @@ void sendCtrlCommand(int port,rcsplit_ctrl_argument_e argument)
 }
 
 
-int rcSplitInit(char *uart_name)
+int 
+RC_Spit::rcSplitInit(char *uart_name)
 {
 	// assuming NuttShell is on UART1 (/dev/ttyS0) /
-	int _uart_fd = open(uart_name, O_RDWR | O_NONBLOCK | O_NOCTTY); //
+	_uart_fd = open(uart_name, O_RDWR | O_NONBLOCK | O_NOCTTY); //
 
 	if (_uart_fd < 0) {
 		printf("ERROR opening UART %s, aborting..\n", uart_name);
@@ -239,41 +271,43 @@ int rcSplitInit(char *uart_name)
 }
 
 
-int set_baud(int _uart_fd, char *_device)
+int 
+RC_Spit::set_baud(int uart_fd, char *_device)
 {
     // set baud rate
     int speed = B115200;
     struct termios uart_config;
-    tcgetattr(_uart_fd, &uart_config);
+    tcgetattr(uart_fd, &uart_config);
     // clear ONLCR flag (which appends a CR for every LF)
     uart_config.c_oflag &= ~ONLCR;
 
     /* Set baud rate */
     if (cfsetispeed(&uart_config, speed) < 0 || cfsetospeed(&uart_config, speed) < 0) {
         warnx("ERR SET BAUD %s\n", _device);
-        close(_uart_fd);
+        close(uart_fd);
         return -1;
     }
 
-    if ((tcsetattr(_uart_fd, TCSANOW, &uart_config)) < 0) {
+    if ((tcsetattr(uart_fd, TCSANOW, &uart_config)) < 0) {
         PX4_WARN("ERR SET CONF %s\n", _device);
-        px4_close(_uart_fd);
+        px4_close(uart_fd);
         return -1;
     }
 
     /* setup output flow control */
-    if (enable_flow_control(false,_uart_fd)) {
+    if (enable_flow_control(false,uart_fd)) {
         PX4_WARN("hardware flow disable failed");
     }
 
-    return _uart_fd;
+    return uart_fd;
 }
 
-int enable_flow_control(bool enabled,int _uart_fd)
+int 
+RC_Spit::enable_flow_control(bool enabled,int uart_fd)
 {
     struct termios uart_config;
 
-    int ret = tcgetattr(_uart_fd, &uart_config);
+    int ret = tcgetattr(uart_fd, &uart_config);
 
     if (enabled) {
         uart_config.c_cflag |= CRTSCTS;
@@ -282,7 +316,7 @@ int enable_flow_control(bool enabled,int _uart_fd)
         uart_config.c_cflag &= ~CRTSCTS;
     }
 
-    ret = tcsetattr(_uart_fd, TCSANOW, &uart_config);
+    ret = tcsetattr(uart_fd, TCSANOW, &uart_config);
 
     /*
     if (!ret) {
@@ -292,33 +326,29 @@ int enable_flow_control(bool enabled,int _uart_fd)
 
     return ret;
 }
-
-rcsplit_ctrl_argument_e rc_split_cmd(char *cmd){
-    /*
-    * RCSPLIT_CTRL_ARGU_WIFI_BTN = 0x1,
-    */
-    if (!strcmp(cmd, "wifi")) {
-        return RCSPLIT_CTRL_ARGU_WIFI_BTN;
-    }
-    /*
-    * RCSPLIT_CTRL_ARGU_POWER_BTN = 0x2,
-    */
-    if (!strcmp(cmd, "record") ||
-        !strcmp(cmd, "stop") ||
-        !strcmp(cmd, "snap") ||
-        !strcmp(cmd, "power")) {
-        return RCSPLIT_CTRL_ARGU_POWER_BTN;
-    }
-
-    if (!strcmp(cmd, "mode")) {
-        return RCSPLIT_CTRL_ARGU_CHANGE_MODE;
-    }
-
-    if (!strcmp(cmd, "who")) {
-        return RCSPLIT_CTRL_ARGU_WHO_ARE_YOU;
-    }
-    return RCSPLIT_CTRL_ARGU_WHO_ARE_YOU;
+void 
+RC_Spit::usage(void)
+{
+	printf("usage: run_cam {start|stop|rec|nrec|snap|power|mode|who}\n");
+    printf("usage: start : start a task for trigger");
+    printf("usage: stop  : stop the task for trigger\n");
+    printf("usage: rec   : start recording\n");
+    printf("usage: nrec  : stop recording\n");
+    printf("usage: wifi  : start/stop wifi\n");
+    printf("usage: snap  : take a photo\n");
+    printf("usage: mode  : change mode (photo/video/settings)\n");
+    printf("usage: who   : return uart feedback\n\n");
+    printf("usage: the second argument is used for uart device name \n");
+    printf("Example: run_cam start /dev/ttyS6 \n");
 }
+
+
+namespace
+{
+    RC_Spit *p_rcsplit;
+}
+
+extern "C" __EXPORT int run_cam_main(int argc, char *argv[]);
 
 /*
 run_cam who
@@ -329,19 +359,42 @@ run_cam mode
 
 int run_cam_main(int argc, char *argv[])
 {
-    // set BR = 115200
-    printf("(who | wifi | record | stop | snap | mode)");
-    // input handling
-	char *uart_name = "/dev/ttyS6";
+	char uart_name[] = "/dev/ttyS6";
 
-	if (argc > 2) { 
-        //split_cmd = rc_split_cmd(argv[1]);
-        uart_name = argv[2];
+    if (!strcmp(argv[1], "start")) {
+        if(p_rcsplit == nullptr){
+            p_rcsplit = new RC_Spit();
+
+            if (p_rcsplit == nullptr) {
+                printf("new failed\n");
+                return 1;
+            }
+        }else{
+            printf("Already started!\n");
+        }
+    }else if(!strcmp(argv[1], "stop")){
+        if(p_rcsplit != nullptr){
+            delete p_rcsplit;
+		    p_rcsplit = nullptr;
+        }else{
+            printf("Run_cam is not started!\n");
+        }
+    }else{
+        if(p_rcsplit != nullptr){
+            int device_uart = -1;
+            if(argv[2] == nullptr){
+                device_uart = p_rcsplit->RunCamStateMachine(uart_name,argv[1]);
+            }else{
+                device_uart = p_rcsplit->RunCamStateMachine(argv[2],argv[1]);
+            }
+
+            if(device_uart<0){
+                PX4_INFO("problem with uart initialisation!\n");
+            }
+        }else{
+           printf("run_cam is not started!\n"); 
+        }
     }
-
-    int test_uart = RunCamStateMachine(uart_name,argv[1]);
-
-	close(test_uart);
 
 	PX4_INFO("exiting");
 
