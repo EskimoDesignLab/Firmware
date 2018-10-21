@@ -102,7 +102,7 @@ class RC_Spit
     uint8_t                 crc_high_first      (uint8_t *ptr, uint8_t len);
     int                     enable_flow_control (bool enabled,int uart_fd);
     int                     set_baud            (int uart_fd, char *device);
-    void                    usage               (void);
+    static void             usage               (void);
     static void             RC_trampoline       (void *arg);
     void                    RC_task             (void);
 
@@ -165,6 +165,21 @@ RC_Spit::RunCamStateMachine(char* cmd){
     }else if(!strcmp(cmd, "snap")){
         newState = RCSPLIT_STATE_PHOTO;
         printf("cmd:snap\n");
+    }else if (!strcmp(cmd, "wifi")) {
+        sendCtrlCommand(_uart_fd,RCSPLIT_CTRL_ARGU_WIFI_BTN);
+
+    }else if (!strcmp(cmd, "mode")) {
+        sendCtrlCommand(_uart_fd,RCSPLIT_CTRL_ARGU_CHANGE_MODE);
+
+    }else if (!strcmp(cmd, "who")) {
+        sendCtrlCommand(_uart_fd,RCSPLIT_CTRL_ARGU_WHO_ARE_YOU);
+
+    }else if (!strcmp(cmd, "info")) {
+        usage();
+        printf("camera_trigger.seq = %d \n",_camera_trigger_s.seq);
+        return 0;
+    }else{
+        return 0;
     }
 
 
@@ -219,20 +234,6 @@ RC_Spit::RunCamStateMachine(char* cmd){
     }else if(newState == RCSPLIT_STATE_PHOTO && _oldState == RCSPLIT_STATE_PHOTO){
         split_cmd = RCSPLIT_CTRL_ARGU_POWER_BTN;
         sendCtrlCommand(_uart_fd,split_cmd);
-    }else{
-        if (!strcmp(cmd, "wifi")) {
-            sendCtrlCommand(_uart_fd,RCSPLIT_CTRL_ARGU_WIFI_BTN);
-
-        }else if (!strcmp(cmd, "mode")) {
-            sendCtrlCommand(_uart_fd,RCSPLIT_CTRL_ARGU_CHANGE_MODE);
-
-        }else if (!strcmp(cmd, "who")) {
-            sendCtrlCommand(_uart_fd,RCSPLIT_CTRL_ARGU_WHO_ARE_YOU);
-
-        }else{
-            usage();
-        }
-
     }
 
     _oldState = newState;
@@ -378,7 +379,7 @@ RC_Spit::RC_task(void)
 {
     if (!topic_initialized) {
 		camera_trigger_sub_fd = orb_subscribe(ORB_ID(camera_trigger));
-		orb_set_interval(camera_trigger_sub_fd, 250);
+		orb_set_interval(camera_trigger_sub_fd, 100);
 
 		topic_initialized = true;
 	}
@@ -394,7 +395,7 @@ RC_Spit::RC_task(void)
 }
 
 
-void 
+static void 
 RC_Spit::usage(void)
 {
 	printf("usage: run_cam {start|stop|rec|nrec|snap|power|mode|who}\n");
@@ -427,46 +428,48 @@ run_cam mode
 
 int run_cam_main(int argc, char *argv[])
 {
-    if (!strcmp(argv[1], "start")) {
-        if(p_rcsplit == nullptr){
-            p_rcsplit = new RC_Spit();
+    if(argc>1){
+        if (!strcmp(argv[1], "start")) {
+            if(p_rcsplit == nullptr){
+                p_rcsplit = new RC_Spit();
 
-            if (p_rcsplit == nullptr) {
-                printf("new failed\n");
-                return 1;
+                if (p_rcsplit == nullptr) {
+                    printf("new failed\n");
+                    return 1;
+                }
+            }else{
+                printf("Already started!\n");
+            }
+        }else if(!strcmp(argv[1], "stop")){
+            if(p_rcsplit != nullptr){
+                delete p_rcsplit;
+                p_rcsplit = nullptr;
+            }else{
+                printf("Run_cam is not started!\n");
             }
         }else{
-            printf("Already started!\n");
-        }
-    }else if(!strcmp(argv[1], "stop")){
-        if(p_rcsplit != nullptr){
-            delete p_rcsplit;
-		    p_rcsplit = nullptr;
-        }else{
-            printf("Run_cam is not started!\n");
+            if(p_rcsplit != nullptr){
+                int device_uart = -1;
+
+                if(argv[2] == nullptr){
+                    char default_dev[] = "/dev/ttyS6";
+                    device_uart = p_rcsplit->rcSplitInit(default_dev);
+                }else{
+                    device_uart = p_rcsplit->rcSplitInit(argv[2]);
+                }
+
+                if(device_uart<0){
+                    PX4_INFO("problem with uart initialisation!\n");
+                }else{
+                    device_uart = p_rcsplit->RunCamStateMachine(argv[1]);
+                }
+            }else{
+            printf("run_cam is not started!\n"); 
+            }
         }
     }else{
-        if(p_rcsplit != nullptr){
-            int device_uart = -1;
-
-            if(argv[2] == nullptr){
-                char default_dev[] = "/dev/ttyS6";
-                device_uart = p_rcsplit->rcSplitInit(default_dev);
-            }else{
-                device_uart = p_rcsplit->rcSplitInit(argv[2]);
-            }
-
-            if(device_uart<0){
-                PX4_INFO("problem with uart initialisation!\n");
-            }else{
-                device_uart = p_rcsplit->RunCamStateMachine(argv[1]);
-            }
-        }else{
-           printf("run_cam is not started!\n"); 
-        }
+        RC_Spit::usage();
     }
-
-	printf("exiting!\n");
 
 	return 0;
 }
