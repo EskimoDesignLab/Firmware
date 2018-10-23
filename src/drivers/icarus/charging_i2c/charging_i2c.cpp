@@ -66,6 +66,7 @@ public:
 	virtual int			ioctl(struct file *filp, int cmd, unsigned long arg);
 	void				print_info();
 	void				checkEeprom();
+	uint16_t 			getRSense();
 	void 				gaugereset();
 
 protected:
@@ -109,6 +110,8 @@ private:
 
 	struct charging_info_s last_report;
 	float bat_full_cap;
+
+	uint16_t RSenseValue;	/* Value of the RSense Resistor (2 = 2mOhms) */
 
 
 	/**
@@ -182,7 +185,6 @@ CHARGING_I2C::CHARGING_I2C(int bus, int address) :
 {
 	_parameter_handles.is_new_bat = param_find("IS_NEW_BATTERY");
 	_parameter_handles.bat_cap = param_find("BATT_CAPA_MAH");
-	_parameter_handles.rsense = param_find("RSENSE_MOHM");
 	_parameter_handles.balance_threshold = param_find("BALANCE_THRESH");
 
 	parameters_update();
@@ -224,9 +226,8 @@ CHARGING_I2C::parameters_update()
 
 	param_get(_parameter_handles.is_new_bat, &_parameters.is_new_bat);
 	param_get(_parameter_handles.bat_cap, &_parameters.bat_cap);
-	param_get(_parameter_handles.rsense, &_parameters.rsense);
 	param_get(_parameter_handles.balance_threshold, &_parameters.balance_threshold);
-
+	RSenseValue = getRSense(); 
 	return OK;
 }
 
@@ -462,18 +463,16 @@ CHARGING_I2C::read(struct file *filp, charging_info_s *report, size_t buflen)
 	transfer(&cmd[8], 1, val9, 2); // envoie la commande au slave pour faire un read TTF (Time To Full)
 	transfer(&cmd[9], 1, val10, 2); // envoie la commande au slave pour faire un read	RepSOC
 
-
-
 	// publish des valeurs lu sur le MAX17205 (et conditionnement des valeurs) (VOIR TABLEAU 1 PAGE 26 DE LA DATASHEET)
 	report->avg_vcell = (float)(((int)val1[1] * 256) | (int)val1[0])/12800.0f;	// average cell voltage (V)
 	report->avg_vcell3 = (float)(((int)val2[1] * 256) | (int)val2[0])/12800.0f;	// cell 3 voltage (V)
 	report->avg_vcell2 = (float)(((int)val3[1] * 256) | (int)val3[0])/12800.0f;	// cell 2 voltage (V)
 	report->avg_vcell1 = (float)(((int)val4[1] * 256) | (int)val4[0])/12800.0f;	// cell 1 voltage (V)
 
-	report->rep_cap = (float)(((int)val5[1] * 256) | (int)val5[0])*((5.0f/1000.0f)/(_parameters.rsense / 1000.0f));		// reported capacity (mAh)
+	report->rep_cap = (float)(((int)val5[1] * 256) | (int)val5[0])*((5.0f/1000.0f)/(RSenseValue / 1000.0f));		// reported capacity (mAh)
 
-	report->current = (float)(int16_t((val6[1] * 256) | val6[0]))*((1.5625f/1000.0f)/(_parameters.rsense / 1000.0f));	// current (mA)
-	report->avg_current = (float)(int16_t((val7[1] * 256) | val7[0]))*((1.5625f/1000.0f)/(_parameters.rsense / 1000.0f));		// average current (mA)
+	report->current = (float)(int16_t((val6[1] * 256) | val6[0]))*((1.5625f/1000.0f)/(RSenseValue / 1000.0f));	// current (mA)
+	report->avg_current = (float)(int16_t((val7[1] * 256) | val7[0]))*((1.5625f/1000.0f)/(RSenseValue / 1000.0f));		// average current (mA)
 
 	report->tte = (float)(((int)val8[1] * 256) | (int)val8[0])/640.0f;		// time to empty (hr)
 	report->ttf = (float)(((int)val9[1] * 256) | (int)val9[0])/640.0f;		// time to full (hr)
@@ -562,11 +561,11 @@ CHARGING_I2C::collect()
 		report.avg_vcell2 = (float)(((int)val3[1] * 256) | (int)val3[0])/12800.0f;	// cell 2 voltage (V)
 		report.avg_vcell1 = (float)(((int)val4[1] * 256) | (int)val4[0])/12800.0f;	// cell 1 voltage (V)
 
-		report.rep_cap = (float)(((int)val5[1] * 256) | (int)val5[0])*((5.0f/1000.0f)/(_parameters.rsense / 1000.0f));		// reported capacity (mAh)
-		bat_full_cap = (float)(((int)val11[1] * 256) | (int)val11[0])*((5.0f/1000.0f)/(_parameters.rsense / 1000.0f));
+		report.rep_cap = (float)(((int)val5[1] * 256) | (int)val5[0])*((5.0f/1000.0f)/(RSenseValue / 1000.0f));		// reported capacity (mAh)
+		bat_full_cap = (float)(((int)val11[1] * 256) | (int)val11[0])*((5.0f/1000.0f)/(RSenseValue / 1000.0f));
 		// bat_full_cap = _parameters.bat_cap;
-		report.current = (float)(int16_t((val6[1] * 256) | val6[0]))*((1.5625f/1000.0f)/(_parameters.rsense / 1000.0f));	// current (mA)
-		report.avg_current = (float)(int16_t((val7[1] * 256) | val7[0]))*((1.5625f/1000.0f)/(_parameters.rsense / 1000.0f));		// average current (mA)
+		report.current = (float)(int16_t((val6[1] * 256) | val6[0]))*((1.5625f/1000.0f)/(RSenseValue / 1000.0f));	// current (mA)
+		report.avg_current = (float)(int16_t((val7[1] * 256) | val7[0]))*((1.5625f/1000.0f)/(RSenseValue / 1000.0f));		// average current (mA)
 
 		report.tte = (float)(((int)val8[1] * 256) | (int)val8[0])/640.0f;		// time to empty (hr)
 		report.ttf = (float)(((int)val9[1] * 256) | (int)val9[0])/640.0f;		// time to full (hr)
@@ -841,10 +840,26 @@ CHARGING_I2C::print_info()
 	printf("time to empty : %f hr\n",(double)(last_report.tte));
 	printf("time to full : %f hr\n",(double)(last_report.ttf));
 	printf("state of charge : %f %%\n",(double)(last_report.rep_soc));
+	printf("RSense  : %d mOhms \n",RSenseValue);
 
 	_reports->print_info("report queue");
 
 
+}
+
+uint16_t
+CHARGING_I2C::getRSense()
+{
+	/* Set I2C adress */
+    set_device_address(0x0B);
+
+    /* Send a read request to nRSense register 0x1CF */
+    uint8_t dataret[2] = {0,0};
+    uint8_t reg[1] = {0xCF};
+    transfer(reg, 1, dataret, 2);
+	uint16_t RSense = (dataret[1]*256 | dataret[0])/100;
+
+	return RSense;
 }
 
 void
