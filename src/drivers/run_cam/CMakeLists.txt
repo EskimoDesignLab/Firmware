@@ -35,7 +35,7 @@ px4_add_module(
 	MAIN run_cam
 	STACK_MAIN 2000
 	SRCS
-		run_cam.c
+		run_cam.cpp
 	DEPENDS
 		platforms__common
 	)

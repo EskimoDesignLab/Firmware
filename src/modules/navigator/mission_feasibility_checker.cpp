@@ -246,6 +246,7 @@ MissionFeasibilityChecker::checkMissionItemValidity(const mission_s &mission)
 
 		// check if we find unsupported items and reject mission if so
 		if (missionitem.nav_cmd != NAV_CMD_IDLE &&
+			missionitem.nav_cmd != NAV_CMD_SLEEP_ICARUS &&
 		    missionitem.nav_cmd != NAV_CMD_WAYPOINT &&
 		    missionitem.nav_cmd != NAV_CMD_LOITER_UNLIMITED &&
 		    missionitem.nav_cmd != NAV_CMD_LOITER_TIME_LIMIT &&

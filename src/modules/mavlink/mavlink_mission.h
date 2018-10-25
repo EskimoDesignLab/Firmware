@@ -47,6 +47,7 @@
 
 #include <dataman/dataman.h>
 #include <uORB/uORB.h>
+#include <uORB/topics/go_to_sleep.h>
 
 #include "mavlink_bridge_header.h"
 #include "mavlink_rate_limiter.h"
@@ -126,6 +127,9 @@ private:
 
 	int			_offboard_mission_sub{-1};
 	int			_mission_result_sub{-1};
+
+	orb_advert_t _pub_go_sleep{nullptr};
+	struct go_to_sleep_s _go_sleep_s  {};
 
 	orb_advert_t		_offboard_mission_pub{nullptr};
 

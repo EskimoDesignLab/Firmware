@@ -414,6 +414,12 @@ CameraTrigger::toggle_power()
 
 	hrt_call_after(&_disengage_turn_on_off_call, 0 + (200 * 1000),
 		       (hrt_callout)&CameraTrigger::disengage_turn_on_off, this);
+
+	// hrt_call_after(&_engage_turn_on_off_call, 0,
+	// 	       (hrt_callout)&CameraTrigger::engage, this);
+
+	// hrt_call_after(&_disengage_turn_on_off_call, 0 + (200 * 1000),
+	// 	       (hrt_callout)&CameraTrigger::disengage, this);
 }
 
 void

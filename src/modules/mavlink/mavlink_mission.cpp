@@ -52,6 +52,7 @@
 #include <navigator/navigation.h>
 #include <uORB/topics/mission.h>
 #include <uORB/topics/mission_result.h>
+#include <uORB/topics/go_to_sleep.h>
 
 using matrix::wrap_pi;
 
@@ -73,6 +74,11 @@ MavlinkMissionManager::MavlinkMissionManager(Mavlink *mavlink) :
 {
 	_offboard_mission_sub = orb_subscribe(ORB_ID(mission));
 	_mission_result_sub = orb_subscribe(ORB_ID(mission_result));
+
+
+	_go_sleep_s.sleep = false;
+	_go_sleep_s.sleep_time_ms = 10;
+	_pub_go_sleep = orb_advertise(ORB_ID(go_to_sleep), &_go_sleep_s);
 
 	init_offboard_mission();
 }
@@ -562,38 +568,48 @@ MavlinkMissionManager::handle_message(const mavlink_message_t *msg)
 	switch (msg->msgid) {
 	case MAVLINK_MSG_ID_MISSION_ACK:
 		handle_mission_ack(msg);
+		_mavlink->send_statustext_info("MAVLINK_MSG_ID_MISSION_ACK");
 		break;
 
 	case MAVLINK_MSG_ID_MISSION_SET_CURRENT:
 		handle_mission_set_current(msg);
+		_mavlink->send_statustext_info("MAVLINK_MSG_ID_MISSION_SET_CURRENT");
+
 		break;
 
 	case MAVLINK_MSG_ID_MISSION_REQUEST_LIST:
 		handle_mission_request_list(msg);
+		_mavlink->send_statustext_info("MAVLINK_MSG_ID_MISSION_REQUEST_LIST");
 		break;
 
 	case MAVLINK_MSG_ID_MISSION_REQUEST:
 		handle_mission_request(msg);
+		_mavlink->send_statustext_info("MAVLINK_MSG_ID_MISSION_REQUEST");
 		break;
 
 	case MAVLINK_MSG_ID_MISSION_REQUEST_INT:
 		handle_mission_request_int(msg);
+		_mavlink->send_statustext_info("MAVLINK_MSG_ID_MISSION_REQUEST_INT");
 		break;
 
 	case MAVLINK_MSG_ID_MISSION_COUNT:
 		handle_mission_count(msg);
+		_mavlink->send_statustext_info("MAVLINK_MSG_ID_MISSION_COUNT");
 		break;
 
 	case MAVLINK_MSG_ID_MISSION_ITEM:
 		handle_mission_item(msg);
+		_mavlink->send_statustext_info("MAVLINK_MSG_ID_MISSION_ITEM");
 		break;
 
 	case MAVLINK_MSG_ID_MISSION_ITEM_INT:
 		handle_mission_item_int(msg);
+		_mavlink->send_statustext_info("MAVLINK_MSG_ID_MISSION_ITEM_INT");
 		break;
 
 	case MAVLINK_MSG_ID_MISSION_CLEAR_ALL:
 		handle_mission_clear_all(msg);
+		_mavlink->send_statustext_info("MAVLINK_MSG_ID_MISSION_CLEAR_ALL");
 		break;
 
 	default:
@@ -664,6 +680,24 @@ MavlinkMissionManager::handle_mission_set_current(const mavlink_message_t *msg)
 
 			if (wpc.seq < _count[MAV_MISSION_TYPE_MISSION]) {
 				if (update_active_mission(_dataman_id, _count[MAV_MISSION_TYPE_MISSION], wpc.seq) == PX4_OK) {
+
+					// // REMOVE FROM HERE WHEN TESTS DONE : VOIR TIKI
+					char to_print[80];
+					sprintf(to_print,"TIME TO SLEEP seq=%d OK",wpc.seq);
+					_mavlink->send_statustext_info(to_print);
+
+					if(wpc.seq == 3){
+						_go_sleep_s.sleep = true;
+						_go_sleep_s.sleep_time_ms = 20;
+
+						if(_pub_go_sleep == nullptr){
+							_pub_go_sleep = orb_advertise(ORB_ID(go_to_sleep), &_go_sleep_s);
+						}else{
+							orb_publish(ORB_ID(go_to_sleep), _pub_go_sleep, &_go_sleep_s);
+						}
+					}
+					// TO HERE WHEN TESTS DONE : VOIR TIKI
+					
 					PX4_DEBUG("WPM: MISSION_SET_CURRENT seq=%d OK", wpc.seq);
 
 				} else {
@@ -1318,22 +1352,10 @@ MavlinkMissionManager::parse_mavlink_mission_item(const mavlink_mission_item_t *
 
 		switch (mavlink_mission_item->command) {
 		case MAV_CMD_SLEEP_ICARUS:
+			_mavlink->send_statustext_info("MAV_CMD_SLEEP_ICARUS");
 			mission_item->nav_cmd = NAV_CMD_SLEEP_ICARUS;
-			//maybe we need to add a time variable in struct mission_item_s
-			mission_item->time_inside = mavlink_mission_item->param1;
+			mission_item->params[0] = mavlink_mission_item->param1;
 
-
-			// TEST ONLY : TO REMOVE
-			/*
-			_go_sleep_s.sleep = true;
-			_go_sleep_s.sleep_time_ms = 1000;
-			_go_sleep_s.timestamp = hrt_absolute_time();
-			orb_publish(ORB_ID(go_to_sleep), _pub_go_sleep, &_go_sleep_s);
-
-			_last_cmd_was_sleep = false;
-			usleep(1000);
-			*/
-			// TEST ONLY
 		break;
 
 		case MAV_CMD_NAV_WAYPOINT:
