@@ -19,7 +19,7 @@
 
 sh /etc/init.d/rc.vtol_defaults
 
-if [ $AUTOCNF == yes ]
+if [ $AUTOCNF = yes ]
 then
 	param set BAT_CAPACITY 23000
 	param set BAT_N_CELLS 4
@@ -125,7 +125,12 @@ then
 	param set PWM_RATE 400
 
 	param set SENS_BOARD_ROT 18
-	param set SYS_COMPANION 57600
+
+	# TELEM2 config
+	param set MAV_1_CONFIG 102
+	param set MAV_1_RATE 5000
+	param set MAV_1_FORWARD 1
+	param set SER_TEL2_BAUD 57600
 
 	param set VT_TYPE 2
 	param set VT_MOT_COUNT 4

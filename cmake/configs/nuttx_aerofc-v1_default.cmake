@@ -1,6 +1,12 @@
 
 px4_nuttx_configure(HWCLASS m4 CONFIG nsh ROMFS y ROMFSROOT px4fmu_common)
 
+# user-configurable UART ports
+set(board_serial_ports
+	GPS1:/dev/ttyS5
+	TEL1:/dev/ttyS3
+	TEL2:/dev/ttyS1)
+
 set(config_module_list
 	#
 	# Board support modules
@@ -56,7 +62,6 @@ set(config_module_list
 	#
 	modules/mc_att_control
 	modules/mc_pos_control
-	modules/vtol_att_control # FIXME: only required for params needed by Navigator
 
 	#
 	# Logging

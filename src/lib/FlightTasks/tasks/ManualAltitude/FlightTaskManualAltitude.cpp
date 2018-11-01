@@ -92,7 +92,7 @@ void FlightTaskManualAltitude::_updateAltitudeLock()
 	// If not locked, altitude setpoint is set to NAN.
 
 	// Check if user wants to break
-	const bool apply_brake = fabsf(_velocity_setpoint(2)) <= FLT_EPSILON;
+	const bool apply_brake = fabsf(_sticks_expo(2)) <= FLT_EPSILON;
 
 	// Check if vehicle has stopped
 	const bool stopped = (MPC_HOLD_MAX_Z.get() < FLT_EPSILON || fabsf(_velocity(2)) < MPC_HOLD_MAX_Z.get());
@@ -101,7 +101,7 @@ void FlightTaskManualAltitude::_updateAltitudeLock()
 	// when terrain hold behaviour has been selected.
 	if (MPC_ALT_MODE.get() == 2) {
 		// Use horizontal speed as a transition criteria
-		float spd_xy = Vector2f(&_velocity(0)).length();
+		float spd_xy = Vector2f(_velocity).length();
 
 		// Use presence of horizontal stick inputs as a transition criteria
 		float stick_xy = Vector2f(&_sticks_expo(0)).length();
@@ -251,16 +251,14 @@ void FlightTaskManualAltitude::_respectMaxAltitude()
 
 void FlightTaskManualAltitude::_updateSetpoints()
 {
-	FlightTaskManualStabilized::_updateSetpoints(); // get yaw and thrust setpoints
-
-	_thrust_setpoint *= NAN; // Don't need thrust setpoint from Stabilized mode.
+	FlightTaskManualStabilized::_updateHeadingSetpoints(); // get yaw setpoint
 
 	// Thrust in xy are extracted directly from stick inputs. A magnitude of
 	// 1 means that maximum thrust along xy is demanded. A magnitude of 0 means no
 	// thrust along xy is demanded. The maximum thrust along xy depends on the thrust
 	// setpoint along z-direction, which is computed in PositionControl.cpp.
 
-	Vector2f sp{_sticks(0), _sticks(1)};
+	Vector2f sp(&_sticks(0));
 	_rotateIntoHeadingFrame(sp);
 
 	if (sp.length() > 1.0f) {
@@ -269,6 +267,7 @@ void FlightTaskManualAltitude::_updateSetpoints()
 
 	_thrust_setpoint(0) = sp(0);
 	_thrust_setpoint(1) = sp(1);
+	_thrust_setpoint(2) = NAN;
 
 	_updateAltitudeLock();
 }

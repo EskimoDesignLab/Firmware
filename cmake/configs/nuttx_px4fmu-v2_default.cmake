@@ -1,5 +1,14 @@
 px4_nuttx_configure(HWCLASS m4 CONFIG nsh ROMFS y ROMFSROOT px4fmu_common IO px4io-v2)
 
+# user-configurable UART ports
+set(board_serial_ports
+	GPS1:/dev/ttyS3
+	TEL1:/dev/ttyS1
+	TEL2:/dev/ttyS2
+	TEL4:/dev/ttyS6)
+
+set(px4_constrained_flash_build 1)
+
 #set(config_uavcan_num_ifaces 2)
 
 set(config_bl_file ${PX4_SOURCE_DIR}/ROMFS/px4fmu_common/extras/px4fmuv3_bl.bin)
@@ -18,22 +27,21 @@ set(config_module_list
 	drivers/barometer/ms5611
 	#drivers/blinkm
 	#drivers/bst
-	drivers/camera_trigger
+	#drivers/camera_trigger
 	#drivers/differential_pressure/ets
 	drivers/differential_pressure/ms4525
 	drivers/differential_pressure/ms5525
-	drivers/differential_pressure/sdp3x
+	#drivers/differential_pressure/sdp3x
 	drivers/distance_sensor/ll40ls
 	#drivers/distance_sensor/mb12xx
 	drivers/distance_sensor/sf0x
-	drivers/distance_sensor/sf1xx
+	#drivers/distance_sensor/sf1xx
 	#drivers/distance_sensor/srf02
 	#drivers/distance_sensor/teraranger
 	#drivers/distance_sensor/tfmini
 	#drivers/distance_sensor/ulanding
 	#drivers/frsky_telemetry
 	drivers/gps
-	#drivers/hott
 	#drivers/imu/adis16448
 	#drivers/imu/bmi160
 	drivers/imu/l3gd20
@@ -43,7 +51,7 @@ set(config_module_list
 	#drivers/iridiumsbd
 	#drivers/irlock
 	drivers/magnetometer/hmc5883
-	drivers/magnetometer/lis3mdl
+	#drivers/magnetometer/lis3mdl
 	#drivers/mb12xx
 	#drivers/mkblctrl
 	#drivers/oreoled

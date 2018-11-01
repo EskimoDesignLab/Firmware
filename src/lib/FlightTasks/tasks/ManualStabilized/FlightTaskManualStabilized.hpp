@@ -58,12 +58,12 @@ public:
 	void setYawHandler(WeatherVane *ext_yaw_handler) override {_ext_yaw_handler = ext_yaw_handler;}
 
 protected:
-	virtual void _updateSetpoints(); /**< updates all setpoints*/
+	virtual void _updateSetpoints(); /**< updates all setpoints */
+	void _updateHeadingSetpoints(); /**< sets yaw or yaw speed */
 	virtual void _scaleSticks(); /**< scales sticks to yaw and thrust */
 	void _rotateIntoHeadingFrame(matrix::Vector2f &vec); /**< rotates vector into local frame */
 
 private:
-	void _updateHeadingSetpoints(); /**< sets yaw or yaw speed */
 	void _updateThrustSetpoints(); /**< sets thrust setpoint */
 	float _throttleCurve(); /**< piecewise linear mapping from stick to throttle */
 
@@ -77,6 +77,7 @@ private:
 					(ParamFloat<px4::params::MPC_MAN_TILT_MAX>) _tilt_max_man, /**< maximum tilt allowed for manual flight */
 					(ParamFloat<px4::params::MPC_MANTHR_MIN>) _throttle_min_stabilized, /**< minimum throttle for stabilized */
 					(ParamFloat<px4::params::MPC_THR_MAX>) _throttle_max, /**< maximum throttle that always has to be satisfied in flight*/
-					(ParamFloat<px4::params::MPC_THR_HOVER>) _throttle_hover /**< throttle value at which vehicle is at hover equilibrium */
+					(ParamFloat<px4::params::MPC_THR_HOVER>) _throttle_hover, /**< throttle at which vehicle is at hover equilibrium */
+					(ParamInt<px4::params::MPC_THR_CURVE>) _throttle_curve /**< throttle curve behavior */
 				       )
 };

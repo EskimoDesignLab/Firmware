@@ -1,6 +1,11 @@
 
 px4_nuttx_configure(HWCLASS m4 CONFIG nsh ROMFS y ROMFSROOT px4fmu_common)
 
+# user-configurable UART ports
+set(board_serial_ports
+	TEL2:/dev/ttyS1
+	URT6:/dev/ttyS2)
+
 set(config_module_list
 	#
 	# Board support modules
@@ -43,7 +48,7 @@ set(config_module_list
 	systemcmds/reboot
 	systemcmds/sd_bench
 	systemcmds/top
-	#systemcmds/topic_listener
+	systemcmds/topic_listener
 	systemcmds/tune_control
 	systemcmds/ver
 
@@ -84,13 +89,13 @@ set(config_module_list
 	#
 	# Vehicle Control
 	#
-	modules/fw_att_control
-	modules/fw_pos_control_l1
+	#modules/fw_att_control
+	#modules/fw_pos_control_l1
 	#modules/gnd_att_control
 	#modules/gnd_pos_control
 	modules/mc_att_control
 	modules/mc_pos_control
-	modules/vtol_att_control
+	#modules/vtol_att_control
 
 	#
 	# Logging

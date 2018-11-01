@@ -1,6 +1,12 @@
 
 px4_nuttx_configure(HWCLASS m4 CONFIG nsh ROMFS y ROMFSROOT px4fmu_common)
 
+# user-configurable UART ports
+set(board_serial_ports
+	GPS1:/dev/ttyS3
+	TEL1:/dev/ttyS1
+	TEL2:/dev/ttyS2)
+
 set(config_uavcan_num_ifaces 1)
 
 set(config_module_list
@@ -17,7 +23,6 @@ set(config_module_list
 	drivers/blinkm
 	drivers/camera_trigger
 	drivers/gps
-	#drivers/hott
 	drivers/imu/l3gd20
 	drivers/imu/lsm303d
 	#drivers/mkblctrl

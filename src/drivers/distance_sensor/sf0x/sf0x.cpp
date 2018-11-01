@@ -96,9 +96,6 @@ public:
 	*/
 	void				print_info();
 
-protected:
-	virtual int			probe();
-
 private:
 	char 				_port[20];
 	uint8_t _rotation;
@@ -196,40 +193,6 @@ SF0X::SF0X(const char *port, uint8_t rotation) :
 	/* enforce null termination */
 	_port[sizeof(_port) - 1] = '\0';
 
-	/* open fd */
-	_fd = ::open(_port, O_RDWR | O_NOCTTY | O_NONBLOCK);
-
-	if (_fd < 0) {
-		PX4_ERR("open failed (%i)", errno);
-	}
-
-	struct termios uart_config;
-
-	int termios_state;
-
-	/* fill the struct for the new configuration */
-	tcgetattr(_fd, &uart_config);
-
-	/* clear ONLCR flag (which appends a CR for every LF) */
-	uart_config.c_oflag &= ~ONLCR;
-
-	/* no parity, one stop bit */
-	uart_config.c_cflag &= ~(CSTOPB | PARENB);
-
-	unsigned speed = B9600;
-
-	/* set baud rate */
-	if ((termios_state = cfsetispeed(&uart_config, speed)) < 0) {
-		PX4_ERR("CFG: %d ISPD", termios_state);
-	}
-
-	if ((termios_state = cfsetospeed(&uart_config, speed)) < 0) {
-		PX4_ERR("CFG: %d OSPD", termios_state);
-	}
-
-	if ((termios_state = tcsetattr(_fd, TCSANOW, &uart_config)) < 0) {
-		PX4_ERR("baud %d ATTR", termios_state);
-	}
 }
 
 SF0X::~SF0X()
@@ -257,9 +220,6 @@ SF0X::init()
 	param_get(param_find("SENS_EN_SF0X"), &hw_model);
 
 	switch (hw_model) {
-	case 0:
-		PX4_WARN("disabled.");
-		return 0;
 
 	case 1: /* SF02 (40m, 12 Hz)*/
 		_min_distance = 0.3f;
@@ -330,17 +290,7 @@ SF0X::init()
 
 	} while (0);
 
-	/* close the fd */
-	::close(_fd);
-	_fd = -1;
-
-	return OK;
-}
-
-int
-SF0X::probe()
-{
-	return measure();
+	return ret;
 }
 
 void
@@ -660,6 +610,39 @@ SF0X::cycle()
 	if (_fd < 0) {
 		/* open fd */
 		_fd = ::open(_port, O_RDWR | O_NOCTTY | O_NONBLOCK);
+
+		if (_fd < 0) {
+			PX4_ERR("open failed (%i)", errno);
+			return;
+		}
+
+		struct termios uart_config;
+
+		int termios_state;
+
+		/* fill the struct for the new configuration */
+		tcgetattr(_fd, &uart_config);
+
+		/* clear ONLCR flag (which appends a CR for every LF) */
+		uart_config.c_oflag &= ~ONLCR;
+
+		/* no parity, one stop bit */
+		uart_config.c_cflag &= ~(CSTOPB | PARENB);
+
+		unsigned speed = B9600;
+
+		/* set baud rate */
+		if ((termios_state = cfsetispeed(&uart_config, speed)) < 0) {
+			PX4_ERR("CFG: %d ISPD", termios_state);
+		}
+
+		if ((termios_state = cfsetospeed(&uart_config, speed)) < 0) {
+			PX4_ERR("CFG: %d OSPD", termios_state);
+		}
+
+		if ((termios_state = tcsetattr(_fd, TCSANOW, &uart_config)) < 0) {
+			PX4_ERR("baud %d ATTR", termios_state);
+		}
 	}
 
 	/* collection phase? */
@@ -870,7 +853,7 @@ test()
 		sz = read(fd, &report, sizeof(report));
 
 		if (sz != sizeof(report)) {
-			PX4_ERR("read failed: got %d vs exp. %d", sz, sizeof(report));
+			PX4_ERR("read failed: got %zi vs exp. %zu", sz, sizeof(report));
 			break;
 		}
 
@@ -934,15 +917,20 @@ info()
 int
 sf0x_main(int argc, char *argv[])
 {
-	int ch;
 	uint8_t rotation = distance_sensor_s::ROTATION_DOWNWARD_FACING;
+	const char *device_path = SF0X_DEFAULT_PORT;
+	int ch;
 	int myoptind = 1;
 	const char *myoptarg = nullptr;
 
-	while ((ch = px4_getopt(argc, argv, "R:", &myoptind, &myoptarg)) != EOF) {
+	while ((ch = px4_getopt(argc, argv, "R:d:", &myoptind, &myoptarg)) != EOF) {
 		switch (ch) {
 		case 'R':
 			rotation = (uint8_t)atoi(myoptarg);
+			break;
+
+		case 'd':
+			device_path = myoptarg;
 			break;
 
 		default:
@@ -959,12 +947,7 @@ sf0x_main(int argc, char *argv[])
 	 * Start/load the driver.
 	 */
 	if (!strcmp(argv[myoptind], "start")) {
-		if (argc > myoptind + 1) {
-			return sf0x::start(argv[myoptind + 1], rotation);
-
-		} else {
-			return sf0x::start(SF0X_DEFAULT_PORT, rotation);
-		}
+		return sf0x::start(device_path, rotation);
 	}
 
 	/*

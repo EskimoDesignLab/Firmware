@@ -218,7 +218,7 @@ then
 		# external LSM303D is rotated 270 degrees yaw
 		lsm303d -X -R 6 start
 
-		if [ $BOARD_FMUV3 == 20 ]
+		if [ $BOARD_FMUV3 = 20 ]
 		then
 			# v2.0 internal MPU6000 is rotated 180 deg roll, 270 deg yaw
 			mpu6000 -R 14 start
@@ -227,14 +227,14 @@ then
 			hmc5883 -C -T -S -R 8 start
 		fi
 
-		if [ $BOARD_FMUV3 == 21 ]
+		if [ $BOARD_FMUV3 = 21 ]
 		then
 			# v2.1 internal MPU9250 is rotated 180 deg roll, 270 deg yaw
 			mpu9250 -R 14 start
 		fi
 
 	else
-		# $BOARD_FMUV3 == 0 -> FMUv2
+		# $BOARD_FMUV3 = 0 -> FMUv2
 
 		mpu6000 start
 
@@ -345,6 +345,9 @@ then
 
 	# Possible internal compass
 	ist8310 -C -b 5 start
+
+	# Possible pmw3901 optical flow sensor
+	pmw3901 start
 fi
 
 if ver hwcmp PX4_SAME70XPLAINED_V1
@@ -364,7 +367,7 @@ fi
 #                           Begin Optional drivers                            #
 ###############################################################################
 
-if [ ${VEHICLE_TYPE} == fw -o ${VEHICLE_TYPE} == vtol ]
+if [ ${VEHICLE_TYPE} = fw -o ${VEHICLE_TYPE} = vtol ]
 then
 	if param compare CBRK_AIRSPD_CHK 0
 	then
@@ -374,7 +377,7 @@ then
 		# detected as MS5525 because the chip manufacturer was so
 		# clever to assign the same I2C address and skip a WHO_AM_I
 		# register.
-		if [ $BOARD_FMUV3 == 21 ]
+		if [ $BOARD_FMUV3 = 21 ]
 		then
 			ms5525_airspeed start -b 2
 		else
@@ -415,12 +418,6 @@ then
 	pga460 start
 fi
 
-# Lightware serial lidar sensor
-if param greater SENS_EN_SF0X 0
-then
-	sf0x start
-fi
-
 # Lightware i2c lidar sensor
 if param greater SENS_EN_SF1XX 0
 then
@@ -437,49 +434,6 @@ fi
 if param greater SENS_EN_TRANGER 0
 then
 	teraranger start -a
-fi
-
-# Benewake TFMini
-if param greater SENS_EN_TFMINI 0
-then
-	if ver hwcmp PX4FMU_V2 PX4FMU_V4PRO
-	then
-		# start the driver on serial 4/5
-		tfmini start -d /dev/ttyS6
-	else
-		if ver hwcmp AEROFC_V1
-		then
-			# start the driver on telemetry
-			tfmini start -d /dev/ttyS3
-		else
-			if param compare SYS_COMPANION 0
-			then
-				# start on default mavlink companion device
-				tfmini start -d /dev/ttyS2
-			fi
-		fi
-	fi
-fi
-
-# LeddarOne
-if param greater SENS_EN_LEDDAR1 0
-then
-	if ver hwcmp PX4FMU_V2 PX4FMU_V4PRO
-	then
-		# start the driver on serial 4/5
-		leddar_one -d /dev/ttyS6 start
-	fi
-	if ver hwcmp AEROFC_V1
-	then
-		# start the driver on telemetry
-		leddar_one -d /dev/ttyS3 start
-	else
-		if param compare SYS_COMPANION 0
-		then
-			# start on default mavlink companion device
-			leddar_one -d /dev/ttyS2 start
-		fi
-	fi
 fi
 
 ###############################################################################

@@ -336,7 +336,12 @@ class uploader(object):
         self.port.flushInput()
         # Set a baudrate that can not work on a real serial port
         # in that it is 233% off.
-        self.port.baudrate = self.baudrate_bootloader * 2.33
+        try:
+            self.port.baudrate = self.baudrate_bootloader * 2.33
+        except NotImplementedError as e:
+            # This error can occur because pySerial on Windows does not support odd baudrates
+            print(str(e) + " -> could not check for FTDI device, assuming USB connection")
+            return
 
         self.__send(uploader.GET_SYNC +
                     uploader.EOC)
@@ -346,7 +351,7 @@ class uploader(object):
             # if it fails we are on a real Serial Port
             self.ackWindowedMode = True
 
-        self.port.baudrate =self.baudrate_bootloader
+        self.port.baudrate = self.baudrate_bootloader
 
     # send the GET_DEVICE command and wait for an info parameter
     def __getInfo(self, param):
@@ -398,7 +403,7 @@ class uploader(object):
 
     # send the CHIP_ERASE command and wait for the bootloader to become ready
     def __erase(self, label):
-        print("Windowed mode:%s" % self.ackWindowedMode)
+        print("Windowed mode: %s" % self.ackWindowedMode)
         print("\n", end='')
         self.__send(uploader.CHIP_ERASE +
                     uploader.EOC)
@@ -776,6 +781,7 @@ def main():
 
             baud_flightstack = [int(x) for x in args.baud_flightstack.split(',')]
 
+            successful = False
             for port in portlist:
 
                 # print("Trying %s" % port)
@@ -840,6 +846,9 @@ def main():
                     # ok, we have a bootloader, try flashing it
                     up.upload(fw, force=args.force, boot_delay=args.boot_delay)
 
+                    # if we made this far without raising exceptions, the upload was successful
+                    successful = True
+
                 except RuntimeError as ex:
                     # print the error
                     print("\nERROR: %s" % ex.args)
@@ -853,7 +862,10 @@ def main():
                     up.close()
 
                 # we could loop here if we wanted to wait for more boards...
-                sys.exit(0)
+                if successful:
+                    sys.exit(0)
+                else:
+                    sys.exit(1)
 
             # Delay retries to < 20 Hz to prevent spin-lock from hogging the CPU
             time.sleep(0.05)

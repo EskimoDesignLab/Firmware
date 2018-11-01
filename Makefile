@@ -114,6 +114,28 @@ endif
 
 ifdef PX4_CMAKE_BUILD_TYPE
 	CMAKE_ARGS += -DCMAKE_BUILD_TYPE=${PX4_CMAKE_BUILD_TYPE}
+else
+
+	# Address Sanitizer
+	ifdef PX4_ASAN
+		CMAKE_ARGS += -DCMAKE_BUILD_TYPE=AddressSanitizer
+	endif
+
+	# Memory Sanitizer
+	ifdef PX4_MSAN
+		CMAKE_ARGS += -DCMAKE_BUILD_TYPE=MemorySanitizer
+	endif
+
+	# Thread Sanitizer
+	ifdef PX4_TSAN
+		CMAKE_ARGS += -DCMAKE_BUILD_TYPE=ThreadSanitizer
+	endif
+
+	# Undefined Behavior Sanitizer
+	ifdef PX4_UBSAN
+		CMAKE_ARGS += -DCMAKE_BUILD_TYPE=UndefinedBehaviorSanitizer
+	endif
+
 endif
 
 # Functions
@@ -197,7 +219,6 @@ misc_qgc_extra_firmware: \
 	check_crazyflie_default \
 	check_mindpx-v2_default \
 	check_px4fmu-v2_lpe \
-	check_tap-v1_default \
 	sizes
 
 # Other NuttX firmware
@@ -325,7 +346,8 @@ python_coverage:
 
 # static analyzers (scan-build, clang-tidy, cppcheck)
 # --------------------------------------------------------------------
-.PHONY: scan-build posix_sitl_default-clang clang-tidy clang-tidy-fix clang-tidy-quiet cppcheck shellcheck_all
+.PHONY: scan-build posix_sitl_default-clang clang-tidy clang-tidy-fix clang-tidy-quiet
+.PHONY: cppcheck shellcheck_all validate_module_configs
 
 scan-build:
 	@export CCC_CC=clang
@@ -363,6 +385,9 @@ cppcheck: posix_sitl_default
 shellcheck_all:
 	@$(SRC_DIR)/Tools/run-shellcheck.sh $(SRC_DIR)/ROMFS/px4fmu_common/
 	@make px4fmu-v2_default shellcheck
+
+validate_module_configs:
+	@find $(SRC_DIR)/src/modules $(SRC_DIR)/src/drivers $(SRC_DIR)/src/lib -name *.yaml -type f -print0 | xargs -0 $(SRC_DIR)/Tools/validate_yaml.py --schema-file $(SRC_DIR)/validation/module_schema.yaml
 
 # Cleanup
 # --------------------------------------------------------------------

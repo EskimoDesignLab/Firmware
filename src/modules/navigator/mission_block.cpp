@@ -322,7 +322,7 @@ MissionBlock::is_mission_item_reached()
 
 		if ((_navigator->get_vstatus()->is_rotary_wing
 		     || (_mission_item.nav_cmd == NAV_CMD_LOITER_TO_ALT && _mission_item.force_heading))
-		    && PX4_ISFINITE(_mission_item.yaw)) {
+		    && PX4_ISFINITE(_navigator->get_yaw_acceptance(_mission_item.yaw))) {
 
 			/* check course if defined only for rotary wing except takeoff */
 			float cog = _navigator->get_vstatus()->is_rotary_wing ? _navigator->get_global_position()->yaw : atan2f(
@@ -508,7 +508,14 @@ MissionBlock::mission_item_to_position_setpoint(const mission_item_s &item, posi
 	sp->loiter_radius = (fabsf(item.loiter_radius) > NAV_EPSILON_POSITION) ? fabsf(item.loiter_radius) :
 			    _navigator->get_loiter_radius();
 	sp->loiter_direction = (item.loiter_radius > 0) ? 1 : -1;
-	sp->acceptance_radius = item.acceptance_radius;
+
+	if (item.acceptance_radius > 0.0f && PX4_ISFINITE(item.acceptance_radius)) {
+		// if the mission item has a specified acceptance radius, overwrite the default one from parameters
+		sp->acceptance_radius = item.acceptance_radius;
+
+	} else {
+		sp->acceptance_radius = _navigator->get_default_acceptance_radius();
+	}
 
 	sp->cruising_speed = _navigator->get_cruising_speed();
 	sp->cruising_throttle = _navigator->get_cruising_throttle();
@@ -547,7 +554,7 @@ MissionBlock::mission_item_to_position_setpoint(const mission_item_s &item, posi
 	case NAV_CMD_LOITER_TO_ALT:
 
 		// initially use current altitude, and switch to mission item altitude once in loiter position
-		if (_navigator->get_loiter_min_alt() > 0.0f) { // ignore _param_loiter_min_alt if smaller then 0 (-1)
+		if (_navigator->get_loiter_min_alt() > 0.0f) { // ignore _param_loiter_min_alt if smaller than 0 (-1)
 			sp->alt = math::max(_navigator->get_global_position()->alt,
 					    _navigator->get_home_position()->alt + _navigator->get_loiter_min_alt());
 

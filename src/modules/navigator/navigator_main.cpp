@@ -110,6 +110,9 @@ Navigator::Navigator() :
 	_navigation_mode_array[8] = &_land;
 	_navigation_mode_array[9] = &_precland;
 	_navigation_mode_array[10] = &_follow_target;
+
+	_handle_back_trans_dec_mss = param_find("VT_B_DEC_MSS");
+	_handle_reverse_delay = param_find("VT_B_REV_DEL");
 }
 
 void
@@ -162,6 +165,14 @@ Navigator::params_update()
 	parameter_update_s param_update;
 	orb_copy(ORB_ID(parameter_update), _param_update_sub, &param_update);
 	updateParams();
+
+	if (_handle_back_trans_dec_mss != PARAM_INVALID) {
+		param_get(_handle_back_trans_dec_mss, &_param_back_trans_dec_mss);
+	}
+
+	if (_handle_reverse_delay != PARAM_INVALID) {
+		param_get(_handle_reverse_delay, &_param_reverse_delay);
+	}
 }
 
 void
@@ -319,6 +330,7 @@ Navigator::run()
 				rep->current.type = position_setpoint_s::SETPOINT_TYPE_LOITER;
 				rep->current.cruising_speed = get_cruising_speed();
 				rep->current.cruising_throttle = get_cruising_throttle();
+				rep->current.acceptance_radius = get_acceptance_radius();
 
 				// Go on and check which changes had been requested
 				if (PX4_ISFINITE(cmd.param4)) {
@@ -847,7 +859,16 @@ Navigator::get_default_altitude_acceptance_radius()
 		return _param_fw_alt_acceptance_radius.get();
 
 	} else {
-		return _param_mc_alt_acceptance_radius.get();
+		float alt_acceptance_radius = _param_mc_alt_acceptance_radius.get();
+
+		const position_controller_status_s &pos_ctrl_status = _position_controller_status_sub.get();
+
+		if ((pos_ctrl_status.timestamp > _pos_sp_triplet.timestamp)
+		    && pos_ctrl_status.altitude_acceptance > alt_acceptance_radius) {
+			alt_acceptance_radius = pos_ctrl_status.altitude_acceptance;
+		}
+
+		return alt_acceptance_radius;
 	}
 }
 
@@ -944,6 +965,22 @@ Navigator::get_acceptance_radius(float mission_item_radius)
 	}
 
 	return radius;
+}
+
+float
+Navigator::get_yaw_acceptance(float mission_item_yaw)
+{
+	float yaw = mission_item_yaw;
+
+	const position_controller_status_s &pos_ctrl_status = _position_controller_status_sub.get();
+
+	// if yaw_acceptance from position controller is NaN overwrite the mission item yaw such that
+	// the waypoint can be reached from any direction
+	if ((pos_ctrl_status.timestamp > _pos_sp_triplet.timestamp) && !PX4_ISFINITE(pos_ctrl_status.yaw_acceptance)) {
+		yaw = pos_ctrl_status.yaw_acceptance;
+	}
+
+	return yaw;
 }
 
 void
