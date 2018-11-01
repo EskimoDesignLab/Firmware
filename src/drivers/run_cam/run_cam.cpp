@@ -50,6 +50,7 @@
 #include <uORB/uORB.h>
 #include <uORB/topics/camera_trigger.h>
 #include <uORB/topics/vehicle_status.h>
+#include <uORB/topics/vehicle_global_position.h>
 
 static const int RCSPLIT_PACKET_HEADER      = 0x55;
 static const int RCSPLIT_PACKET_CMD_CTRL    = 0x01;
@@ -97,14 +98,22 @@ class RC_Spit
     work_s		    _work;
     int             camera_trigger_sub_fd;
     int             vehicle_status_sub_fd;
+    int			    _gpos_sub;
+	int			    _att_sub;
     bool            new_data_camera_trigger;
     bool            new_data_vehicle_status;
+    bool            new_data_position;
+    bool            new_data_attitude;
     bool            wifi_enable;
     int             error_count;
     uint32_t        update_count;
 
     struct camera_trigger_s _camera_trigger_s {};
     struct vehicle_status_s _vehicle_status_s {};
+
+    // Geotagging subscriptions	
+	struct vehicle_global_position_s _vehicle_global_position = {};
+	//struct vehicle_attitude_s _vehicle_attitude = {};
 
     void                    sendCtrlCommand     (int port,rcsplit_ctrl_argument_e argument);
     uint8_t                 crc_high_first      (uint8_t *ptr, uint8_t len);
@@ -124,6 +133,8 @@ RC_Spit()
     topic_initialized = false;
     camera_trigger_sub_fd = -1;
     vehicle_status_sub_fd = -1;
+    _gpos_sub = -1;
+	_att_sub = -1;
     error_count = 0;
     update_count = 0;
     wifi_enable = false;
@@ -436,11 +447,16 @@ RC_Spit::RC_task(void)
         vehicle_status_sub_fd = orb_subscribe(ORB_ID(vehicle_status));
 		orb_set_interval(vehicle_status_sub_fd, 200);
 
+        _gpos_sub = orb_subscribe(ORB_ID(vehicle_global_position));
+        orb_set_interval(_gpos_sub, 200);
+
 		topic_initialized = true;
 	}
 
     new_data_camera_trigger = false;
     new_data_vehicle_status = false;
+    new_data_attitude = false;
+    new_data_position = false;
 
     if(OK != orb_check(camera_trigger_sub_fd, &new_data_camera_trigger)){
         error_count++;
@@ -450,12 +466,32 @@ RC_Spit::RC_task(void)
         error_count++;
     }
 
+    if(OK != orb_check(_gpos_sub, &new_data_position)){
+        error_count++;
+    }
+
+
     if (new_data_camera_trigger) {
         update_count++;
         orb_copy(ORB_ID(camera_trigger), camera_trigger_sub_fd, &_camera_trigger_s);
         if(_camera_trigger_s.seq > 0){
             char cmd[] = "snap"; // for test only: should be "snap": 
             RunCamStateMachine(cmd);
+        }
+
+        if(new_data_position){
+            orb_copy(ORB_ID(vehicle_global_position), _gpos_sub, &_vehicle_global_position);
+
+			float ground_distance = _vehicle_global_position.terrain_alt_valid ? (_vehicle_global_position.alt - _vehicle_global_position.terrain_alt) : -1.0f;
+
+            PX4_INFO("START_GEOTAGGING,S:%u,T:%u,LA:%f,LO:%f,AL:%f,GA:%f,GEOTAGGING END",
+             _camera_trigger_s.seq, 
+             _camera_trigger_s.timestamp_utc, 
+             _vehicle_global_position.lat, 
+             _vehicle_global_position.lon, 
+             (double)_vehicle_global_position.alt,
+             (double)ground_distance
+             );
         }
     }
 
