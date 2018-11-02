@@ -500,17 +500,10 @@ RC_Spit::RC_task(void)
         orb_copy(ORB_ID(vehicle_status), vehicle_status_sub_fd, &_vehicle_status_s);
         if(_vehicle_status_s.arming_state != _vehicle_status_s.ARMING_STATE_ARMED){
 
-            if(wifi_enable){
-               char cmd[] = "wifi"; // for test only: should be "snap": 
+            if(wifi_enable){ // if armed and wifi is on --> we disable wifi
+               char cmd[] = "wifi"; 
                RunCamStateMachine(cmd); 
             }
-        }else{
-            /*
-            if(!wifi_enable){
-               char cmd[] = "wifi"; // for test only: should be "snap": 
-               RunCamStateMachine(cmd); 
-            }
-            */
         }
     }
 
