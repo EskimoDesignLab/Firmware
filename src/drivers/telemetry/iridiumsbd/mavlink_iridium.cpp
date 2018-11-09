@@ -386,3 +386,34 @@ void MavlinkIridium::set_default_values()
 	msg->windspeed = 0;
 	msg->wp_num = UINT16_MAX;
 }
+
+void MavlinkIridium::printData()
+{
+	PX4_INFO("Timestamp : %d\n", msg->timestamp);
+	PX4_INFO("Latitude : %d\n", msg->latitude);
+	PX4_INFO("Longitude : %d\n", msg->longitude);
+	PX4_INFO("Custom mode : %d\n", msg->custom_mode);
+	PX4_INFO("Altitude : %d\n", msg->altitude);
+	PX4_INFO("Target altitude : %d\n", msg->target_altitude);
+	PX4_INFO("Target distance : %d\n", msg->target_distance);
+	PX4_INFO("Waypoint number : %d\n", msg->wp_num);
+	PX4_INFO("Failure flags : %d\n", msg->failure_flags);
+	PX4_INFO("MAV type : %d\n", msg->type);
+	PX4_INFO("Autopilot : %d\n", msg->autopilot);
+	PX4_INFO("Heading : %d\n", msg->heading);
+	PX4_INFO("Target heading : %d\n", msg->target_heading);
+	PX4_INFO("Throttle : %d\n", msg->throttle);
+	PX4_INFO("Airspeed : %d\n", msg->airspeed);
+	PX4_INFO("Airspeed setpoint : %d\n", msg->airspeed_sp);
+	PX4_INFO("Groundspeed : %d\n", msg->groundspeed);
+	PX4_INFO("Windspeed : %d\n", msg->windspeed);
+	PX4_INFO("Wind heading : %d\n", msg->wind_heading);
+	PX4_INFO("EPH : %d\n", msg->eph);
+	PX4_INFO("EPV : %d\n", msg->epv);
+	PX4_INFO("Air temperature : %d\n", msg->temperature_air);
+	PX4_INFO("Climb rate : %d\n", msg->climb_rate);
+	PX4_INFO("Battery remaining : %d\n", msg->battery);
+	PX4_INFO("Custom 0 : %d\n", msg->custom0);
+	PX4_INFO("Custom 1 : %d\n", msg->custom1);
+	PX4_INFO("Custom 2 : %d\n", msg->custom2);
+}

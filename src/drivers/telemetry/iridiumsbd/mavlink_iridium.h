@@ -76,6 +76,9 @@ public:
 		return true;
 	}
 
+	void updateData(const hrt_abstime t);
+	void printData();
+
 private:
 	int _actuator_sub_0;
 	int _actuator_sub_1;
@@ -95,7 +98,6 @@ private:
 	mavlink_high_latency2_t* msg;
 
 protected:
-	void updateData(const hrt_abstime t);
 
 	void write_airspeed();
 

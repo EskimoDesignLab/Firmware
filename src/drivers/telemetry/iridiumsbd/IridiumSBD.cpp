@@ -48,6 +48,7 @@
 #include <parameters/param.h>
 
 #include "drivers/drv_iridiumsbd.h"
+#include "mavlink_iridium.h"
 
 static constexpr const char *satcom_state_string[4] = {"STANDBY", "SIGNAL CHECK", "SBD SESSION", "TEST"};
 
@@ -55,6 +56,8 @@ static constexpr const char *satcom_state_string[4] = {"STANDBY", "SIGNAL CHECK"
 
 IridiumSBD *IridiumSBD::instance;
 int IridiumSBD::task_handle;
+MavlinkIridium mavIridium;
+
 
 IridiumSBD::IridiumSBD()
 	: CDev(IRIDIUMSBD_DEVICE_PATH)
@@ -440,6 +443,12 @@ void IridiumSBD::standby_loop(void)
 
 void IridiumSBD::csq_loop(void)
 {
+	mavIridium.updateData(hrt_absolute_time());
+	if(_verbose)
+	{
+		mavIridium.printData();
+	}
+	
 	int res = read_at_command();
 
 	if (res == SATCOM_RESULT_NA) {
