@@ -49,6 +49,7 @@
 
 #include <uORB/uORB.h>
 #include <uORB/topics/camera_trigger.h>
+#include <uORB/topics/geotag_cam.h>
 #include <uORB/topics/vehicle_status.h>
 #include <uORB/topics/vehicle_global_position.h>
 
@@ -110,6 +111,7 @@ class RC_Spit
 
     struct camera_trigger_s _camera_trigger_s {};
     struct vehicle_status_s _vehicle_status_s {};
+    orb_advert_t _geotag_pub;
 
     // Geotagging subscriptions	
 	struct vehicle_global_position_s _vehicle_global_position = {};
@@ -138,6 +140,7 @@ RC_Spit()
     error_count = 0;
     update_count = 0;
     wifi_enable = false;
+    _geotag_pub = nullptr;
 
     memset(&_camera_trigger_s, 0, sizeof(_camera_trigger_s));
     memset(&_vehicle_status_s, 0, sizeof(_vehicle_status_s));
@@ -450,6 +453,9 @@ RC_Spit::RC_task(void)
         _gpos_sub = orb_subscribe(ORB_ID(vehicle_global_position));
         orb_set_interval(_gpos_sub, 200);
 
+        struct geotag_cam_s geotag = {};
+	    _geotag_pub = orb_advertise(ORB_ID(geotag_cam), &geotag);
+
 		topic_initialized = true;
 	}
 
@@ -475,23 +481,30 @@ RC_Spit::RC_task(void)
         update_count++;
         orb_copy(ORB_ID(camera_trigger), camera_trigger_sub_fd, &_camera_trigger_s);
         if(_camera_trigger_s.seq > 0){
-            char cmd[] = "snap"; // for test only: should be "snap": 
+            char cmd[] = "snap"; // 
             RunCamStateMachine(cmd);
         }
 
-        if(new_data_position){
+        //if(new_data_position){
+        if(true){
             orb_copy(ORB_ID(vehicle_global_position), _gpos_sub, &_vehicle_global_position);
 
-			float ground_distance = _vehicle_global_position.terrain_alt_valid ? (_vehicle_global_position.alt - _vehicle_global_position.terrain_alt) : -1.0f;
+            struct geotag_cam_s	geotag = {};
 
-            PX4_INFO("START_GEOTAGGING,S:%u,T:%u,LA:%f,LO:%f,AL:%f,GA:%f,GEOTAGGING END",
-             _camera_trigger_s.seq, 
-             _camera_trigger_s.timestamp_utc, 
-             _vehicle_global_position.lat, 
-             _vehicle_global_position.lon, 
-             (double)_vehicle_global_position.alt,
-             (double)ground_distance
-             );
+            // Set timestamp the instant after the trigger goes off
+            geotag.timestamp = hrt_absolute_time();
+
+            timespec tv = {};
+            px4_clock_gettime(CLOCK_REALTIME, &tv);
+            geotag.timestamp_utc = (uint64_t) tv.tv_sec * 1000000 + tv.tv_nsec / 1000;
+
+            geotag.seq = _camera_trigger_s.seq;
+            geotag.lat = _vehicle_global_position.lat; 
+            geotag.lon = _vehicle_global_position.lon; 
+            geotag.alt = _vehicle_global_position.alt;
+
+            orb_publish(ORB_ID(geotag_cam),_geotag_pub, &geotag);
+
         }
     }
 

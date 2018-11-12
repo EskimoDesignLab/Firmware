@@ -41,6 +41,7 @@ set(msg_files
 	battery_status.msg
 	camera_capture.msg
 	camera_trigger.msg
+	geotag_cam.msg
 	charging_info.msg
 	charging_info_2.msg
 	collision_report.msg

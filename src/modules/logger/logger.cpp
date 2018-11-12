@@ -610,7 +610,8 @@ void Logger::add_default_topics()
 	add_topic("att_pos_mocap", 50);
 	add_topic("battery_status", 500);
 	add_topic("camera_capture");
-	add_topic("camera_trigger");
+	add_topic("camera_trigger",100);
+	add_topic("geotag_cam");
 	add_topic("cpuload");
 	add_topic("distance_sensor", 100);
 	add_topic("ekf2_innovations", 200);
