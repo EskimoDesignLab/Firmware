@@ -48,7 +48,6 @@
 #include <parameters/param.h>
 
 #include "drivers/drv_iridiumsbd.h"
-#include "mavlink_iridium.h"
 
 static constexpr const char *satcom_state_string[4] = {"STANDBY", "SIGNAL CHECK", "SBD SESSION", "TEST"};
 
@@ -56,12 +55,12 @@ static constexpr const char *satcom_state_string[4] = {"STANDBY", "SIGNAL CHECK"
 
 IridiumSBD *IridiumSBD::instance;
 int IridiumSBD::task_handle;
-MavlinkIridium mavIridium;
 
 
 IridiumSBD::IridiumSBD()
 	: CDev(IRIDIUMSBD_DEVICE_PATH)
 {
+
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -339,6 +338,7 @@ void IridiumSBD::main_loop(int argc, char *argv[])
 	VERBOSE_INFO("read interval: %d s", _param_read_interval_s);
 	VERBOSE_INFO("SBD session timeout: %d s", _param_session_timeout_s);
 	VERBOSE_INFO("SBD stack time: %d ms", _param_stacking_time_ms);
+	mavIridium.subscribeToTopics();
 
 	_start_completed = true;
 
@@ -427,6 +427,19 @@ void IridiumSBD::standby_loop(void)
 		}
 	}
 
+	if (((hrt_absolute_time() - _last_data_sent) > SATCOM_SEND_TELEMETRY_DELAY)
+	&& (_new_state == SATCOM_STATE_STANDBY)) {
+		mavIridium.updateData(hrt_absolute_time());
+		if(_verbose){
+			mavIridium.printData();
+		}
+		if(mavIridium.getHighLatencyStatus()){
+			write(0,mavIridium.getMessage(),MAVLINK_MSG_ID_HIGH_LATENCY2_LEN);
+		}
+		_last_data_sent = hrt_absolute_time();
+		return;
+	}
+
 	// start a signal check if requested and not a switch to another mode is scheduled
 	if (((hrt_absolute_time() - _last_signal_check) > SATCOM_SIGNAL_REFRESH_DELAY)
 	    && (_new_state == SATCOM_STATE_STANDBY)) {
@@ -443,12 +456,6 @@ void IridiumSBD::standby_loop(void)
 
 void IridiumSBD::csq_loop(void)
 {
-	mavIridium.updateData(hrt_absolute_time());
-	if(_verbose)
-	{
-		mavIridium.printData();
-	}
-	
 	int res = read_at_command();
 
 	if (res == SATCOM_RESULT_NA) {

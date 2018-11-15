@@ -43,6 +43,8 @@
 #include <uORB/topics/iridiumsbd_status.h>
 #include <uORB/topics/subsystem_info.h>
 
+#include "mavlink_iridium.h"
+
 typedef enum {
 	SATCOM_OK = 0,
 	SATCOM_NO_MSG = -1,
@@ -89,6 +91,7 @@ extern "C" __EXPORT int iridiumsbd_main(int argc, char *argv[]);
 #define SATCOM_RX_MSG_BUF_LEN			270		// RX buffer size for MT messages
 #define SATCOM_RX_COMMAND_BUF_LEN		50		// RX buffer size for other commands
 #define SATCOM_SIGNAL_REFRESH_DELAY		20000000 // update signal quality every 20s
+#define SATCOM_SEND_TELEMETRY_DELAY		60000000 // send telemetry data every 60 seconds
 
 /**
  * The driver for the Rockblock 9602 and 9603 RockBlock module for satellite communication over the Iridium satellite system.
@@ -296,6 +299,7 @@ private:
 	int32_t _param_stacking_time_ms = -1;
 
 	hrt_abstime _last_signal_check = 0;
+	hrt_abstime _last_data_sent = 0;
 	uint8_t _signal_quality = 0;
 	uint16_t _failed_sbd_sessions = 0;
 	uint16_t _successful_sbd_sessions = 0;
@@ -344,4 +348,6 @@ private:
 
 	iridiumsbd_status_s _status = {};
 	subsystem_info_s _info = {};
+
+	MavlinkIridium mavIridium;
 };

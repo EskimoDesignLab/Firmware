@@ -41,6 +41,12 @@
 #include "../../mavlink/include/mavlink/v2.0/common/mavlink.h"
 #include "drivers/drv_hrt.h"
 
+union IridiumMessage
+{
+	mavlink_high_latency2_t msg;
+	char buf[MAVLINK_MSG_ID_HIGH_LATENCY2_LEN];
+};
+
 class MavlinkIridium
 {
 public:
@@ -76,26 +82,31 @@ public:
 		return true;
 	}
 
+	void subscribeToTopics();
 	void updateData(const hrt_abstime t);
 	void printData();
+	bool getHighLatencyStatus();
+	char* getMessage();
 
 private:
-	int _actuator_sub_0;
-	int _actuator_sub_1;
-	int _airspeed_sub;
-	int _attitude_sp_sub;
-	int _battery_sub;
-	int _estimator_status_sub;
-	int _pos_ctrl_status_sub;
-	int _geofence_sub;
-	int _global_pos_sub;
-	int _gps_sub;
-	int _mission_result_sub;
-	int _status_sub;
-	int _status_flags_sub;
-	int _tecs_status_sub;
-	int _wind_sub;
-	mavlink_high_latency2_t* msg;
+	int _actuator_sub_0{-1};
+	int _actuator_sub_1{-1};
+	int _airspeed_sub{-1};
+	int _attitude_sp_sub{-1};
+	int _battery_sub{-1};
+	int _estimator_status_sub{-1};
+	int _pos_ctrl_status_sub{-1};
+	int _geofence_sub{-1};
+	int _global_pos_sub{-1};
+	int _gps_sub{-1};
+	int _mission_result_sub{-1};
+	int _status_sub{-1};
+	int _status_flags_sub{-1};
+	int _tecs_status_sub{-1};
+	int _wind_sub{-1};
+
+	IridiumMessage iridiumMessage;
+	bool highLatencyActive;	
 
 protected:
 
