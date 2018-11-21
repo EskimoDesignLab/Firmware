@@ -39,5 +39,7 @@ px4_add_module(
 	SRCS
 		IridiumSBD.cpp
 		iridiumsbd_params.c
+		mavlink_iridium.cpp
+		mavlink_iridium.h
 	DEPENDS
 	)

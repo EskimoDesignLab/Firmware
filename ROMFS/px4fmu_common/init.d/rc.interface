@@ -162,11 +162,11 @@ then
 		set OUTPUT_DEV /dev/tap_esc
 	fi
 
-	if mixer load ${OUTPUT_DEV} ${MIXER_FILE}
+	if mixer load ${OUTPUT_DEV} /etc/mixers/icarus.main.mix
 	then
 		echo "INFO  [init] Mixer: ${MIXER_FILE} on ${OUTPUT_DEV}"
 	else
-		echo "ERROR  [init] Failed loading mixer: ${MIXER_FILE}"
+		echo "ERROR  [init] Failed loading mixer: ${MIXER_FILE} on ${OUTPUT_DEV}"
 		echo "ERROR  [init] Failed loading mixer: ${MIXER_FILE}" >> $LOG_FILE
 		tune_control play -t 20
 	fi

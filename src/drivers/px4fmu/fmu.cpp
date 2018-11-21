@@ -2077,10 +2077,12 @@ PX4FMU::pwm_ioctl(file *filp, int cmd, unsigned long arg)
 
 	case MIXERIOCRESET:
 		if (_mixers != nullptr) {
+			warnx("Ptr wasn't NULL");
 			delete _mixers;
 			_mixers = nullptr;
 			_groups_required = 0;
 		}
+		ret = 0;
 
 		break;
 
