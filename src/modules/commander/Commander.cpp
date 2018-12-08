@@ -3885,14 +3885,14 @@ void Commander::data_link_checks(int32_t highlatencydatalink_loss_timeout, int32
 {
 	/* data links check */
 	bool have_link = false;
-	bool high_latency_link_exists = false;
+	// bool high_latency_link_exists = false;
 	bool have_low_latency_link = false;
 	int32_t dl_loss_timeout_local = 0;
 	int32_t dl_regain_timeout_local = 0;
 
 	for (int i = 0; i < ORB_MULTI_MAX_INSTANCES; i++) {
 		if (_telemetry[i].high_latency) {
-			high_latency_link_exists = true;
+			// high_latency_link_exists = true;
 
 			if (status.high_latency_data_link_active) {
 				dl_loss_timeout_local = highlatencydatalink_loss_timeout;
@@ -3973,7 +3973,7 @@ void Commander::data_link_checks(int32_t highlatencydatalink_loss_timeout, int32
 		}
 
 	} else {
-		if (high_latency_link_exists && !status.high_latency_data_link_active && armed.armed) {
+		if (/*high_latency_link_exists && */!status.high_latency_data_link_active/* && armed.armed*/) {
 			// low latency telemetry lost and high latency link existing
 			status.high_latency_data_link_active = true;
 			*status_changed = true;

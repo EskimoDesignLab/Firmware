@@ -36,17 +36,21 @@ then
 	param set FW_LND_HHDIST 15
 	param set FW_LND_HVIRT 13
 	param set FW_LND_TLALT 5
-	param set FW_THR_LND_MAX 0
+	param set FW_THR_LND_MAX 0 
 	param set FW_PR_FF 0.35
 	param set FW_RR_FF 0.6
 	param set FW_RR_P 0.04
 	param set RWTO_TKOFF 1
+
+	param set PWM_DISARMED 1000
 fi
 
 # Configure this as plane
 set MAV_TYPE 1
+
 # Set mixer
 set MIXER icarus
+
 # Provide ESC a constant 1000 us pulse
-set PWM_OUT 4
-set PWM_DISARMED 1000
+set PWM_OUT 1
+set PWM_DISARMED 900
