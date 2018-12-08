@@ -42,8 +42,40 @@
 #include <uORB/uORB.h>
 #include <uORB/topics/iridiumsbd_status.h>
 #include <uORB/topics/subsystem_info.h>
+#include <uORB/topics/mission.h>
 
 #include "mavlink_iridium.h"
+#include <dataman/dataman.h>
+#include <lib/mathlib/mathlib.h>
+#include <lib/matrix/matrix/math.hpp>
+
+using matrix::wrap_pi;
+
+struct SatelliteMissionItem
+{
+    uint32_t count;
+    int32_t param1;
+    int32_t param2;
+    int32_t param3;
+    int32_t param4;
+    int32_t param5;
+    int32_t param6;
+    int32_t param7;
+    uint16_t seq;
+    uint16_t command;
+    uint16_t targetSystem;
+    uint16_t targetComponent;
+    uint16_t frame;
+    uint16_t current;
+    uint16_t autoContinue;
+    uint16_t missionType;
+};
+
+union MissionMsg
+{
+	char msg[48];
+	struct SatelliteMissionItem item;
+};
 
 typedef enum {
 	SATCOM_OK = 0,
@@ -132,6 +164,9 @@ public:
 	 */
 	static void test(int argc, char *argv[]);
 
+
+	static void mission(int argc, char *argv[]);
+
 	/*
 	 * Passes everything to CDev
 	 */
@@ -177,6 +212,15 @@ private:
 	 */
 	void test_loop(void);
 
+
+	int mission_clear_all(void);
+	int mission_write(uint16_t seq, mavlink_mission_item_t *mavlink_mission_item);
+	int parse_mavlink_mission_item(const mavlink_mission_item_t *mavlink_mission_item,
+		struct mission_item_s *mission_item);
+	void copySatMissionItem(struct SatelliteMissionItem *sat_mission, mavlink_mission_item_t *mavlink_mission_item);
+	bool verifyItemAllReceived(void);
+	void clearMissionItemReceived(void);
+	
 	/*
 	 * Get the network signal strength
 	 */
@@ -350,4 +394,9 @@ private:
 	subsystem_info_s _info = {};
 
 	MavlinkIridium mavIridium;
+	dm_item_t _dataman_id{DM_KEY_WAYPOINTS_ONBOARD};
+	orb_advert_t _onboard_mission_pub;
+	union MissionMsg missionMsg;
+	uint32_t missionItemRecCount;
+	uint8_t missionItemReceived[100];
 };
