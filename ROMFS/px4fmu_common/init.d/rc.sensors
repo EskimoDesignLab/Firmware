@@ -167,6 +167,7 @@ then
 	lps33 start
 	charging_i2c start
 	wake_up_i2c_slave start
+	run_cam start
 
 	# V3 build hwtypecmp supports V2|V2M|V30
 	if ver hwtypecmp V30
@@ -260,6 +261,7 @@ then
 	lps33 start
 	charging_i2c start
 	wake_up_i2c_slave start
+	run_cam start
 
 	# External I2C bus
 	hmc5883 -C -T -X start

@@ -66,7 +66,7 @@ PARAM_DEFINE_INT32(TRIG_INTERFACE, 4);
  * @decimal 1
  * @group Camera trigger
  */
-PARAM_DEFINE_FLOAT(TRIG_INTERVAL, 40.0f);
+PARAM_DEFINE_FLOAT(TRIG_INTERVAL, 1000.0f);
 
 /**
  * Camera trigger polarity
@@ -92,7 +92,7 @@ PARAM_DEFINE_INT32(TRIG_POLARITY, 0);
  * @decimal 1
  * @group Camera trigger
  */
-PARAM_DEFINE_FLOAT(TRIG_ACT_TIME, 40.0f);
+PARAM_DEFINE_FLOAT(TRIG_ACT_TIME, 10.0f);
 
 /**
  * Camera trigger mode

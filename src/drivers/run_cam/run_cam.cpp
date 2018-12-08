@@ -182,6 +182,15 @@ RC_Spit::RunCamStateMachine(char* cmd){
         return -1;
     }
 
+
+    if (strcmp(cmd, "wifi")) { // if not wifi
+        if(wifi_enable){
+            wifi_enable = !wifi_enable;
+            sendCtrlCommand(_uart_fd,RCSPLIT_CTRL_ARGU_WIFI_BTN);
+            usleep(1000);
+        }
+    }
+
     if (!strcmp(cmd, "rec")){
         newState = RCSPLIT_STATE_VIDEO_STARTED;
         printf("cmd:rec\n");
@@ -193,17 +202,13 @@ RC_Spit::RunCamStateMachine(char* cmd){
         printf("cmd:snap\n");
     }else if (!strcmp(cmd, "wifi")) {
         sendCtrlCommand(_uart_fd,RCSPLIT_CTRL_ARGU_WIFI_BTN);
-
     }else if (!strcmp(cmd, "mode")) {
         sendCtrlCommand(_uart_fd,RCSPLIT_CTRL_ARGU_CHANGE_MODE);
-
     }else if (!strcmp(cmd, "who")) {
         sendCtrlCommand(_uart_fd,RCSPLIT_CTRL_ARGU_WHO_ARE_YOU);
-
     }else if (!strcmp(cmd, "info")) {
         RC_Spit::usage();
         printf("camera_trigger.seq = %d error_count = %d update_count = %d\n",_camera_trigger_s.seq,error_count,update_count);
-
         
         if(topic_initialized){
             printf("topic_initialized = true \n");
@@ -217,11 +222,9 @@ RC_Spit::RunCamStateMachine(char* cmd){
 
 
     if(newState == RCSPLIT_STATE_VIDEO_STOPPED && _oldState == RCSPLIT_STATE_VIDEO_STARTED){
-
         split_cmd = RCSPLIT_CTRL_ARGU_POWER_BTN;
         sendCtrlCommand(_uart_fd,split_cmd);
         sleep(1);
-        //usleep(100000);
 
     }else if(newState == RCSPLIT_STATE_PHOTO && _oldState == RCSPLIT_STATE_VIDEO_STARTED){
 
@@ -232,8 +235,10 @@ RC_Spit::RunCamStateMachine(char* cmd){
         split_cmd = RCSPLIT_CTRL_ARGU_CHANGE_MODE;
         sendCtrlCommand(_uart_fd,split_cmd);
 
-        //split_cmd = RCSPLIT_CTRL_ARGU_POWER_BTN;
-        //sendCtrlCommand(_uart_fd,split_cmd);
+        sleep(2);
+
+        split_cmd = RCSPLIT_CTRL_ARGU_POWER_BTN;
+        sendCtrlCommand(_uart_fd,split_cmd);
     }else if(newState == RCSPLIT_STATE_VIDEO_STARTED && _oldState == RCSPLIT_STATE_VIDEO_STOPPED){
 
         split_cmd = RCSPLIT_CTRL_ARGU_POWER_BTN;
@@ -244,8 +249,9 @@ RC_Spit::RunCamStateMachine(char* cmd){
         split_cmd = RCSPLIT_CTRL_ARGU_CHANGE_MODE;
         sendCtrlCommand(_uart_fd,split_cmd);
 
-        //split_cmd = RCSPLIT_CTRL_ARGU_POWER_BTN;
-        //sendCtrlCommand(_uart_fd,split_cmd);
+        sleep(2);
+        split_cmd = RCSPLIT_CTRL_ARGU_POWER_BTN;
+        sendCtrlCommand(_uart_fd,split_cmd);
     }else if(newState == RCSPLIT_STATE_VIDEO_STARTED && _oldState == RCSPLIT_STATE_PHOTO){
 
         split_cmd = RCSPLIT_CTRL_ARGU_CHANGE_MODE;
@@ -272,6 +278,7 @@ RC_Spit::RunCamStateMachine(char* cmd){
     }else if(newState == RCSPLIT_STATE_PHOTO && _oldState == RCSPLIT_STATE_PHOTO){
         split_cmd = RCSPLIT_CTRL_ARGU_POWER_BTN;
         sendCtrlCommand(_uart_fd,split_cmd);
+        sleep(1);
     }
 
     _oldState = newState;
@@ -279,9 +286,9 @@ RC_Spit::RunCamStateMachine(char* cmd){
     if(newState == RCSPLIT_STATE_PHOTO){
         printf("State: SNAP\n");
     }else if(newState == RCSPLIT_STATE_VIDEO_STOPPED){
-        printf("State: REC STOP\n");
+        printf("State: NOT RECORDING\n");
     }else if(newState == RCSPLIT_STATE_VIDEO_STARTED){
-        printf("State: REC\n");
+        printf("State: RECORDING\n");
     }
 
     return _uart_fd;
@@ -347,7 +354,7 @@ RC_Spit::rcSplitInit(char *uart_name)
 
     //cameraState = RCSPLIT_STATE_IS_READY;
 
-    work_queue(HPWORK, &_work, (worker_t)&RC_trampoline, this, 0);
+    work_queue(HPWORK, &_work, (worker_t)&RC_trampoline, this, USEC2TICK(10000000));
 
     return _uart_fd;
 }
@@ -498,7 +505,7 @@ RC_Spit::RC_task(void)
             px4_clock_gettime(CLOCK_REALTIME, &tv);
             geotag.timestamp_utc = (uint64_t) tv.tv_sec * 1000000 + tv.tv_nsec / 1000;
 
-            geotag.seq = _camera_trigger_s.seq;
+            geotag.seq = update_count;
             geotag.lat = _vehicle_global_position.lat; 
             geotag.lon = _vehicle_global_position.lon; 
             geotag.alt = _vehicle_global_position.alt;
@@ -511,16 +518,17 @@ RC_Spit::RC_task(void)
     if (new_data_vehicle_status) {
 
         orb_copy(ORB_ID(vehicle_status), vehicle_status_sub_fd, &_vehicle_status_s);
-        if(_vehicle_status_s.arming_state != _vehicle_status_s.ARMING_STATE_ARMED){
+        if(_vehicle_status_s.arming_state == _vehicle_status_s.ARMING_STATE_ARMED){
 
             if(wifi_enable){ // if armed and wifi is on --> we disable wifi
+               wifi_enable = !wifi_enable;
                char cmd[] = "wifi"; 
                RunCamStateMachine(cmd); 
             }
         }
     }
 
-    work_queue(HPWORK, &_work, (worker_t)&RC_trampoline, this, 250);
+    work_queue(HPWORK, &_work, (worker_t)&RC_trampoline, this, USEC2TICK(1000));
 }
 
 

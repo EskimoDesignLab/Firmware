@@ -464,7 +464,7 @@ then
 		camera_trigger start
 
 		param set CAM_FBACK_MODE 1
-		camera_feedback start
+		#camera_feedback start
 	fi
 
 	# If OUTPUT_MODE == none then something is wrong with setup and we shouldn't try to enable output
