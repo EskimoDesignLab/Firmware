@@ -79,6 +79,7 @@
 
 
 #include <board_config.h>
+#include <commander/px4_custom_mode.h>
 
 /* Configuration Constants */
 
@@ -169,7 +170,8 @@ private:
 	perf_counter_t		_comms_errors;
 	orb_advert_t 		_vehicle_command_pub = nullptr;
 
-	int32_t _test_count;
+	int32_t 			_initial_state;
+	int32_t 			_initial_arm;
 
 	uint8_t				_cycle_counter;	/* counter in cycle to change i2c adresses */
 	int					_cycling_rate;	/* */
@@ -180,6 +182,7 @@ private:
 	int					parameters_update();
 	int 				reset_vehicule_old_states();
 	int 				arm_disarm(bool);
+	int					update_mode();
 
 	/**
 	* Test whether the device supported by the driver is present at a
@@ -218,9 +221,6 @@ private:
 	*/
 	static void			cycle_trampoline(void *arg);
 
-	
-
-
 };
 
 /*
@@ -257,7 +257,8 @@ WAKE_UP_I2C_SLAVE::WAKE_UP_I2C_SLAVE(int bus, int address) :
 	/* enable debug() calls */
 	_debug_enabled = false;
 
-	_test_count = 0;
+	_initial_arm = 0;
+	_initial_state = 0;
 
 	/* work_cancel in the dtor will explode if we don't do this... */
 	memset(&_work, 0, sizeof(_work));
@@ -329,7 +330,7 @@ int
 WAKE_UP_I2C_SLAVE::arm_disarm(bool arming)
 {
 
-	if(_test_count == _vehicle_status_s.ARMING_STATE_ARMED){
+	if(_initial_arm == _vehicle_status_s.ARMING_STATE_ARMED){
 		_vehicle_command_s.param1 = 1.0f; /* request arming */
 	}else{
 		_vehicle_command_s.param1 = 0.0f; /* request arming */
@@ -364,6 +365,75 @@ WAKE_UP_I2C_SLAVE::arm_disarm(bool arming)
 	return OK;
 }
 
+
+int
+WAKE_UP_I2C_SLAVE::update_mode()
+{
+	/* send this to itself */
+	param_t sys_id_param = param_find("MAV_SYS_ID");
+	param_t comp_id_param = param_find("MAV_COMP_ID");
+
+	int32_t sys_id;
+	int32_t comp_id;
+
+	param_get(sys_id_param, &sys_id);
+	param_get(comp_id_param, &comp_id);
+
+	_vehicle_command_s.timestamp = hrt_absolute_time();
+	_vehicle_command_s.command = vehicle_command_s::VEHICLE_CMD_DO_SET_MODE;
+	_vehicle_command_s.target_system = (uint8_t)sys_id;
+	_vehicle_command_s.target_component = 0;//MAV_COMP_ID_ALL;
+	_vehicle_command_s.source_system = (uint8_t)sys_id;
+	_vehicle_command_s.source_component = (uint8_t)comp_id;
+	_vehicle_command_s.confirmation = false; /* ask to confirm command */
+
+	_vehicle_command_s.param1 = (float)1; // base mode
+
+	switch (_initial_state) {
+
+	case vehicle_status_s::NAVIGATION_STATE_ACRO:
+		_vehicle_command_s.param2 = (float)PX4_CUSTOM_MAIN_MODE_ACRO;
+		break;
+
+	case vehicle_status_s::NAVIGATION_STATE_RATTITUDE:
+		_vehicle_command_s.param2 = (float)PX4_CUSTOM_MAIN_MODE_RATTITUDE;
+		break;
+
+	case vehicle_status_s::NAVIGATION_STATE_STAB:
+		_vehicle_command_s.param2 = (float)PX4_CUSTOM_MAIN_MODE_STABILIZED;
+		break;
+
+	case vehicle_status_s::NAVIGATION_STATE_ALTCTL:
+		_vehicle_command_s.param2 = (float)PX4_CUSTOM_MAIN_MODE_ALTCTL;
+		break;
+
+	case vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION:
+		_vehicle_command_s.param2 = (float)PX4_CUSTOM_MAIN_MODE_AUTO;
+		_vehicle_command_s.param3 = (float)PX4_CUSTOM_SUB_MODE_AUTO_MISSION;
+		break;
+
+	case vehicle_status_s::NAVIGATION_STATE_AUTO_LOITER:
+		_vehicle_command_s.param2 = (float)PX4_CUSTOM_MAIN_MODE_AUTO;
+		_vehicle_command_s.param3 = (float)PX4_CUSTOM_SUB_MODE_AUTO_LOITER;
+		break;
+
+	default: //vehicle_status_s::NAVIGATION_STATE_MANUAL:
+		_vehicle_command_s.param2 = (float)PX4_CUSTOM_MAIN_MODE_MANUAL;
+		break;
+
+	}
+
+	if (_vehicle_command_pub) {
+		orb_publish(ORB_ID(vehicle_command), _vehicle_command_pub, &_vehicle_command_s);
+
+	} else {
+		_vehicle_command_pub = orb_advertise_queue(ORB_ID(vehicle_command), &_vehicle_command_s,
+					vehicle_command_s::ORB_QUEUE_LENGTH);
+	}
+
+	return OK;
+}
+
 //********************************************//
 // RESET VEHICULE STATES AFTER  WAKEUP        // 
 // if armed before -> reset to armed          //
@@ -375,11 +445,15 @@ WAKE_UP_I2C_SLAVE::reset_vehicule_old_states()
 {
 	if(_just_woke_up){
 
-		_test_count = _parameters.arming_state;
+		_initial_arm = _parameters.arming_state;
+		_initial_state = _parameters.navigation_state;
 
-        if(_test_count == _vehicle_status_s.ARMING_STATE_ARMED){
+        if(_initial_arm == _vehicle_status_s.ARMING_STATE_ARMED){
 			arm_disarm(true);
+			sleep(1);
 		}
+
+		update_mode();
 	}
 
 	_just_woke_up = false;
@@ -755,7 +829,8 @@ WAKE_UP_I2C_SLAVE::print_info()
 	printf("poll interval:  %u ticks\n", _measure_ticks);
 	//_reports->print_info("report queue");
 	printf("\narming_state : %d\n", _parameters.arming_state);
-	printf("\ninitial arming_state : %d\n", _test_count);
+	printf("\ninitial arming_state : %d\n", _initial_arm);
+	printf("\ninitial vehicle_state : %d\n", _initial_state);
 	
 	sleeping();
 }
