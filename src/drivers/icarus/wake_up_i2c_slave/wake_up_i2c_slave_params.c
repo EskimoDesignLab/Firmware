@@ -72,6 +72,33 @@ PARAM_DEFINE_FLOAT(TEST_MODE_DODO, 0.0f);
 
 
 
+/**
+ * -> see vehicule_status.msg to see all states
+ *
+ * @min 0
+ * @max 6
+ * @decimal 1
+ * @increment 1
+ * @reboot_required true
+ * @group PID
+ */
+PARAM_DEFINE_INT32(ARMING_STATE, 0);
+
+
+/**
+ * -> 0 see vehicule_status.msg to see all states
+ *
+ * @min 0
+ * @max 21
+ * @decimal 1
+ * @increment 1
+ * @reboot_required true
+ * @group PID
+ */
+PARAM_DEFINE_INT32(NAVIGATION_STATE, 0);
+
+
+
 
 
 

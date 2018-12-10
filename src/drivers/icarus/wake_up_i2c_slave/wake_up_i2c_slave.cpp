@@ -67,9 +67,16 @@
 
 #include <drivers/drv_hrt.h>
 #include <drivers/device/ringbuffer.h>
+#include <modules/commander/state_machine_helper.h>
 
 #include <uORB/uORB.h>
 #include <uORB/topics/go_to_sleep.h>
+#include <uORB/topics/actuator_armed.h>
+#include <uORB/topics/vehicle_status.h>
+#include <uORB/topics/vehicle_control_mode.h>
+
+#include <uORB/topics/vehicle_command.h>
+
 
 #include <board_config.h>
 
@@ -116,7 +123,8 @@ protected:
 private:
 	
 	struct {
-
+		int32_t arming_state;
+		int32_t navigation_state;
 		int32_t nb_sec_sleep;
 		float test_sleep;
 
@@ -124,30 +132,44 @@ private:
 	
 
 	struct {
-
+		param_t arming_state;
+		param_t navigation_state;
 		param_t nb_sec_sleep;
 		param_t test_sleep;
 
 	}	_parameter_handles;		
 
 	struct go_to_sleep_s _go_sleep_s  {};
+	struct vehicle_command_s _vehicle_command_s = {};
+
+	struct actuator_armed_s	_actuator_armed_s;		///< system armed state
+	struct vehicle_status_s	_vehicle_status_s;		///< vehicle_status
+
+	//vehicle_control_mode_s	control_mode;	///< vehicle_control_mode
 	
 	///////////////////////////////////////////////////////////////////////////////////
 
 	work_s				_work;
 	ringbuffer::RingBuffer		*_reports;
 	bool				_sensor_ok;
+	bool 				_just_woke_up;
 	int					_measure_ticks;
 	bool				_collect_phase;
 	int					_class_instance;
 	int					_orb_class_instance;
 	int 				_sub_go_sleep;
+	int 				_actuator_armed;
+	int 				_vehicle_status;
+	int 				_vehicle_control_mode;
 	
 
 	// pour subsrcibe au topic du charging_info (il y a des info que lon veut recevoir)
 
 	perf_counter_t		_sample_perf;
 	perf_counter_t		_comms_errors;
+	orb_advert_t 		_vehicle_command_pub = nullptr;
+
+	int32_t _test_count;
 
 	uint8_t				_cycle_counter;	/* counter in cycle to change i2c adresses */
 	int					_cycling_rate;	/* */
@@ -156,7 +178,8 @@ private:
 	 * Update our local parameter cache.
 	 */
 	int					parameters_update();
-
+	int 				reset_vehicule_old_states();
+	int 				arm_disarm(bool);
 
 	/**
 	* Test whether the device supported by the driver is present at a
@@ -195,6 +218,8 @@ private:
 	*/
 	static void			cycle_trampoline(void *arg);
 
+	
+
 
 };
 
@@ -208,11 +233,15 @@ WAKE_UP_I2C_SLAVE::WAKE_UP_I2C_SLAVE(int bus, int address) :
 								// la frequence du bus est à 100 khz ***
 	_reports(nullptr),
 	_sensor_ok(false),
+	_just_woke_up(true),
 	_measure_ticks(0),
 	_collect_phase(false),
 	_class_instance(-1),
 	_orb_class_instance(-1),
 	_sub_go_sleep(-1),
+	_actuator_armed(-1),
+	_vehicle_status(-1),
+	_vehicle_control_mode(-1),
 	_sample_perf(perf_alloc(PC_ELAPSED, "go_sleep_i2c_read")),
 	_comms_errors(perf_alloc(PC_COUNT, "go_sleep_i2c_comms_errors")),
 	_cycle_counter(0),	/* initialising counter for cycling function to zero */
@@ -221,10 +250,14 @@ WAKE_UP_I2C_SLAVE::WAKE_UP_I2C_SLAVE(int bus, int address) :
 {
 	_parameter_handles.nb_sec_sleep = param_find("TEMPS_DODO_SEC");
 	_parameter_handles.test_sleep = param_find("TEST_MODE_DODO");
+	_parameter_handles.arming_state = param_find("ARMING_STATE");
+	_parameter_handles.navigation_state = param_find("NAVIGATION_STATE");
 
-  	parameters_update();
+  	//parameters_update();
 	/* enable debug() calls */
 	_debug_enabled = false;
+
+	_test_count = 0;
 
 	/* work_cancel in the dtor will explode if we don't do this... */
 	memset(&_work, 0, sizeof(_work));
@@ -260,9 +293,100 @@ WAKE_UP_I2C_SLAVE::parameters_update()
 
 	param_get(_parameter_handles.nb_sec_sleep, &_parameters.nb_sec_sleep);
 	param_get(_parameter_handles.test_sleep, &_parameters.test_sleep);
+	param_get(_parameter_handles.arming_state, &_parameters.arming_state);
+	param_get(_parameter_handles.navigation_state, &_parameters.navigation_state);
+
+	if (_vehicle_status < 0) {
+		_vehicle_status = orb_subscribe(ORB_ID(vehicle_status));
+		orb_set_interval(_vehicle_status, 250);
+	}
+
+	bool changed_status = false;
+	orb_check(_vehicle_status,&changed_status);
+
+	if (changed_status && !_just_woke_up) {
+
+		orb_copy(ORB_ID(vehicle_status), _vehicle_status, &_vehicle_status_s);
+
+		if(_vehicle_status_s.arming_state != _parameters.arming_state){
+			_parameters.arming_state = _vehicle_status_s.arming_state;
+			param_set(_parameter_handles.arming_state,&_parameters.arming_state);
+			usleep(1000);
+		}
+
+		if(_vehicle_status_s.nav_state != _parameters.navigation_state){
+			_parameters.navigation_state = _vehicle_status_s.nav_state;
+			param_set(_parameter_handles.navigation_state,&_parameters.navigation_state);
+			usleep(1000);
+		}
+	}
 
 	return OK;
 }
+
+
+int
+WAKE_UP_I2C_SLAVE::arm_disarm(bool arming)
+{
+
+	if(_test_count == _vehicle_status_s.ARMING_STATE_ARMED){
+		_vehicle_command_s.param1 = 1.0f; /* request arming */
+	}else{
+		_vehicle_command_s.param1 = 0.0f; /* request arming */
+	}
+
+	/* send this to itself */
+	param_t sys_id_param = param_find("MAV_SYS_ID");
+	param_t comp_id_param = param_find("MAV_COMP_ID");
+
+	int32_t sys_id;
+	int32_t comp_id;
+
+	param_get(sys_id_param, &sys_id);
+	param_get(comp_id_param, &comp_id);
+
+	_vehicle_command_s.timestamp = hrt_absolute_time();
+	_vehicle_command_s.command = vehicle_command_s::VEHICLE_CMD_COMPONENT_ARM_DISARM;
+	_vehicle_command_s.target_system = (uint8_t)sys_id;
+	_vehicle_command_s.target_component = (uint8_t)comp_id;
+	_vehicle_command_s.source_system = (uint8_t)sys_id;
+	_vehicle_command_s.source_component = (uint8_t)comp_id;
+	_vehicle_command_s.confirmation = false; /* ask to confirm command */
+
+	if (_vehicle_command_pub) {
+		orb_publish(ORB_ID(vehicle_command), _vehicle_command_pub, &_vehicle_command_s);
+
+	} else {
+		_vehicle_command_pub = orb_advertise_queue(ORB_ID(vehicle_command), &_vehicle_command_s,
+					vehicle_command_s::ORB_QUEUE_LENGTH);
+	}
+
+	return OK;
+}
+
+//********************************************//
+// RESET VEHICULE STATES AFTER  WAKEUP        // 
+// if armed before -> reset to armed          //
+// if mode == mission -> reset to mission     //
+// ...                                        //
+//********************************************//
+int
+WAKE_UP_I2C_SLAVE::reset_vehicule_old_states()
+{
+	if(_just_woke_up){
+
+		_test_count = _parameters.arming_state;
+
+        if(_test_count == _vehicle_status_s.ARMING_STATE_ARMED){
+			arm_disarm(true);
+		}
+	}
+
+	_just_woke_up = false;
+
+	return OK;
+}
+
 
 int
 WAKE_UP_I2C_SLAVE::init()
@@ -462,6 +586,9 @@ WAKE_UP_I2C_SLAVE::collect()
 	// update parameters for config or reading
 	parameters_update();
 
+	// reset arming state and mission state as it was before shutdown
+	reset_vehicule_old_states();
+
 	// the value change in mission.cpp
 	if (_sub_go_sleep < 0) {
 		_sub_go_sleep = orb_subscribe(ORB_ID(go_to_sleep));
@@ -479,6 +606,8 @@ WAKE_UP_I2C_SLAVE::collect()
 	// Sleep request coming from a parameter change
 	if((int)_parameters.test_sleep == 1)
 	{
+		arm_disarm(false);
+		usleep(250);
 		_parameters.test_sleep = 0.0f;
 		param_set(_parameter_handles.test_sleep,&_parameters.test_sleep);
 		sleep(1);
@@ -505,6 +634,9 @@ WAKE_UP_I2C_SLAVE::collect()
 	// Sleep request coming from a uorb message
 	else if(_go_sleep_s.sleep)
 	{
+		arm_disarm(false);
+		usleep(250);
+
 		sleep_MSB_01 = (uint8_t)(((uint32_t)_go_sleep_s.sleep_time_ms >> 24) & 0x000000FF); 
 		sleep_MSB_02 = (uint8_t)(((uint32_t)_go_sleep_s.sleep_time_ms >> 16) & 0x000000FF); 
 		sleep_LSB_01 = (uint8_t)(((uint32_t)_go_sleep_s.sleep_time_ms >> 8) & 0x000000FF); 
@@ -621,7 +753,10 @@ WAKE_UP_I2C_SLAVE::print_info()
 	perf_print_counter(_sample_perf);
 	perf_print_counter(_comms_errors);
 	printf("poll interval:  %u ticks\n", _measure_ticks);
-	_reports->print_info("report queue");
+	//_reports->print_info("report queue");
+	printf("\narming_state : %d\n", _parameters.arming_state);
+	printf("\ninitial arming_state : %d\n", _test_count);
+	
 	sleeping();
 }
 
