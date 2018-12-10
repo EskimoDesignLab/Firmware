@@ -77,7 +77,6 @@
 
 #include <uORB/topics/vehicle_command.h>
 
-
 #include <board_config.h>
 #include <commander/px4_custom_mode.h>
 
@@ -183,6 +182,7 @@ private:
 	int 				reset_vehicule_old_states();
 	int 				arm_disarm(bool);
 	int					update_mode();
+	int					start_mission();
 
 	/**
 	* Test whether the device supported by the driver is present at a
@@ -367,6 +367,39 @@ WAKE_UP_I2C_SLAVE::arm_disarm(bool arming)
 
 
 int
+WAKE_UP_I2C_SLAVE::start_mission()
+{
+	/* send this to itself */
+	param_t sys_id_param = param_find("MAV_SYS_ID");
+	param_t comp_id_param = param_find("MAV_COMP_ID");
+
+	int32_t sys_id;
+	int32_t comp_id;
+
+	param_get(sys_id_param, &sys_id);
+	param_get(comp_id_param, &comp_id);
+
+	_vehicle_command_s.timestamp = hrt_absolute_time();
+	_vehicle_command_s.command = vehicle_command_s::VEHICLE_CMD_MISSION_START;
+	_vehicle_command_s.target_system = (uint8_t)sys_id;
+	_vehicle_command_s.target_component = (uint8_t)comp_id;
+	_vehicle_command_s.source_system = (uint8_t)sys_id;
+	_vehicle_command_s.source_component = (uint8_t)comp_id;
+	_vehicle_command_s.confirmation = false; /* ask to confirm command */
+
+	if (_vehicle_command_pub) {
+		orb_publish(ORB_ID(vehicle_command), _vehicle_command_pub, &_vehicle_command_s);
+
+	} else {
+		_vehicle_command_pub = orb_advertise_queue(ORB_ID(vehicle_command), &_vehicle_command_s,
+					vehicle_command_s::ORB_QUEUE_LENGTH);
+	}
+
+	return OK;
+}
+
+
+int
 WAKE_UP_I2C_SLAVE::update_mode()
 {
 	/* send this to itself */
@@ -454,6 +487,11 @@ WAKE_UP_I2C_SLAVE::reset_vehicule_old_states()
 		}
 
 		update_mode();
+
+		if(_initial_state == _vehicle_status_s.NAVIGATION_STATE_AUTO_MISSION){
+			start_mission();
+			sleep(1);
+		}
 	}
 
 	_just_woke_up = false;
