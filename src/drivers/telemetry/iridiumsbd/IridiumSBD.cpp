@@ -58,9 +58,11 @@ int IridiumSBD::task_handle;
 
 
 IridiumSBD::IridiumSBD()
-	: CDev(IRIDIUMSBD_DEVICE_PATH)
+	: CDev(IRIDIUMSBD_DEVICE_PATH),
+	_onboard_mission_pub(nullptr),
+	missionItemRecCount(0)
 {
-
+	clearMissionItemReceived();
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -79,7 +81,7 @@ int IridiumSBD::start(int argc, char *argv[])
 	IridiumSBD::instance = new IridiumSBD();
 
 	IridiumSBD::task_handle = px4_task_spawn_cmd("iridiumsbd", SCHED_DEFAULT,
-				  SCHED_PRIORITY_SLOW_DRIVER, 1350, (main_t)&IridiumSBD::main_loop_helper, argv);
+				  SCHED_PRIORITY_SLOW_DRIVER, 2048, (main_t)&IridiumSBD::main_loop_helper, argv);
 
 	int counter = 0;
 	IridiumSBD::instance->_start_completed = false;
@@ -185,6 +187,208 @@ void IridiumSBD::test(int argc, char *argv[])
 
 	instance->schedule_test();
 }
+
+void IridiumSBD::mission(int argc, char *argv[])
+{
+	if(instance->_state != SATCOM_STATE_STANDBY)
+	{
+		PX4_WARN("MODEM BUSY!");
+		return;
+	}
+
+	if(argc <=2)
+	{
+		PX4_WARN("Argument missing clear|update");
+		return;
+	}
+
+	if(!strcmp(argv[2], "clear"))
+	{
+		int clear_failed;
+		clear_failed = instance->mission_clear_all();
+
+		if(clear_failed)
+		{
+			PX4_WARN("Mission clear all failed %d");
+			return;
+		}
+	}
+	else if(!strcmp(argv[2], "update"))
+	{
+		int clear_failed;
+		clear_failed = instance->mission_clear_all();
+
+		if(clear_failed)
+		{
+			PX4_WARN("Mission clear all failed %d");
+			return;
+		}
+		else
+		{
+			PX4_INFO("Mission clear all succeeded");
+		}
+
+		mavlink_mission_item_t mavlink_mission_item_1;
+		mavlink_mission_item_1.param1 = 20.0;
+		mavlink_mission_item_1.param2 = 0;
+		mavlink_mission_item_1.param3 = 0;
+		mavlink_mission_item_1.param4 = 0;		
+		mavlink_mission_item_1.x = 45.392377;
+		mavlink_mission_item_1.y = -71.893236;
+		mavlink_mission_item_1.z = 60;
+		mavlink_mission_item_1.seq = 1;
+		mavlink_mission_item_1.command = 22;
+		mavlink_mission_item_1.target_system = 0; 
+		mavlink_mission_item_1.target_component = 0;
+		mavlink_mission_item_1.frame = 3;
+		mavlink_mission_item_1.current = 1;
+		mavlink_mission_item_1.autocontinue = 1;
+		mavlink_mission_item_1.mission_type = 0;
+
+		mavlink_mission_item_t mavlink_mission_item_2;
+		mavlink_mission_item_2.param1 = 0;
+		mavlink_mission_item_2.param2 = 10;
+		mavlink_mission_item_2.param3 = 0;
+		mavlink_mission_item_2.param4 = 0;		
+		mavlink_mission_item_2.x = 45.3956938;
+		mavlink_mission_item_2.y = -71.8951495;
+		mavlink_mission_item_2.z = 50;
+		mavlink_mission_item_2.seq = 2;
+		mavlink_mission_item_2.command = 16;
+		mavlink_mission_item_2.target_system = 0; 
+		mavlink_mission_item_2.target_component = 0;
+		mavlink_mission_item_2.frame = 3;
+		mavlink_mission_item_2.current = 0;
+		mavlink_mission_item_2.autocontinue = 1;
+		mavlink_mission_item_2.mission_type = 0;
+
+		mavlink_mission_item_t mavlink_mission_item_3;
+		mavlink_mission_item_3.param1 = 0;
+		mavlink_mission_item_3.param2 = 0;
+		mavlink_mission_item_3.param3 = 0;
+		mavlink_mission_item_3.param4 = 0;		
+		mavlink_mission_item_3.x = 45.3956;
+		mavlink_mission_item_3.y = -71.89514;
+		mavlink_mission_item_3.z = 0;
+		mavlink_mission_item_3.seq = 3;
+		mavlink_mission_item_3.command = 21;
+		mavlink_mission_item_3.target_system = 0; 
+		mavlink_mission_item_3.target_component = 0;
+		mavlink_mission_item_3.frame = 3;
+		mavlink_mission_item_3.current = 0;
+		mavlink_mission_item_3.autocontinue = 1;
+		mavlink_mission_item_3.mission_type = 0;
+
+		int write_failed;
+
+		write_failed = instance->mission_write(mavlink_mission_item_3.seq, &mavlink_mission_item_3);
+		if(write_failed)
+		{
+			PX4_WARN("Mission item 1 write failed");
+			return;
+		}
+
+		write_failed = instance->mission_write(mavlink_mission_item_2.seq, &mavlink_mission_item_2);
+		if(write_failed)
+		{
+			PX4_WARN("Mission item 2 write failed");
+			return;
+		}
+
+		write_failed = instance->mission_write(mavlink_mission_item_1.seq, &mavlink_mission_item_1);
+		if(write_failed)
+		{
+			PX4_WARN("Mission item 3 write failed");
+			return;
+		}
+
+		PX4_INFO("Mission items written to memory");
+
+		mission_s mission;
+		mission.timestamp = hrt_absolute_time();
+		mission.dataman_id = instance->_dataman_id;
+		mission.count = 3;
+		mission.current_seq = 0;
+
+		int dm_lock_ret = dm_lock(DM_KEY_MISSION_STATE);
+
+		if (dm_lock_ret != 0) {
+			PX4_ERR("DM_KEY_MISSION_STATE lock failed");
+		}
+
+		int res = dm_write(DM_KEY_MISSION_STATE, 0, DM_PERSIST_POWER_ON_RESET, &mission, sizeof(mission_s));
+
+
+		/* unlock MISSION_STATE item */
+		if (dm_lock_ret == 0) {
+			dm_unlock(DM_KEY_MISSION_STATE);
+		}
+		PX4_INFO("Mission state written to memory");
+
+
+		if (res == sizeof(mission_s)) {
+			if (instance->_onboard_mission_pub != nullptr) {
+				PX4_INFO("Pointer is not null");
+				orb_publish(ORB_ID(mission), instance->_onboard_mission_pub, &mission);
+
+			} else {
+				PX4_INFO("Pointer is null");
+				instance->_onboard_mission_pub = orb_advertise(ORB_ID(mission), &mission);
+			}
+		}
+		PX4_INFO("Mission topic published");
+		return;
+	}
+	else if(!strcmp(argv[2], "read"))
+	{
+		
+		int dm_lock_ret = dm_lock(DM_KEY_MISSION_STATE);
+
+		if (dm_lock_ret != 0) {
+			PX4_ERR("DM_KEY_MISSION_STATE lock failed");
+		}
+
+		mission_s mission_state;
+		dm_read(DM_KEY_MISSION_STATE, 0, &mission_state, sizeof(mission_s));
+
+		/* unlock MISSION_STATE item */
+		if (dm_lock_ret == 0) {
+			dm_unlock(DM_KEY_MISSION_STATE);
+		}
+
+		PX4_INFO("Dataman id : %d",mission_state.dataman_id);
+		PX4_INFO("Waypoint count : %d",mission_state.count);
+		PX4_INFO("Current waypoint : %d",mission_state.current_seq);
+
+		if(mission_state.count>0 && mission_state.dataman_id == instance->_dataman_id)
+		{
+			int seq = 1;
+			mission_item_s mission_item = {};
+			while(seq <= mission_state.count)
+			{
+				dm_read(instance->_dataman_id, seq, &mission_item, sizeof(mission_item_s));
+				PX4_INFO("\nWaypoint #%d",seq);
+				PX4_INFO("Latitude %0.6f", mission_item.lat);
+				PX4_INFO("Longitude %0.6f", mission_item.lon);
+				PX4_INFO("Param 1 %0.6f", (double)mission_item.params[0]);
+				PX4_INFO("Param 2 %0.6f", (double)mission_item.params[1]);
+				PX4_INFO("Param 3 %0.6f", (double)mission_item.params[2]);
+				PX4_INFO("Param 4 %0.6f", (double)mission_item.params[3]);
+				PX4_INFO("Param 5 %0.6f", (double)mission_item.params[4]);
+				PX4_INFO("Param 6 %0.6f", (double)mission_item.params[5]);
+				PX4_INFO("Param 7 %0.6f", (double)mission_item.params[6]);
+				PX4_INFO("NAV command %d",mission_item.nav_cmd);
+				seq++;
+			}
+		}
+	}
+	else
+	{
+		PX4_WARN("Wrong mission argument clear|update|read");
+		return;
+	}
+}
+
 
 int IridiumSBD::ioctl(struct file *filp, int cmd, unsigned long arg)
 {
@@ -359,6 +563,7 @@ void IridiumSBD::main_loop(int argc, char *argv[])
 		case SATCOM_STATE_TEST:
 			test_loop();
 			break;
+
 		}
 
 		publish_subsystem_status();
@@ -374,6 +579,353 @@ void IridiumSBD::main_loop(int argc, char *argv[])
 		}
 	}
 }
+
+int IridiumSBD::mission_clear_all(void)
+{
+	mission_s mission;
+	mission.timestamp = hrt_absolute_time();
+	mission.dataman_id = DM_KEY_WAYPOINTS_ONBOARD;
+	mission.count = 0;
+	mission.current_seq = 0;
+
+	/* update mission state in dataman */
+
+	/* lock MISSION_STATE item */
+	int dm_lock_ret = dm_lock(DM_KEY_MISSION_STATE);
+
+	if (dm_lock_ret != 0) {
+		PX4_ERR("DM_KEY_MISSION_STATE lock failed");
+	}
+
+	int res = dm_write(DM_KEY_MISSION_STATE, 0, DM_PERSIST_POWER_ON_RESET, &mission, sizeof(mission_s));
+
+	/* unlock MISSION_STATE item */
+	if (dm_lock_ret == 0) {
+		dm_unlock(DM_KEY_MISSION_STATE);
+	}
+
+	if (res == sizeof(mission_s)) {
+		/* mission state saved successfully, publish offboard_mission topic */
+		if (_onboard_mission_pub == nullptr) {
+			_onboard_mission_pub = orb_advertise(ORB_ID(mission), &mission);
+
+		} else {
+			orb_publish(ORB_ID(mission), _onboard_mission_pub, &mission);
+		}
+
+		return PX4_OK;
+
+	} else {
+		PX4_ERR("WPM: can't save mission state");
+
+		return PX4_ERROR;
+	}
+}
+
+int IridiumSBD::mission_write(uint16_t seq, mavlink_mission_item_t *mavlink_mission_item)
+{
+	_dataman_id = DM_KEY_WAYPOINTS_ONBOARD;
+	dm_item_t dm_item = _dataman_id;
+	struct mission_item_s mission_item = {};
+	parse_mavlink_mission_item(mavlink_mission_item, &mission_item);
+	bool write_failed;
+	write_failed = dm_write(dm_item, seq, DM_PERSIST_POWER_ON_RESET, &mission_item,
+				sizeof(struct mission_item_s)) != sizeof(struct mission_item_s);
+	if(write_failed)
+	{
+		return PX4_ERROR;
+	}
+	else{
+		return PX4_OK;
+	}					
+}
+
+int
+IridiumSBD::parse_mavlink_mission_item(const mavlink_mission_item_t *mavlink_mission_item,
+		struct mission_item_s *mission_item)
+{
+	bool _int_mode = false;
+	if (mavlink_mission_item->frame == MAV_FRAME_GLOBAL ||
+	    mavlink_mission_item->frame == MAV_FRAME_GLOBAL_RELATIVE_ALT ||
+	    (_int_mode && (mavlink_mission_item->frame == MAV_FRAME_GLOBAL_INT ||
+			   mavlink_mission_item->frame == MAV_FRAME_GLOBAL_RELATIVE_ALT_INT))) {
+
+		// Switch to int mode if that is what we are receiving
+		if ((mavlink_mission_item->frame == MAV_FRAME_GLOBAL_INT ||
+		     mavlink_mission_item->frame == MAV_FRAME_GLOBAL_RELATIVE_ALT_INT)) {
+			_int_mode = true;
+		}
+
+		if (_int_mode) {
+			/* The argument is actually a mavlink_mission_item_int_t in int_mode.
+			 * mavlink_mission_item_t and mavlink_mission_item_int_t have the same
+			 * alignment, so we can just swap float for int32_t. */
+			const mavlink_mission_item_int_t *item_int
+				= reinterpret_cast<const mavlink_mission_item_int_t *>(mavlink_mission_item);
+			mission_item->lat = ((double)item_int->x) * 1e-7;
+			mission_item->lon = ((double)item_int->y) * 1e-7;
+
+		} else {
+			mission_item->lat = (double)mavlink_mission_item->x;
+			mission_item->lon = (double)mavlink_mission_item->y;
+		}
+
+		mission_item->altitude = mavlink_mission_item->z;
+		mission_item->params[4] = mavlink_mission_item->x;
+		mission_item->params[5] = mavlink_mission_item->y;
+
+		if (mavlink_mission_item->frame == MAV_FRAME_GLOBAL ||
+		    mavlink_mission_item->frame == MAV_FRAME_GLOBAL_INT) {
+			mission_item->altitude_is_relative = false;
+
+		} else if (mavlink_mission_item->frame == MAV_FRAME_GLOBAL_RELATIVE_ALT ||
+			   mavlink_mission_item->frame == MAV_FRAME_GLOBAL_RELATIVE_ALT_INT) {
+			mission_item->altitude_is_relative = true;
+		}
+
+		/* this field is shared with pitch_min (and circle_radius for geofence) in memory and
+		 * exclusive in the MAVLink spec. Set it to 0 first
+		 * and then set minimum pitch later only for the
+		 * corresponding item
+		 */
+		mission_item->time_inside = 0.0f;
+
+		switch (mavlink_mission_item->command) {
+		case MAV_CMD_SLEEP_ICARUS:
+			mission_item->nav_cmd = NAV_CMD_SLEEP_ICARUS;
+			mission_item->params[0] = mavlink_mission_item->param1;
+			break;
+
+		case MAV_CMD_NAV_WAYPOINT:
+			mission_item->nav_cmd = NAV_CMD_WAYPOINT;
+			mission_item->time_inside = mavlink_mission_item->param1;
+			mission_item->acceptance_radius = mavlink_mission_item->param2;
+			mission_item->yaw = wrap_pi(math::radians(mavlink_mission_item->param4));
+			break;
+
+		case MAV_CMD_NAV_LOITER_UNLIM:
+			mission_item->nav_cmd = NAV_CMD_LOITER_UNLIMITED;
+			mission_item->loiter_radius = mavlink_mission_item->param3;
+			mission_item->yaw = wrap_pi(math::radians(mavlink_mission_item->param4));
+			break;
+
+		case MAV_CMD_NAV_LOITER_TIME:
+			mission_item->nav_cmd = NAV_CMD_LOITER_TIME_LIMIT;
+			mission_item->time_inside = mavlink_mission_item->param1;
+			mission_item->loiter_radius = mavlink_mission_item->param3;
+			mission_item->loiter_exit_xtrack = (mavlink_mission_item->param4 > 0);
+			break;
+
+		case MAV_CMD_NAV_LAND:
+			mission_item->nav_cmd = NAV_CMD_LAND;
+			// TODO: abort alt param1
+			mission_item->yaw = wrap_pi(math::radians(mavlink_mission_item->param4));
+			mission_item->land_precision = mavlink_mission_item->param2;
+			break;
+
+		case MAV_CMD_NAV_TAKEOFF:
+			mission_item->nav_cmd = NAV_CMD_TAKEOFF;
+			mission_item->pitch_min = mavlink_mission_item->param1;
+			mission_item->yaw = wrap_pi(math::radians(mavlink_mission_item->param4));
+			break;
+
+		case MAV_CMD_NAV_LOITER_TO_ALT:
+			mission_item->nav_cmd = NAV_CMD_LOITER_TO_ALT;
+			mission_item->force_heading = (mavlink_mission_item->param1 > 0);
+			mission_item->loiter_radius = mavlink_mission_item->param2;
+			mission_item->loiter_exit_xtrack = (mavlink_mission_item->param4 > 0);
+			break;
+
+		case MAV_CMD_NAV_ROI:
+		case MAV_CMD_DO_SET_ROI:
+			if ((int)mavlink_mission_item->param1 == MAV_ROI_LOCATION) {
+				mission_item->nav_cmd = NAV_CMD_DO_SET_ROI;
+				mission_item->params[0] = MAV_ROI_LOCATION;
+
+				mission_item->params[6] = mavlink_mission_item->z;
+
+			} else if ((int)mavlink_mission_item->param1 == MAV_ROI_NONE) {
+				mission_item->nav_cmd = NAV_CMD_DO_SET_ROI;
+				mission_item->params[0] = MAV_ROI_NONE;
+
+			} else {
+				return MAV_MISSION_INVALID_PARAM1;
+			}
+
+			break;
+
+		case MAV_CMD_DO_SET_ROI_LOCATION:
+			mission_item->nav_cmd = NAV_CMD_DO_SET_ROI_LOCATION;
+			mission_item->params[6] = mavlink_mission_item->z;
+			break;
+
+		case MAV_CMD_NAV_VTOL_TAKEOFF:
+		case MAV_CMD_NAV_VTOL_LAND:
+			mission_item->nav_cmd = (NAV_CMD)mavlink_mission_item->command;
+			mission_item->yaw = wrap_pi(math::radians(mavlink_mission_item->param4));
+			break;
+
+		case MAV_CMD_NAV_FENCE_RETURN_POINT:
+			mission_item->nav_cmd = (NAV_CMD)mavlink_mission_item->command;
+			break;
+
+		case MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION:
+		case MAV_CMD_NAV_FENCE_POLYGON_VERTEX_EXCLUSION:
+			mission_item->nav_cmd = (NAV_CMD)mavlink_mission_item->command;
+			mission_item->vertex_count = (uint16_t)(mavlink_mission_item->param1 + 0.5f);
+			break;
+
+		case MAV_CMD_NAV_FENCE_CIRCLE_INCLUSION:
+		case MAV_CMD_NAV_FENCE_CIRCLE_EXCLUSION:
+			mission_item->nav_cmd = (NAV_CMD)mavlink_mission_item->command;
+			mission_item->circle_radius = mavlink_mission_item->param1;
+			break;
+
+		case MAV_CMD_NAV_RALLY_POINT:
+			mission_item->nav_cmd = (NAV_CMD)mavlink_mission_item->command;
+			break;
+
+		default:
+			mission_item->nav_cmd = NAV_CMD_INVALID;
+
+			PX4_WARN("Unsupported command %d", mavlink_mission_item->command);
+
+			return MAV_MISSION_UNSUPPORTED;
+		}
+
+		mission_item->frame = mavlink_mission_item->frame;
+
+	} else if (mavlink_mission_item->frame == MAV_FRAME_MISSION) {
+
+		// this is a mission item with no coordinates
+
+		mission_item->params[0] = mavlink_mission_item->param1;
+		mission_item->params[1] = mavlink_mission_item->param2;
+		mission_item->params[2] = mavlink_mission_item->param3;
+		mission_item->params[3] = mavlink_mission_item->param4;
+		mission_item->params[4] = mavlink_mission_item->x;
+		mission_item->params[5] = mavlink_mission_item->y;
+		mission_item->params[6] = mavlink_mission_item->z;
+
+		switch (mavlink_mission_item->command) {
+		case MAV_CMD_DO_JUMP:
+			mission_item->nav_cmd = NAV_CMD_DO_JUMP;
+			mission_item->do_jump_mission_index = mavlink_mission_item->param1;
+			mission_item->do_jump_current_count = 0;
+			mission_item->do_jump_repeat_count = mavlink_mission_item->param2;
+			break;
+
+		case MAV_CMD_NAV_ROI:
+		case MAV_CMD_DO_SET_ROI: {
+				const int roi_mode = mavlink_mission_item->param1;
+
+				if (roi_mode == MAV_ROI_NONE || roi_mode == MAV_ROI_WPNEXT || roi_mode == MAV_ROI_WPINDEX) {
+					mission_item->nav_cmd = NAV_CMD_DO_SET_ROI;
+
+				} else {
+					return MAV_MISSION_INVALID_PARAM1;
+				}
+			}
+			break;
+
+		case MAV_CMD_DO_CHANGE_SPEED:
+		case MAV_CMD_DO_SET_HOME:
+		case MAV_CMD_DO_SET_SERVO:
+		case MAV_CMD_DO_LAND_START:
+		case MAV_CMD_DO_TRIGGER_CONTROL:
+		case MAV_CMD_DO_DIGICAM_CONTROL:
+		case MAV_CMD_DO_MOUNT_CONFIGURE:
+		case MAV_CMD_DO_MOUNT_CONTROL:
+		case MAV_CMD_IMAGE_START_CAPTURE:
+		case MAV_CMD_IMAGE_STOP_CAPTURE:
+		case MAV_CMD_VIDEO_START_CAPTURE:
+		case MAV_CMD_VIDEO_STOP_CAPTURE:
+		case MAV_CMD_DO_SET_CAM_TRIGG_DIST:
+		case MAV_CMD_DO_SET_CAM_TRIGG_INTERVAL:
+		case MAV_CMD_SET_CAMERA_MODE:
+		case MAV_CMD_DO_VTOL_TRANSITION:
+		case MAV_CMD_NAV_DELAY:
+		case MAV_CMD_NAV_RETURN_TO_LAUNCH:
+		case MAV_CMD_DO_SET_ROI_WPNEXT_OFFSET:
+		case MAV_CMD_DO_SET_ROI_NONE:
+			mission_item->nav_cmd = (NAV_CMD)mavlink_mission_item->command;
+			break;
+
+		default:
+			mission_item->nav_cmd = NAV_CMD_INVALID;
+
+			PX4_WARN("Unsupported command %d", mavlink_mission_item->command);
+
+			return MAV_MISSION_UNSUPPORTED;
+		}
+
+		mission_item->frame = MAV_FRAME_MISSION;
+
+	} else {
+		PX4_DEBUG("Unsupported frame %d", mavlink_mission_item->frame);
+
+		return MAV_MISSION_UNSUPPORTED_FRAME;
+	}
+
+	mission_item->autocontinue = mavlink_mission_item->autocontinue;
+	// mission_item->index = mavlink_mission_item->seq;
+
+	mission_item->origin = ORIGIN_MAVLINK;
+
+	PX4_INFO("Latitude %0.6f", mission_item->lat);
+	PX4_INFO("Latitude %0.6f", (double)mavlink_mission_item->x);
+	PX4_INFO("Longitude %0.6f", mission_item->lon);
+	PX4_INFO("Longitude %0.6f", (double)mavlink_mission_item->y);
+	PX4_INFO("Param 1 %f", (double)mission_item->params[0]);
+	PX4_INFO("Param 2 %f", (double)mission_item->params[1]);
+	PX4_INFO("Param 3 %f", (double)mission_item->params[2]);
+	PX4_INFO("Param 4 %f", (double)mission_item->params[3]);
+	PX4_INFO("Param 5 %f", (double)mission_item->params[4]);
+	PX4_INFO("Param 6 %f", (double)mission_item->params[5]);
+	PX4_INFO("Param 7 %f", (double)mission_item->params[6]);
+	PX4_INFO("NAV command %d",mission_item->nav_cmd);
+	
+
+	return MAV_MISSION_ACCEPTED;
+}
+
+void IridiumSBD::copySatMissionItem(struct SatelliteMissionItem *sat_mission, 
+	mavlink_mission_item_t* mavlink_mission_item)
+{
+	;
+	mavlink_mission_item->param1 = float(sat_mission->param1);
+	mavlink_mission_item->param2 = float(sat_mission->param2);
+	mavlink_mission_item->param3 = float(sat_mission->param3);
+	mavlink_mission_item->param4 = float(sat_mission->param4);	
+	mavlink_mission_item->x = double(sat_mission->param5)/1e7;
+	mavlink_mission_item->y = double(sat_mission->param6)/1e7;
+	mavlink_mission_item->z = float(sat_mission->param7);
+	mavlink_mission_item->seq = sat_mission->seq;
+	mavlink_mission_item->command = sat_mission->command;
+	mavlink_mission_item->target_system = sat_mission->targetSystem; 
+	mavlink_mission_item->target_component = sat_mission->targetComponent;
+	mavlink_mission_item->frame = sat_mission->frame;
+	mavlink_mission_item->current = sat_mission->current;
+	mavlink_mission_item->autocontinue = sat_mission->autoContinue;
+	mavlink_mission_item->mission_type = sat_mission->missionType;
+}
+
+bool IridiumSBD::verifyItemAllReceived(void)
+{
+	for(uint i=1; i<=missionItemRecCount; i++)
+	{
+		if(missionItemReceived[i] == 0)
+			return false;
+	}
+	return true;
+}
+
+void IridiumSBD::clearMissionItemReceived(void)
+{
+	for(uint i=0; i<sizeof(missionItemReceived); i++)
+		missionItemReceived[i] = 0;
+}
+
 
 void IridiumSBD::standby_loop(void)
 {
@@ -852,11 +1404,14 @@ void IridiumSBD::write_tx_buf()
 
 void IridiumSBD::read_rx_buf(void)
 {
+	PX4_INFO("Read function entered");
+
 	if (!is_modem_ready()) {
 		VERBOSE_INFO("READ SBD: MODEM NOT READY!");
 		return;
 	}
 
+	PX4_INFO("Read message - modem ready");
 	pthread_mutex_lock(&_rx_buf_mutex);
 
 
@@ -869,6 +1424,7 @@ void IridiumSBD::read_rx_buf(void)
 		return;
 	}
 
+	PX4_INFO("Read message - SBDRB command OK");
 	int data_len = (_rx_msg_buf[0] << 8) + _rx_msg_buf[1];
 
 	// rx_buf contains 2 byte length, data, 2 byte checksum and /r/n delimiter
@@ -878,6 +1434,8 @@ void IridiumSBD::read_rx_buf(void)
 		pthread_mutex_unlock(&_rx_buf_mutex);
 		return;
 	}
+
+	PX4_INFO("Message length ok, %d", data_len);
 
 	int checksum = 0;
 
@@ -892,9 +1450,81 @@ void IridiumSBD::read_rx_buf(void)
 		return;
 	}
 
+	PX4_INFO("Checksum ok");
+
 	_rx_msg_read_idx = 2;	// ignore the length
 	_rx_msg_end_idx -= 4;	// ignore the checksum and delimiter
+
+	if(data_len == sizeof(struct SatelliteMissionItem))
+	{
+		for(int i = 0;i<_rx_msg_end_idx; i++)
+		{
+			missionMsg.msg[i] = _rx_msg_buf[i+_rx_msg_read_idx];
+		}
+
+		PX4_INFO("Sequence number %d", missionMsg.item.seq);
+		PX4_INFO("Mission item count %d", missionMsg.item.count);
+		PX4_INFO("Param 1 : %d", missionMsg.item.param1);
+		PX4_INFO("Param 2 : %d", missionMsg.item.param2);
+		PX4_INFO("Param 3 : %d", missionMsg.item.param3);
+		PX4_INFO("Param 4 : %d", missionMsg.item.param4);
+		PX4_INFO("Param 5 : %d", missionMsg.item.param5);
+		PX4_INFO("Param 6 : %d", missionMsg.item.param6);
+		PX4_INFO("Param 7 : %d", missionMsg.item.param7);
+
+		missionItemRecCount = missionMsg.item.count;
+		if(missionItemReceived[missionMsg.item.seq] == 1)
+		{
+			write(0, "Mission item already received", 29);
+		}
+		else
+		{			
+			mavlink_mission_item_t mav_mission_item = {};
+			copySatMissionItem(&missionMsg.item, &mav_mission_item);
+			int write_failed = instance->mission_write(missionMsg.item.seq, &mav_mission_item);
+			if(write_failed)
+			{
+				PX4_WARN("Mission item write failed");
+				write(0, "Mission item write failed", 25);
+			}
+			else
+			{
+				missionItemReceived[missionMsg.item.seq] = 1;
+				write(0, "Mission item received", 21);
+			}
+
+			if(verifyItemAllReceived())
+			{
+				clearMissionItemReceived();
+				write(0, " All mission item received", 26);
+
+				mission_s mission;
+				mission.timestamp = hrt_absolute_time();
+				mission.dataman_id = instance->_dataman_id;
+				mission.count = missionItemRecCount;
+				mission.current_seq = 0;
+
+				int dm_lock_ret = dm_lock(DM_KEY_MISSION_STATE);
+
+				if (dm_lock_ret != 0) {
+					PX4_ERR("DM_KEY_MISSION_STATE lock failed");
+				}
+
+				dm_write(DM_KEY_MISSION_STATE, 0, DM_PERSIST_POWER_ON_RESET, &mission, sizeof(mission_s));
+
+
+				/* unlock MISSION_STATE item */
+				if (dm_lock_ret == 0) {
+					dm_unlock(DM_KEY_MISSION_STATE);
+				}
+				PX4_INFO("Mission state written to memory");
+					
+			}
+		}
+	}
+	_rx_session_pending = false;
 	_rx_read_pending = false;
+	_rx_msg_read_idx = _rx_msg_end_idx;
 
 	pthread_mutex_unlock(&_rx_buf_mutex);
 	VERBOSE_INFO("READ SBD: SUCCESS, LEN: %d", data_len);
@@ -1195,10 +1825,16 @@ int iridiumsbd_main(int argc, char *argv[])
 	} else if (!strcmp(argv[1], "test")) {
 		IridiumSBD::test(argc, argv);
 		return OK;
+	
+	} else if(!strcmp(argv[1], "mission")) {
+		IridiumSBD::mission(argc, argv);
+		return OK;
+	
 	}
+	
 
 out_error:
-	PX4_INFO("usage: iridiumsbd {start|stop|status|test} [-d uart_device]");
+	PX4_INFO("usage: iridiumsbd {start|stop|status|test|mission} [-d uart_device]");
 
 	return PX4_ERROR;
 }
