@@ -875,7 +875,7 @@ int DeLeavesAttitudeControl::custom_command(int argc, char *argv[])
 	return print_usage("unknown command");
 }
 
-int mc_att_control_main(int argc, char *argv[])
+int deleaves_att_control_main(int argc, char *argv[])
 {
 	return DeLeavesAttitudeControl::main(argc, argv);
 }

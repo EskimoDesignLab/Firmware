@@ -31,11 +31,11 @@
 #
 ############################################################################
 px4_add_module(
-	MODULE modules__mc_pos_control__mc_pos_control_tests
-	MAIN mc_pos_control_tests
+	MODULE modules__deleaves_pos_control__deleaves_pos_control_tests
+	MAIN deleaves_pos_control_tests
 	SRCS
-		mc_pos_control_tests.cpp
-		../mc_pos_control_main.cpp
+		deleaves_pos_control_tests.cpp
+		../deleaves_pos_control_main.cpp
 		test_controlmath.cpp
 		../Utility/ControlMath.cpp
 	DEPENDS

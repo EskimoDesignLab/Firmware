@@ -88,7 +88,7 @@
  *
  * @ingroup apps
  */
-extern "C" __EXPORT int mc_pos_control_main(int argc, char *argv[]);
+extern "C" __EXPORT int deleaves_pos_control_main(int argc, char *argv[]);
 
 class DeLeavesPositionControl : public control::SuperBlock, public ModuleParams
 {
@@ -3403,7 +3403,7 @@ DeLeavesPositionControl::start()
 	return OK;
 }
 
-int mc_pos_control_main(int argc, char *argv[])
+int deleaves_pos_control_main(int argc, char *argv[])
 {
 	if (argc < 2) {
 		warnx("usage: mc_pos_control {start|stop|status}");

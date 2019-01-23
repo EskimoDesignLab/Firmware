@@ -59,7 +59,7 @@
 /**
  * Multicopter attitude control app start / stop handling function
  */
-extern "C" __EXPORT int mc_att_control_main(int argc, char *argv[]);
+extern "C" __EXPORT int deleaves_att_control_main(int argc, char *argv[]);
 
 #define MAX_GYRO_COUNT 3
 

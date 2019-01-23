@@ -44,12 +44,12 @@
 #include <mathlib/mathlib.h>
 #include <matrix/math.hpp>
 
-extern "C" __EXPORT int mc_pos_control_tests_main(int argc, char *argv[]);
+extern "C" __EXPORT int deleaves_pos_control_tests_main(int argc, char *argv[]);
 
 bool mcPosControlTests();
 
 //#include "../mc_pos_control_main.cpp"
-class MulticopterPositionControl
+class DeLeavesPositionControl
 {
 public:
 	bool		cross_sphere_line(const matrix::Vector3f &sphere_c, const float sphere_r,
@@ -70,7 +70,7 @@ private:
 
 bool McPosControlTests::cross_sphere_line_test()
 {
-	MulticopterPositionControl control = MulticopterPositionControl();
+	DeLeavesPositionControl control = DeLeavesPositionControl();
 
 	matrix::Vector3f prev = matrix::Vector3f(0.0f, 0.0f, 0.0f);
 	matrix::Vector3f curr = matrix::Vector3f(0.0f, 0.0f, 2.0f);
@@ -184,7 +184,7 @@ bool McPosControlTests::run_tests()
 
 ut_declare_test(mcPosControlTests, McPosControlTests);
 
-int mc_pos_control_tests_main(int argc, char *argv[])
+int deleaves_pos_control_tests_main(int argc, char *argv[])
 {
 	return mcPosControlTests() ? 0 : -1;
 }
