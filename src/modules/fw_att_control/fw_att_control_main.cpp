@@ -1277,6 +1277,7 @@ FixedwingAttitudeControl::task_main()
 						{
 
 							// WAIT AVANT LA SEQUENCE (FALCULTATIF)
+							// commentaire ajouter pour tester les Push dans Git
 							if(mode_seq0)
 						        {
 						                _actuators.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f; 
