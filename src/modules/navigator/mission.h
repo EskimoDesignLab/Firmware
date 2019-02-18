@@ -48,7 +48,7 @@
 #include "mission_feasibility_checker.h"
 #include "navigator_mode.h"
 
-#include <cfloat>
+#include <float.h>
 
 #include <dataman/dataman.h>
 #include <drivers/drv_hrt.h>
@@ -78,14 +78,6 @@ public:
 	enum mission_altitude_mode {
 		MISSION_ALTMODE_ZOH = 0,
 		MISSION_ALTMODE_FOH = 1
-	};
-
-	enum mission_yaw_mode {
-		MISSION_YAWMODE_NONE = 0,
-		MISSION_YAWMODE_FRONT_TO_WAYPOINT = 1,
-		MISSION_YAWMODE_FRONT_TO_HOME = 2,
-		MISSION_YAWMODE_BACK_TO_HOME = 3,
-		MISSION_YAWMODE_MAX = 4
 	};
 
 	bool set_current_offboard_mission_index(uint16_t index);

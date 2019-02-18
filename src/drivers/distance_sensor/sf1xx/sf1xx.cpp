@@ -60,7 +60,6 @@
 #include <stdio.h>
 #include <math.h>
 #include <unistd.h>
-#include <vector>
 
 #include <perf/perf_counter.h>
 
@@ -344,21 +343,11 @@ SF1XX::ioctl(device::file_t *filp, int cmd, unsigned long arg)
 	case SENSORIOCSPOLLRATE: {
 			switch (arg) {
 
-			/* switching to manual polling */
-			case SENSOR_POLLRATE_MANUAL:
-				stop();
-				_measure_ticks = 0;
-				return OK;
-
-			/* external signalling (DRDY) not supported */
-			case SENSOR_POLLRATE_EXTERNAL:
-
 			/* zero would be bad */
 			case 0:
 				return -EINVAL;
 
-			/* set default/max polling rate */
-			case SENSOR_POLLRATE_MAX:
+			/* set default polling rate */
 			case SENSOR_POLLRATE_DEFAULT: {
 					/* do we need to start internal polling? */
 					bool want_start = (_measure_ticks == 0);
@@ -400,35 +389,6 @@ SF1XX::ioctl(device::file_t *filp, int cmd, unsigned long arg)
 				}
 			}
 		}
-
-	case SENSORIOCGPOLLRATE:
-		if (_measure_ticks == 0) {
-			return SENSOR_POLLRATE_MANUAL;
-		}
-
-		return (1000 / _measure_ticks);
-
-	case SENSORIOCSQUEUEDEPTH: {
-			/* lower bound is mandatory, upper bound is a sanity check */
-			if ((arg < 1) || (arg > 100)) {
-				return -EINVAL;
-			}
-
-			ATOMIC_ENTER;
-
-			if (!_reports->resize(arg)) {
-				ATOMIC_LEAVE;
-				return -ENOMEM;
-			}
-
-			ATOMIC_LEAVE;
-
-			return OK;
-		}
-
-	case SENSORIOCRESET:
-		/* XXX implement this */
-		return -EINVAL;
 
 	default:
 		/* give it to the superclass */
@@ -478,7 +438,7 @@ SF1XX::read(device::file_t *filp, char *buffer, size_t buflen)
 		}
 
 		/* wait for it to complete */
-		usleep(_conversion_interval);
+		px4_usleep(_conversion_interval);
 
 		/* run the collection phase */
 		if (OK != collect()) {
@@ -875,6 +835,7 @@ $ sf1xx stop
 )DESCR_STR");
 
 	PRINT_MODULE_USAGE_NAME("sf1xx", "driver");
+	PRINT_MODULE_USAGE_SUBCATEGORY("distance_sensor");
 	PRINT_MODULE_USAGE_COMMAND_DESCR("start","Start driver");
 	PRINT_MODULE_USAGE_PARAM_FLAG('a', "Attempt to start driver on all I2C buses", true);
 	PRINT_MODULE_USAGE_PARAM_INT('b', 1, 1, 2000, "Start driver on specific I2C bus", true);

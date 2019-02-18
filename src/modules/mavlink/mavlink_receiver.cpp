@@ -1254,11 +1254,14 @@ MavlinkReceiver::handle_message_odometry(mavlink_message_t *msg)
 	// - add usage on the estimator side
 	odometry.local_frame = odometry.LOCAL_FRAME_NED;
 
-	const size_t POS_URT_SIZE = sizeof(odometry.pose_covariance) / sizeof(odometry.pose_covariance[0]);
-	const size_t VEL_URT_SIZE = sizeof(odometry.velocity_covariance) / sizeof(odometry.velocity_covariance[0]);
+	// pose_covariance
+	static constexpr size_t POS_URT_SIZE = sizeof(odometry.pose_covariance) / sizeof(odometry.pose_covariance[0]);
 	static_assert(POS_URT_SIZE == (sizeof(odom.pose_covariance) / sizeof(odom.pose_covariance[0])),
 		      "Odometry Pose Covariance matrix URT array size mismatch");
-	static_assert(VEL_URT_SIZE == (sizeof(odom.twist_covariance) / sizeof(odom.twist_covariance[0])),
+
+	// velocity_covariance
+	static constexpr size_t VEL_URT_SIZE = sizeof(odometry.velocity_covariance) / sizeof(odometry.velocity_covariance[0]);
+	static_assert(VEL_URT_SIZE == (sizeof(odom.velocity_covariance) / sizeof(odom.velocity_covariance[0])),
 		      "Odometry Velocity Covariance matrix URT array size mismatch");
 
 	// create a method to simplify covariance copy
@@ -1285,7 +1288,7 @@ MavlinkReceiver::handle_message_odometry(mavlink_message_t *msg)
 
 		//TODO: Apply rotation matrix to transform from body-fixed NED to earth-fixed NED frame
 		for (size_t i = 0; i < VEL_URT_SIZE; i++) {
-			odometry.velocity_covariance[i] = odom.twist_covariance[i];
+			odometry.velocity_covariance[i] = odom.velocity_covariance[i];
 		}
 
 	} else if (odom.child_frame_id == MAV_FRAME_BODY_NED) { /* WRT to vehicle body-NED frame */
@@ -1307,13 +1310,14 @@ MavlinkReceiver::handle_message_odometry(mavlink_message_t *msg)
 
 			//TODO: Apply rotation matrix to transform from body-fixed to earth-fixed NED frame
 			for (size_t i = 0; i < VEL_URT_SIZE; i++) {
-				odometry.velocity_covariance[i] = odom.twist_covariance[i];
+				odometry.velocity_covariance[i] = odom.velocity_covariance[i];
 			}
 
 		}
 
 	} else if (odom.child_frame_id == MAV_FRAME_VISION_NED || /* WRT to vehicle local NED frame */
 		   odom.child_frame_id == MAV_FRAME_MOCAP_NED) {
+
 		if (updated) {
 			orb_copy(ORB_ID(vehicle_attitude), _vehicle_attitude_sub, &_att);
 
@@ -1332,7 +1336,7 @@ MavlinkReceiver::handle_message_odometry(mavlink_message_t *msg)
 
 			//TODO: Apply rotation matrix to transform from earth-fixed to body-fixed NED frame
 			for (size_t i = 0; i < VEL_URT_SIZE; i++) {
-				odometry.velocity_covariance[i] = odom.twist_covariance[i];
+				odometry.velocity_covariance[i] = odom.velocity_covariance[i];
 			}
 
 		}
@@ -1447,8 +1451,11 @@ MavlinkReceiver::handle_message_set_attitude_target(mavlink_message_t *msg)
 						att_sp.yaw_sp_move_rate = 0.0f;
 					}
 
+					// TODO: We assume offboard is only used for multicopters which produce thrust along the
+					// body z axis. If we want to support fixed wing as well we need to handle it differently here, e.g.
+					// in that case we should assign att_sp.thrust_body[0]
 					if (!_offboard_control_mode.ignore_thrust) { // dont't overwrite thrust if it's invalid
-						att_sp.thrust = set_attitude_target.thrust;
+						att_sp.thrust_body[2] = -set_attitude_target.thrust;
 					}
 
 					if (_att_sp_pub == nullptr) {
@@ -1472,7 +1479,7 @@ MavlinkReceiver::handle_message_set_attitude_target(mavlink_message_t *msg)
 					}
 
 					if (!_offboard_control_mode.ignore_thrust) { // dont't overwrite thrust if it's invalid
-						rates_sp.thrust = set_attitude_target.thrust;
+						rates_sp.thrust_body[2] = -set_attitude_target.thrust;
 					}
 
 					if (_rates_sp_pub == nullptr) {
@@ -1693,7 +1700,7 @@ MavlinkReceiver::handle_message_play_tune(mavlink_message_t *msg)
 	     play_tune.target_component == 0)) {
 
 		if (*tune == 'M') {
-			int fd = px4_open(TONEALARM0_DEVICE_PATH, PX4_F_WRONLY);
+			int fd = px4_open(TONE_ALARM0_DEVICE_PATH, PX4_F_WRONLY);
 
 			if (fd >= 0) {
 				px4_write(fd, tune, strlen(tune) + 1);
@@ -1831,7 +1838,6 @@ MavlinkReceiver::handle_message_rc_channels_override(mavlink_message_t *msg)
 	// metadata
 	rc.timestamp = hrt_absolute_time();
 	rc.timestamp_last_signal = rc.timestamp;
-	rc.channel_count = 18;
 	rc.rssi = RC_INPUT_RSSI_MAX;
 	rc.rc_failsafe = false;
 	rc.rc_lost = false;
@@ -1858,6 +1864,22 @@ MavlinkReceiver::handle_message_rc_channels_override(mavlink_message_t *msg)
 	rc.values[15] = man.chan16_raw;
 	rc.values[16] = man.chan17_raw;
 	rc.values[17] = man.chan18_raw;
+
+	// check how many channels are valid
+	for (int i = 17; i >= 0; i--) {
+		const bool ignore_max = rc.values[i] == UINT16_MAX; // ignore any channel with value UINT16_MAX
+		const bool ignore_zero = (i > 7) && (rc.values[i] == 0); // ignore channel 8-18 if value is 0
+
+		if (ignore_max || ignore_zero) {
+			// set all ignored values to zero
+			rc.values[i] = 0;
+
+		} else {
+			// first channel to not ignore -> set count considering zero-based index
+			rc.channel_count = i + 1;
+			break;
+		}
+	}
 
 	// publish uORB message
 	int instance; // provides the instance ID or the publication
@@ -2047,7 +2069,7 @@ MavlinkReceiver::handle_message_hil_sensor(mavlink_message_t *msg)
 
 	/* gyro */
 	{
-		struct gyro_report gyro = {};
+		sensor_gyro_s gyro = {};
 
 		gyro.timestamp = timestamp;
 		gyro.x_raw = imu.xgyro * 1000.0f;
@@ -2068,7 +2090,7 @@ MavlinkReceiver::handle_message_hil_sensor(mavlink_message_t *msg)
 
 	/* accelerometer */
 	{
-		struct accel_report accel = {};
+		sensor_accel_s accel = {};
 
 		accel.timestamp = timestamp;
 		accel.x_raw = imu.xacc / (CONSTANTS_ONE_G / 1000.0f);
@@ -2110,7 +2132,7 @@ MavlinkReceiver::handle_message_hil_sensor(mavlink_message_t *msg)
 
 	/* baro */
 	{
-		struct baro_report baro = {};
+		sensor_baro_s baro = {};
 
 		baro.timestamp = timestamp;
 		baro.pressure = imu.abs_pressure;
@@ -2469,7 +2491,7 @@ MavlinkReceiver::handle_message_hil_state_quaternion(mavlink_message_t *msg)
 
 	/* accelerometer */
 	{
-		struct accel_report accel = {};
+		sensor_accel_s accel = {};
 
 		accel.timestamp = timestamp;
 		accel.x_raw = hil_state.xacc / CONSTANTS_ONE_G * 1e3f;
@@ -2635,7 +2657,7 @@ MavlinkReceiver::receive_thread(void *arg)
 	if (_mavlink->get_protocol() == UDP || _mavlink->get_protocol() == TCP) {
 		// make sure mavlink app has booted before we start using the socket
 		while (!_mavlink->boot_complete()) {
-			usleep(100000);
+			px4_usleep(100000);
 		}
 
 		fds[0].fd = _mavlink->get_socket_fd();
@@ -2659,7 +2681,7 @@ MavlinkReceiver::receive_thread(void *arg)
 				/* non-blocking read. read may return negative values */
 				if ((nread = ::read(fds[0].fd, buf, sizeof(buf))) < (ssize_t)character_count) {
 					const unsigned sleeptime = character_count * 1000000 / (_mavlink->get_baudrate() / 10);
-					usleep(sleeptime);
+					px4_usleep(sleeptime);
 				}
 			}
 

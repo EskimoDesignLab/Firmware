@@ -50,6 +50,7 @@
 
 
 #include <fcntl.h>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <stdint.h>
@@ -74,7 +75,6 @@
 #include <matrix/math.hpp>
 #include <systemlib/err.h>
 #include <parameters/param.h>
-#include <drivers/drv_gps.h>
 #include <uORB/uORB.h>
 #include <uORB/topics/vehicle_gps_position.h>
 #include <uORB/topics/satellite_info.h>
@@ -86,6 +86,7 @@
 #include "devices/src/ubx.h"
 #include "devices/src/mtk.h"
 #include "devices/src/ashtech.h"
+#include "devices/src/emlid_reach.h"
 
 #ifdef __PX4_LINUX
 #include <linux/spi/spidev.h>
@@ -94,6 +95,13 @@
 #define TIMEOUT_5HZ 500
 #define RATE_MEASUREMENT_PERIOD 5000000
 
+typedef enum {
+	GPS_DRIVER_MODE_NONE = 0,
+	GPS_DRIVER_MODE_UBX,
+	GPS_DRIVER_MODE_MTK,
+	GPS_DRIVER_MODE_ASHTECH,
+	GPS_DRIVER_MODE_EMLIDREACH
+} gps_driver_mode_t;
 
 /* struct for dynamic allocation of satellite info data */
 struct GPS_Sat_Info {
@@ -294,7 +302,7 @@ GPS::~GPS()
 		unsigned int i = 0;
 
 		do {
-			usleep(20000); // 20 ms
+			px4_usleep(20000); // 20 ms
 			++i;
 		} while (_secondary_instance && i < 100);
 	}
@@ -394,11 +402,11 @@ int GPS::pollOrRead(uint8_t *buf, size_t buf_length, int timeout)
 			err = ioctl(_serial_fd, FIONREAD, (unsigned long)&bytes_available);
 
 			if (err != 0 || bytes_available < (int)character_count) {
-				usleep(sleeptime);
+				px4_usleep(sleeptime);
 			}
 
 #else
-			usleep(sleeptime);
+			px4_usleep(sleeptime);
 #endif
 
 			ret = ::read(_serial_fd, buf, buf_length);
@@ -413,7 +421,7 @@ int GPS::pollOrRead(uint8_t *buf, size_t buf_length, int timeout)
 #else
 	/* For QURT, just use read for now, since this doesn't block, we need to slow it down
 	 * just a bit. */
-	usleep(10000);
+	px4_usleep(10000);
 	return ::read(_serial_fd, buf, buf_length);
 #endif
 }
@@ -687,7 +695,7 @@ GPS::run()
 
 			publish();
 
-			usleep(200000);
+			px4_usleep(200000);
 
 		} else {
 
@@ -712,6 +720,10 @@ GPS::run()
 
 			case GPS_DRIVER_MODE_ASHTECH:
 				_helper = new GPSDriverAshtech(&GPS::callback, this, &_report_gps_pos, _p_report_sat_info, heading_offset);
+				break;
+
+			case GPS_DRIVER_MODE_EMLIDREACH:
+				_helper = new GPSDriverEmlidReach(&GPS::callback, this, &_report_gps_pos, _p_report_sat_info);
 				break;
 
 			default:
@@ -776,6 +788,10 @@ GPS::run()
 //							mode_str = "ASHTECH";
 //							break;
 //
+//						case GPS_DRIVER_MODE_EMLIDREACH:
+//							mode_str = "EMLID REACH";
+//							break;
+//
 //						default:
 //							break;
 //						}
@@ -803,8 +819,12 @@ GPS::run()
 					break;
 
 				case GPS_DRIVER_MODE_ASHTECH:
+					_mode = GPS_DRIVER_MODE_EMLIDREACH;
+					break;
+
+				case GPS_DRIVER_MODE_EMLIDREACH:
 					_mode = GPS_DRIVER_MODE_UBX;
-					usleep(500000); // tried all possible drivers. Wait a bit before next round
+					px4_usleep(500000); // tried all possible drivers. Wait a bit before next round
 					break;
 
 				default:
@@ -812,7 +832,7 @@ GPS::run()
 				}
 
 			} else {
-				usleep(500000);
+				px4_usleep(500000);
 			}
 
 		}
@@ -869,6 +889,10 @@ GPS::print_status()
 
 		case GPS_DRIVER_MODE_ASHTECH:
 			PX4_INFO("protocol: ASHTECH");
+			break;
+
+		case GPS_DRIVER_MODE_EMLIDREACH:
+			PX4_INFO("protocol: EMLIDREACH");
 			break;
 
 		default:
@@ -970,7 +994,7 @@ gps start -d /dev/ttyS3 -e /dev/ttyS4
 	PRINT_MODULE_USAGE_PARAM_FLAG('s', "Enable publication of satellite info", true);
 
 	PRINT_MODULE_USAGE_PARAM_STRING('i', "uart", "spi|uart", "GPS interface", true);
-	PRINT_MODULE_USAGE_PARAM_STRING('p', nullptr, "ubx|mtk|ash", "GPS Protocol (default=auto select)", true);
+	PRINT_MODULE_USAGE_PARAM_STRING('p', nullptr, "ubx|mtk|ash|eml", "GPS Protocol (default=auto select)", true);
 
 	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 
@@ -992,7 +1016,7 @@ int GPS::task_spawn(int argc, char *argv[], Instance instance)
 	}
 
 	int task_id = px4_task_spawn_cmd("gps", SCHED_DEFAULT,
-				   SCHED_PRIORITY_SLOW_DRIVER, 1530,
+				   SCHED_PRIORITY_SLOW_DRIVER, 1600,
 				   entry_point, (char *const *)argv);
 
 	if (task_id < 0) {
@@ -1101,6 +1125,9 @@ GPS *GPS::instantiate(int argc, char *argv[], Instance instance)
 			} else if (!strcmp(myoptarg, "ash")) {
 				mode = GPS_DRIVER_MODE_ASHTECH;
 
+			} else if (!strcmp(myoptarg, "eml")) {
+				mode = GPS_DRIVER_MODE_EMLIDREACH;
+
 			} else {
 				PX4_ERR("unknown interface: %s", myoptarg);
 				error_flag = true;
@@ -1133,7 +1160,7 @@ GPS *GPS::instantiate(int argc, char *argv[], Instance instance)
 
 			do {
 				/* wait up to 1s */
-				usleep(2500);
+				px4_usleep(2500);
 
 			} while (!_secondary_instance && ++i < 400);
 

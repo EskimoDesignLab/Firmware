@@ -57,7 +57,6 @@
 #include <px4_tasks.h>
 #include <drivers/drv_hrt.h>
 #include <drivers/device/device.h>
-#include <drivers/drv_gps.h>
 #include <uORB/uORB.h>
 #include <uORB/topics/vehicle_gps_position.h>
 #include <uORB/topics/satellite_info.h>
@@ -199,7 +198,7 @@ GPSSIM::~GPSSIM()
 	/* spin waiting for the task to stop */
 	for (unsigned i = 0; (i < 10) && (_task != -1); i++) {
 		/* give it another 100ms */
-		usleep(100000);
+		px4_usleep(100000);
 	}
 
 	/* well, kill it anyway, though this will probably crash */
@@ -271,7 +270,7 @@ GPSSIM::receive(int timeout)
 	simulator::RawGPSData gps;
 	sim->getGPSSample((uint8_t *)&gps, sizeof(gps));
 
-	static int64_t timestamp_last = 0;
+	static uint64_t timestamp_last = 0;
 
 	if (gps.timestamp != timestamp_last) {
 		_report_gps_pos.timestamp = hrt_absolute_time();
@@ -302,7 +301,7 @@ GPSSIM::receive(int timeout)
 
 	} else {
 
-		usleep(timeout);
+		px4_usleep(timeout);
 		return 0;
 	}
 }
@@ -372,7 +371,7 @@ GPSSIM::print_info()
 		print_message(_report_gps_pos);
 	}
 
-	usleep(100000);
+	px4_usleep(100000);
 }
 
 void
