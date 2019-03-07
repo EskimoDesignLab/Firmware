@@ -173,13 +173,27 @@ DropDeLeaves::drop()
 
     // activate drop mechanism, idx 4 for AUX 1
 
-    _actuators.control[4] = 1.0f;
-    actuators_publish();
+    // _actuators.control[4] = 1.0f;
+    // actuators_publish();
 
     warnx("drop system activated");
 
     // Delay for mechanism to be drop
-    usleep(4000000);
+    // with a 10% duty cycle
+    for(int i=0; i<150; i++)
+    {
+        if(i%10 == 0)
+        {
+            _actuators.control[4] = 1.0f;
+            actuators_publish();
+        }
+        else
+        {
+            _actuators.control[4] = 0.0f;
+            actuators_publish();
+        }
+        usleep(20000);        
+    }
 
     warnx("dropping ended");
 
