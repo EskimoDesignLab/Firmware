@@ -9,12 +9,12 @@ pipeline {
       steps {
         script {
           def missions = [
-            // [
-            //   name: "FW",
-            //   test: "mavros_posix_test_mission.test",
-            //   mission: "FW_mission_1",
-            //   vehicle: "plane"
-            // ],
+            [
+              name: "FW",
+              test: "mavros_posix_test_mission.test",
+              mission: "FW_mission_1",
+              vehicle: "plane"
+            ],
 
             [
               name: "MC_box",
@@ -119,7 +119,7 @@ pipeline {
   }
 
   options {
-    buildDiscarder(logRotator(numToKeepStr: '5', artifactDaysToKeepStr: '14'))
+    buildDiscarder(logRotator(numToKeepStr: '10', artifactDaysToKeepStr: '30'))
     timeout(time: 60, unit: 'MINUTES')
   }
 } // pipeline
@@ -155,7 +155,8 @@ def createTestNode(Map test_def) {
 
             // process log data (with python code coverage)
             try {
-              sh('coverage run -p Tools/ecl_ekf/process_logdata_ekf.py .ros/log/*/*.ulg')
+              //sh('coverage run -p Tools/ecl_ekf/process_logdata_ekf.py .ros/log/*/*.ulg')
+              sh('Tools/ecl_ekf/process_logdata_ekf.py .ros/log/*/*.ulg')
             } catch (exc) {
               // save log analysis artifacts for debugging
               archiveArtifacts(allowEmptyArchive: false, artifacts: '.ros/**/*.pdf, .ros/**/*.csv')

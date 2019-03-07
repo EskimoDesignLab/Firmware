@@ -44,6 +44,8 @@
 #include "health_flag_helper.h"
 #include "rc_check.h"
 
+#include <math.h>
+
 #include <parameters/param.h>
 #include <systemlib/mavlink_log.h>
 #include <uORB/Subscription.hpp>
@@ -531,7 +533,7 @@ static bool ekf2Check(orb_advert_t *mavlink_log_pub, vehicle_status_s &vehicle_s
 
 	if (status.hgt_test_ratio > test_limit) {
 		if (report_fail) {
-			mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Height estimate Error");
+			mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Height estimate error");
 		}
 
 		success = false;
@@ -543,7 +545,7 @@ static bool ekf2Check(orb_advert_t *mavlink_log_pub, vehicle_status_s &vehicle_s
 
 	if (status.vel_test_ratio > test_limit) {
 		if (report_fail) {
-			mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Velocity estimate Error");
+			mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Velocity estimate error");
 		}
 
 		success = false;
@@ -555,7 +557,7 @@ static bool ekf2Check(orb_advert_t *mavlink_log_pub, vehicle_status_s &vehicle_s
 
 	if (status.pos_test_ratio > test_limit) {
 		if (report_fail) {
-			mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Horizontal position estimate Error");
+			mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Position estimate error");
 		}
 
 		success = false;
@@ -567,7 +569,7 @@ static bool ekf2Check(orb_advert_t *mavlink_log_pub, vehicle_status_s &vehicle_s
 
 	if (status.mag_test_ratio > test_limit) {
 		if (report_fail) {
-			mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Yaw estimate Error");
+			mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Yaw estimate error");
 		}
 
 		success = false;

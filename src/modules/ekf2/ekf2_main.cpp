@@ -485,8 +485,10 @@ private:
 		_K_pstatic_coef_xp,	///< static pressure position error coefficient along the positive X body axis
 		(ParamFloat<px4::params::EKF2_PCOEF_XN>)
 		_K_pstatic_coef_xn,	///< static pressure position error coefficient along the negative X body axis
-		(ParamFloat<px4::params::EKF2_PCOEF_Y>)
-		_K_pstatic_coef_y,	///< static pressure position error coefficient along the Y body axis
+		(ParamFloat<px4::params::EKF2_PCOEF_YP>)
+		_K_pstatic_coef_yp,	///< static pressure position error coefficient along the positive Y body axis
+		(ParamFloat<px4::params::EKF2_PCOEF_YN>)
+		_K_pstatic_coef_yn,	///< static pressure position error coefficient along the negative Y body axis
 		(ParamFloat<px4::params::EKF2_PCOEF_Z>)
 		_K_pstatic_coef_z,	///< static pressure position error coefficient along the Z body axis
 
@@ -914,11 +916,11 @@ void Ekf2::run()
 					_ekf.set_air_density(airdata.rho);
 
 					// calculate static pressure error = Pmeas - Ptruth
-					// model position error sensitivity as a body fixed ellipse with different scale in the positive and negtive X direction
-					const float max_airspeed_sq = _aspd_max.get() * _aspd_max.get();
-					float K_pstatic_coef_x;
-
+					// model position error sensitivity as a body fixed ellipse with a different scale in the positive and
+					// negative X and Y directions
 					const Vector3f vel_body_wind = get_vel_body_wind();
+
+					float K_pstatic_coef_x;
 
 					if (vel_body_wind(0) >= 0.0f) {
 						K_pstatic_coef_x = _K_pstatic_coef_xp.get();
@@ -927,12 +929,22 @@ void Ekf2::run()
 						K_pstatic_coef_x = _K_pstatic_coef_xn.get();
 					}
 
+					float K_pstatic_coef_y;
+
+					if (vel_body_wind(1) >= 0.0f) {
+						K_pstatic_coef_y = _K_pstatic_coef_yp.get();
+
+					} else {
+						K_pstatic_coef_y = _K_pstatic_coef_yn.get();
+					}
+
+					const float max_airspeed_sq = _aspd_max.get() * _aspd_max.get();
 					const float x_v2 = fminf(vel_body_wind(0) * vel_body_wind(0), max_airspeed_sq);
 					const float y_v2 = fminf(vel_body_wind(1) * vel_body_wind(1), max_airspeed_sq);
 					const float z_v2 = fminf(vel_body_wind(2) * vel_body_wind(2), max_airspeed_sq);
 
 					const float pstatic_err = 0.5f * airdata.rho *
-								  (K_pstatic_coef_x * x_v2) + (_K_pstatic_coef_y.get() * y_v2) + (_K_pstatic_coef_z.get() * z_v2);
+								  (K_pstatic_coef_x * x_v2) + (K_pstatic_coef_y * y_v2) + (_K_pstatic_coef_z.get() * z_v2);
 
 					// correct baro measurement using pressure error estimate and assuming sea level gravity
 					balt_data_avg += pstatic_err / (airdata.rho * CONSTANTS_ONE_G);
@@ -1015,7 +1027,7 @@ void Ekf2::run()
 
 		if ((_gps_blend_mask.get() == 0) && gps1_updated) {
 			// When GPS blending is disabled we always use the first receiver instance
-			_ekf.setGpsData(_gps_state[0].time_usec, &_gps_state[0]);
+			_ekf.setGpsData(_gps_state[0].time_usec, _gps_state[0]);
 
 		} else if ((_gps_blend_mask.get() > 0) && (gps1_updated || gps2_updated)) {
 			// blend dual receivers if available
@@ -1060,7 +1072,7 @@ void Ekf2::run()
 				}
 
 				// write selected GPS to EKF
-				_ekf.setGpsData(_gps_output[_gps_select_index].time_usec, &_gps_output[_gps_select_index]);
+				_ekf.setGpsData(_gps_output[_gps_select_index].time_usec, _gps_output[_gps_select_index]);
 
 				// log blended solution as a third GPS instance
 				ekf_gps_position_s gps;
@@ -2464,7 +2476,7 @@ int Ekf2::print_usage(const char *reason)
 ### Description
 Attitude and position estimator using an Extended Kalman Filter. It is used for Multirotors and Fixed-Wing.
 
-The documentation can be found on the [tuning_the_ecl_ekf](https://dev.px4.io/en/tutorials/tuning_the_ecl_ekf.html) page.
+The documentation can be found on the [ECL/EKF Overview & Tuning](https://docs.px4.io/en/advanced_config/tuning_the_ecl_ekf.html) page.
 
 ekf2 can be started in replay mode (`-r`): in this mode it does not access the system time, but only uses the
 timestamps from the sensor topics.

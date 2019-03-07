@@ -49,10 +49,12 @@ bool FlightTaskManualPositionSmoothVel::activate()
 
 void FlightTaskManualPositionSmoothVel::reActivate()
 {
-	reset(Axes::XY);
+	// The task is reacivated while the vehicle is on the ground. To detect takeoff in mc_pos_control_main properly
+	// using the generated jerk, reset the z derivatives to zero
+	reset(Axes::XYZ, true);
 }
 
-void FlightTaskManualPositionSmoothVel::reset(Axes axes)
+void FlightTaskManualPositionSmoothVel::reset(Axes axes, bool force_z_zero)
 {
 	int count;
 
@@ -73,6 +75,11 @@ void FlightTaskManualPositionSmoothVel::reset(Axes axes)
 	// TODO: get current accel
 	for (int i = 0; i < count; ++i) {
 		_smoothing[i].reset(0.f, _velocity(i), _position(i));
+	}
+
+	// Set the z derivatives to zero
+	if (force_z_zero) {
+		_smoothing[2].reset(0.f, 0.f, _position(2));
 	}
 
 	_position_lock_xy_active = false;
@@ -173,16 +180,26 @@ void FlightTaskManualPositionSmoothVel::_updateSetpoints()
 	if (Vector2f(_vel_sp_smooth).length() < 0.01f &&
 	    Vector2f(_acceleration_setpoint).length() < .2f &&
 	    sticks_expo_xy.length() <= FLT_EPSILON) {
-		_position_setpoint_xy_locked(0) = pos_sp_smooth(0);
-		_position_setpoint_xy_locked(1) = pos_sp_smooth(1);
 		_position_lock_xy_active = true;
 	}
 
 	if (fabsf(_vel_sp_smooth(2)) < 0.01f &&
 	    fabsf(_acceleration_setpoint(2)) < .2f &&
 	    fabsf(_sticks_expo(2)) <= FLT_EPSILON) {
-		_position_setpoint_z_locked = pos_sp_smooth(2);
 		_position_lock_z_active = true;
+	}
+
+	// Set valid position setpoint while in position lock.
+	// When the position lock condition above is false, it does not
+	// mean that the unlock condition is true. This is why
+	// we are checking the lock flag here.
+	if (_position_lock_xy_active) {
+		_position_setpoint_xy_locked(0) = pos_sp_smooth(0);
+		_position_setpoint_xy_locked(1) = pos_sp_smooth(1);
+	}
+
+	if (_position_lock_z_active) {
+		_position_setpoint_z_locked = pos_sp_smooth(2);
 	}
 
 	_position_setpoint(0) = _position_setpoint_xy_locked(0);
