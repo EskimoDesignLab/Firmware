@@ -48,7 +48,7 @@ configure_file(simulator_config.h.in simulator_config.h @ONLY)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 set(SIMULATOR_SRCS simulator.cpp)
-if (NOT ${OS} STREQUAL "qurt")
+if (NOT ${PX4_PLATFORM} STREQUAL "qurt")
 	list(APPEND SIMULATOR_SRCS
 		simulator_mavlink.cpp)
 endif()
@@ -59,6 +59,8 @@ px4_add_module(
 	MODULE modules__simulator
 	MAIN simulator
 	COMPILE_FLAGS
+		-Wno-double-promotion
+		-Wno-cast-align
 	INCLUDES
 		${PX4_SOURCE_DIR}/mavlink/include/mavlink
 	SRCS

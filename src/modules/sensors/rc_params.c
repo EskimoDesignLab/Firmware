@@ -1528,7 +1528,7 @@ PARAM_DEFINE_INT32(RC_MAP_ACRO_SW, 0);
 PARAM_DEFINE_INT32(RC_MAP_OFFB_SW, 0);
 
 /**
- * Kill switch channel
+ * Emergency Kill switch channel
  *
  * @min 0
  * @max 18
@@ -1556,7 +1556,10 @@ PARAM_DEFINE_INT32(RC_MAP_OFFB_SW, 0);
 PARAM_DEFINE_INT32(RC_MAP_KILL_SW, 0);
 
 /**
- * Arm switch channel
+ * Arm switch channel.
+ *
+ * Use it to arm/disarm via switch instead of default throttle stick. If this is
+ * assigned, arming and disarming via stick is disabled.
  *
  * @min 0
  * @max 18

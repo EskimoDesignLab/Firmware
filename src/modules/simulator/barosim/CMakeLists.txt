@@ -35,6 +35,8 @@ px4_add_module(
 	MODULE drivers__barosim
 	MAIN barosim
 	COMPILE_FLAGS
+		-Wno-double-promotion
+		-Wno-cast-align # TODO: fix and enable
 	SRCS
 		baro.cpp
 	DEPENDS

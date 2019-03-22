@@ -41,9 +41,6 @@
  * @author Julian Oes <julian@px4.io>
  */
 
-#include <px4_config.h>
-#include <parameters/param.h>
-
 /**
  * Roll trim
  *
@@ -105,21 +102,6 @@ PARAM_DEFINE_FLOAT(TRIM_YAW, 0.0f);
  * @increment 0.5
  */
 PARAM_DEFINE_INT32(COM_DL_LOSS_T, 10);
-
-/**
- * Datalink regain time threshold
- *
- * After a data link loss: after this this amount of seconds with a healthy datalink the 'datalink loss'
- * flag is set back to false
- *
- * @group Commander
- * @unit s
- * @min 0
- * @max 3
- * @decimal 1
- * @increment 0.5
- */
-PARAM_DEFINE_INT32(COM_DL_REG_T, 0);
 
 /**
  * High Latency Datalink loss time threshold
@@ -281,18 +263,17 @@ PARAM_DEFINE_INT32(COM_RC_ARM_HYST, 1000);
  * automatically disarmed in case a landing situation has been detected during this period.
  *
  * The vehicle will also auto-disarm right after arming if it has not even flown, however the time
- * will be longer by a factor of 5.
+ * will always be 10 seconds such that the pilot has enough time to take off.
  *
- * A value of zero means that automatic disarming is disabled.
+ * A negative value means that automatic disarming triggered by landing detection is disabled.
  *
  * @group Commander
- * @min 0
+ * @min -1
  * @max 20
  * @unit s
- * @decimal 0
- * @increment 1
+ * @decimal 2
  */
-PARAM_DEFINE_INT32(COM_DISARM_LAND, 0);
+PARAM_DEFINE_FLOAT(COM_DISARM_LAND, -1.0f);
 
 /**
  * Allow arming without GPS
@@ -339,7 +320,7 @@ PARAM_DEFINE_INT32(COM_LOW_BAT_ACT, 0);
  * See COM_OBL_ACT and COM_OBL_RC_ACT to configure action.
  *
  * @group Commander
- * @unit second
+ * @unit s
  * @min 0
  * @max 60
  * @increment 1
@@ -722,7 +703,7 @@ PARAM_DEFINE_INT32(COM_POS_FS_GAIN, 10);
 /**
  * Horizontal position error threshold.
  *
- * This is the horizontal position error (EPV) threshold that will trigger a failsafe. The default is appropriate for a multicopter. Can be increased for a fixed-wing.
+ * This is the horizontal position error (EPH) threshold that will trigger a failsafe. The default is appropriate for a multicopter. Can be increased for a fixed-wing.
  *
  * @unit m
  * @group Commander
@@ -744,7 +725,7 @@ PARAM_DEFINE_FLOAT(COM_POS_FS_EPV, 10);
  *
  * This is the horizontal velocity error (EVH) threshold that will trigger a failsafe. The default is appropriate for a multicopter. Can be increased for a fixed-wing.
  *
- * @unit m
+ * @unit m/s
  * @group Commander
  */
 PARAM_DEFINE_FLOAT(COM_VEL_FS_EVH, 1);
@@ -773,3 +754,54 @@ PARAM_DEFINE_INT32(COM_FLIGHT_UUID, 0);
  * @group Mission
  */
 PARAM_DEFINE_INT32(COM_TAKEOFF_ACT, 0);
+
+/**
+ * Set data link loss failsafe mode
+ *
+ * The data link loss failsafe will only be entered after a timeout,
+ * set by COM_DL_LOSS_T in seconds. Once the timeout occurs the selected
+ * action will be executed. Setting this parameter to 4 will enable CASA
+ * Outback Challenge rules, which are only recommended to participants
+ * of that competition.
+ *
+ * @value 0 Disabled
+ * @value 1 Hold mode
+ * @value 2 Return mode
+ * @value 3 Land mode
+ * @value 4 Data Link Auto Recovery (CASA Outback Challenge rules)
+ * @value 5 Terminate
+ * @value 6 Lockdown
+ *
+ * @group Mission
+ */
+PARAM_DEFINE_INT32(NAV_DLL_ACT, 0);
+
+/**
+ * Set RC loss failsafe mode
+ *
+ * The RC loss failsafe will only be entered after a timeout,
+ * set by COM_RC_LOSS_T in seconds. If RC input checks have been disabled
+ * by setting the COM_RC_IN_MODE param it will not be triggered.
+ * Setting this parameter to 4 will enable CASA Outback Challenge rules,
+ * which are only recommended to participants of that competition.
+ *
+ * @value 0 Disabled
+ * @value 1 Hold mode
+ * @value 2 Return mode
+ * @value 3 Land mode
+ * @value 4 RC Auto Recovery (CASA Outback Challenge rules)
+ * @value 5 Terminate
+ * @value 6 Lockdown
+ *
+ * @group Mission
+ */
+PARAM_DEFINE_INT32(NAV_RCL_ACT, 2);
+
+/**
+ * Flag to enable obstacle avoidance
+ * Temporary Parameter to enable interface testing
+ *
+ * @boolean
+ * @group Mission
+ */
+PARAM_DEFINE_INT32(COM_OBS_AVOID, 0);

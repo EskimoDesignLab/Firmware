@@ -44,6 +44,10 @@
 
 #include <px4_i2c.h>
 
+#if !defined(CONFIG_I2C)
+#  error I2C support requires CONFIG_I2C
+#endif
+
 namespace device __EXPORT
 {
 
@@ -54,6 +58,8 @@ class __EXPORT I2C : public CDev
 {
 
 public:
+
+	virtual int	init();
 
 	static int	set_bus_clock(unsigned bus, unsigned clock_hz);
 
@@ -66,6 +72,8 @@ protected:
 	 */
 	uint8_t		_retries{0};
 
+
+
 	/**
 	 * @ Constructor
 	 *
@@ -77,8 +85,6 @@ protected:
 	 */
 	I2C(const char *name, const char *devname, int bus, uint16_t address, uint32_t frequency);
 	virtual ~I2C();
-
-	virtual int	init();
 
 	/**
 	 * Check for the presence of the device on the bus.

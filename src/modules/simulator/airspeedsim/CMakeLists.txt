@@ -35,6 +35,8 @@ px4_add_module(
 	MODULE drivers__airspeedsim
 	MAIN measairspeedsim
 	COMPILE_FLAGS
+		-Wno-double-promotion
+		-Wno-cast-align # TODO: fix and enable
 	SRCS
 		airspeedsim.cpp
 		meas_airspeed_sim.cpp
