@@ -177,7 +177,7 @@ DropDeLeaves::drop()
     actuators_publish();
 
     usleep(1000000);
-    warnx("drop system activated");
+    PX4_WARN("drop system activated");
 
     // Delay for mechanism to be drop
     // with a 10% duty cycle
@@ -196,7 +196,7 @@ DropDeLeaves::drop()
     //     usleep(20000);        
     // }
 
-    warnx("dropping ended");
+    PX4_WARN("dropping ended");
 
     _actuators.control[4] = 0.0f;
     actuators_publish();

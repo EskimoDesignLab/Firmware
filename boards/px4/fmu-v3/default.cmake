@@ -67,6 +67,7 @@ px4_add_board(
 		camera_feedback
 		commander
 		dataman
+		drop_deleaves
 		ekf2
 		events
 		fw_att_control
