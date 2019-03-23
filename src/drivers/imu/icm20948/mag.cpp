@@ -137,7 +137,7 @@ ICM20948_mag::init()
 	_mag_reports->get(&mrp);
 
 	_mag_topic = orb_advertise_multi(ORB_ID(sensor_mag), &mrp,
-					 &_mag_orb_class_instance, (_parent->is_external()) ? ORB_PRIO_VERY_HIGH : ORB_PRIO_DEFAULT);
+					 &_mag_orb_class_instance, (_parent->is_external()) ? ORB_PRIO_MAX : ORB_PRIO_DEFAULT);
 //    &_mag_orb_class_instance, ORB_PRIO_LOW);
 
 	if (_mag_topic == nullptr) {

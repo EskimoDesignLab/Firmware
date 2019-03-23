@@ -256,7 +256,7 @@ ICM20948::init()
 
 	int ret = probe();
 
-	if (ret != OK) {
+	if (ret != OK && !_magnetometer_only) {
 		PX4_DEBUG("ICM20948 probe failed");
 		return ret;
 	}

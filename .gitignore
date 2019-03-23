@@ -68,4 +68,4 @@ posix-configs/SITL/init/test/*_generated
 .vscode/.cortex-debug.peripherals.state.json
 .vscode/.cortex-debug.registers.state.json
 .vscode/c_cpp_properties.json
-
+.vscode/ipch/*
