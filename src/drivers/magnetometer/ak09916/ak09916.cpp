@@ -604,6 +604,10 @@ AK09916::collect()
 	// This allows the higher level code to decide if it
 	// should use this sensor based on whether it has had failures
 	mrb.error_count = perf_event_count(_bad_transfers);
+
+	mrb.x_raw = mrb.x_raw;
+	mrb.y_raw = -mrb.y_raw;
+	mrb.z_raw = -mrb.z_raw;
 	
 	mrb.x = mrb.x_raw * AK09916_CONVERSION_SCALE;
 	mrb.y = mrb.y_raw * AK09916_CONVERSION_SCALE;
