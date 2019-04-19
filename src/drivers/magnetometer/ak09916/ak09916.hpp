@@ -1,5 +1,38 @@
-#ifndef AK09916_HPP_
-#define AK09916_HPP_
+/****************************************************************************
+ *
+ *   Copyright (c) 2019 PX4 Development Team. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ * 3. Neither the name PX4 nor the names of its contributors may be
+ *    used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
+ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *
+ ****************************************************************************/
+
+#pragma once
+
 
 #include <px4_config.h>
 
@@ -33,196 +66,131 @@
 #include <drivers/device/integrator.h>
 #include <drivers/device/i2c.h>
 #include <drivers/drv_mag.h>
-#include <mathlib/math/filter/LowPassFilter2p.hpp>
-#include <lib/conversion/rotation.h>
 
 
+#define AK09916_SAMPLE_RATE					100
 #define AK09916_DEVICE_PATH_MAG              "/dev/ak09916_i2c_int"
 
 #define AK09916_DEVICE_PATH_MAG_EXT          "/dev/ak09916_i2c_ext"
 
-#define AK09916_SLAVE_ADDRESS                 0x0C
+/* in 16-bit sampling mode the mag resolution is 1.5 milli Gauss per bit */
 
-#define AK09916_BUS_SPEED                     1000*100
+#define AK09916_MAG_RANGE_GA        1.5e-3f;
 
-/* Chip Who Am I */
-#define AK09916_COMPANY_ID_REG               	0x00
-#define AK09916_DEVICE_ID_REG              		0x01
-#define AK09916_COMPANY_ID										0x48
-#define AK09916_DEVICE_ID											0x09
+/* ak09916 deviating register addresses and bit definitions */
+#define AK09916_I2C_ADDR         0x0C
 
-/* Data Registers */
-#define AK09916_DATA_X_LSB_REG                0x11
-#define AK09916_DATA_X_MSB_REG                0x12
-#define AK09916_DATA_Y_LSB_REG                0x13
-#define AK09916_DATA_Y_MSB_REG                0x14
-#define AK09916_DATA_Z_LSB_REG                0x15
-#define AK09916_DATA_Z_MSB_REG                0x16
+#define AK09916_DEVICE_ID_A		0x48
+#define AK09916_DEVICE_ID_B		0x09	// additional ID byte ("INFO" on AK9063 without content specification.)
 
-/* Status registers */
-#define AK09916_STATUS1_REG               	 	0x10
-#define AK09916_STATUS2_REG               	 	0x18
-#define AK09916_SENSOR_OVERFLOW								0x08
+#define AK09916REG_WIA           0x00
 
-/* Control Registers */
-#define AK09916_CNTL1_REG                     0x30
-#define AK09916_CNTL2_REG                     0x31
-#define AK09916_CNTL3_REG                     0x32
-
-/* This value is set based on Max output data rate value */
-#define AK09916_CONVERSION_INTERVAL          (1000000 / 100) /* microseconds */
-#define AK09916_MAX_DATA_RATE          				100
-
-/* Operation mode value */
-#define AK09916_POWER_DOWN										0x00
-#define AK09916_SINGLE_MEASURE								0x01
-#define AK09916_CONTINUOUS_MODE_1							0x02
-#define AK09916_CONTINUOUS_MODE_2							0x04
-#define AK09916_CONTINUOUS_MODE_3							0x06
-#define AK09916_CONTINUOUS_MODE_4							0x08
-#define AK09916_SELF_TEST											0x10
-
-/* Self reset value */
-#define AK09916_SELF_RESET										0x01
-
-/* Conversion from raw data to uT */
-#define AK09916_CONVERSION_SCALE							(4912.0f/32752.0f) 
+#define AK09916REG_HXL        0x11
+#define AK09916REG_HXH        0x12
+#define AK09916REG_HYL        0x13
+#define AK09916REG_HYH        0x14
+#define AK09916REG_HZL        0x15
+#define AK09916REG_HZH        0x16
+#define AK09916REG_ST1        0x10
+#define AK09916REG_ST2        0x18
+#define AK09916REG_CNTL2          0x31
+#define AK09916REG_CNTL3          0x32
 
 
-struct ak09916_data {
+#define AK09916_CNTL2_POWERDOWN_MODE            0x00
+#define AK09916_RESET							0x01
+#define AK09916_CNTL2_SINGLE_MODE               0x01 /* default */
+#define AK09916_CNTL2_CONTINOUS_MODE_10HZ       0x02
+#define AK09916_CNTL2_CONTINOUS_MODE_20HZ       0x04
+#define AK09916_CNTL2_CONTINOUS_MODE_50HZ       0x06
+#define AK09916_CNTL2_CONTINOUS_MODE_100HZ      0x08
+#define AK09916_CNTL2_SELFTEST_MODE             0x10
+#define AK09916_CNTL3_SRST                      0x01
+#define AK09916_ST1_DRDY                        0x01
+#define AK09916_ST1_DOR                         0x02
+
+
+#pragma pack(push, 1)
+struct ak09916_regs {
+	uint8_t st1;
 	int16_t x;
 	int16_t y;
 	int16_t z;
+	uint8_t tmps;
+	uint8_t st2;
 };
+#pragma pack(pop)
 
 
+
+/**
+ * Helper class implementing the magnetometer driver node.
+ */
 class AK09916 : public device::I2C
 {
 public:
 	AK09916(int bus, const char *path, enum Rotation rotation);
-	virtual ~AK09916();
+	~AK09916();
 
-	virtual int             init();
+	virtual int ioctl(struct file *filp, int cmd, unsigned long arg);
+	virtual int init();
 	virtual ssize_t       read(struct file *filp, char *buffer, size_t buflen);
-	virtual int       ioctl(struct file *filp, int cmd, unsigned long arg);
 
-	/**
-	 * Stop automatic measurement.
-	 */
-	void            stop();
+	void read_block(uint8_t reg, uint8_t *val, uint8_t count);
 
-	/**
-	  * Diagnostics - print some basic information about the driver.
-	  */
-	void            print_info();
+	int reset(void);
+	int setup(void);
+	void print_info(void);
+	int setup_master_i2c(void);
+	bool check_id(uint8_t &id);
 
-	void        print_registers();
+
+	static void cycle_trampoline(void *arg);
+	void start(void);
+	void stop(void);
+	void cycle(void);
 
 protected:
-	virtual int       probe();
+
+	friend class ICM20948;
+
+	/* Directly measure from the _interface if possible */
+	void measure();
+
+	/* Update the state with prefetched data (internally called by the regular measure() )*/
+	void _measure(struct ak09916_regs data);
+
+	uint8_t read_reg(uint8_t reg);
+	void write_reg(uint8_t reg, uint8_t value);
 
 private:
-	work_s            _work{};
+	work_s			_work{};
+	unsigned		_measure_ticks;
 
-	bool _running;
-
-	/* altitude conversion calibration */
-	unsigned        _call_interval;
-
-
-	mag_report _report {};
-	ringbuffer::RingBuffer  *_reports;
-
-	bool            _collect_phase;
-
-	struct mag_calibration_s    _scale;
-	float           _range_scale;
-
-	orb_advert_t        _topic;
-	int         _orb_class_instance;
-	int         _class_instance;
-	bool        _calibrated;        /**< the calibration is valid */
-
-	perf_counter_t      _sample_perf;
-	perf_counter_t      _bad_transfers;
-	perf_counter_t      _good_transfers;
-	perf_counter_t      _measure_perf;
-	perf_counter_t      _comms_errors;
-	perf_counter_t      _duplicates;
-
-	enum Rotation       _rotation;
-
+	enum Rotation _rotation;
+	orb_advert_t _mag_topic;
+	int _mag_orb_class_instance;
+	int _mag_class_instance;
+	bool _mag_reading_data;
+	ringbuffer::RingBuffer *_mag_reports;
 	mag_report   _last_report {};          /**< used for info() */
+	struct mag_calibration_s _mag_scale;
+	float _mag_range_scale;
+	perf_counter_t _mag_reads;
+	perf_counter_t _mag_errors;
+	perf_counter_t _mag_overruns;
+	perf_counter_t _mag_overflows;
+	perf_counter_t _mag_duplicates;
+	float _mag_asa_x;
+	float _mag_asa_y;
+	float _mag_asa_z;
 
-	int             init_trim_registers(void);
+	bool check_duplicate(uint8_t *mag_data);
 
-	/**
-	 * Start automatic measurement.
-	 */
-	void            start();
-
-	int     measure(); //start measure
-	int     collect(); //get results and publish
-
-	static void     cycle_trampoline(void *arg);
-	void            cycle(); //main execution
-
-	/**
-	 * Read the specified number of bytes from AK09916.
-	 *
-	 * @param reg       The register to read.
-	 * @param data      Pointer to buffer for bytes read.
-	 * @param len       Number of bytes to read
-	 * @return          OK if the transfer was successful, -errno otherwise.
-	 */
-	int             get_data(uint8_t reg, uint8_t *data, unsigned len);
-
-	/**
-	 * Resets the chip.
-	 */
-	int             reset();
-
-	/**
-	 * Measurement self test
-	 *
-	 * @return 0 on success, 1 on failure
-	 */
-	int             self_test();
-
-	/**
-	 * Read a register from the AK09916
-	 *
-	 * @param reg     The register to read.
-	 * @return        The value that was read.
-	 */
-	uint8_t         read_reg(uint8_t reg);
-
-	/**
-	 * Write a register in the AK09916
-	 *
-	 * @param reg       The register to write.
-	 * @param value     The new value to write.
-	 * @return          OK if the transfer was successful, -errno otherwise.
-	 */
-	int             write_reg(uint8_t reg, uint8_t value);
-
-	/**
-	 * Modify a register in the AK09916
-	 *
-	 * Bits are cleared before bits are set.
-	 *
-	 * @param reg       The register to modify.
-	 * @param clearbits Bits in the register to clear.
-	 * @param setbits   Bits in the register to set.
-	 */
-	void            modify_reg(unsigned reg, uint8_t clearbits, uint8_t setbits);
+	// keep last mag reading for duplicate detection
+	uint8_t			_last_mag_data[6];
 
 	/* do not allow to copy this class due to pointer data members */
 	AK09916(const AK09916 &);
 	AK09916 operator=(const AK09916 &);
-
 };
-
-
-
-#endif /* AK09916_HPP_ */
